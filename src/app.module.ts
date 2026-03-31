@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
+import { DatabaseModule } from './core/database/typeorm/typeorm.module';
 
 @Module({
-  imports: [],
+  imports: [DatabaseModule],
   controllers: [],
   providers: [],
 })
