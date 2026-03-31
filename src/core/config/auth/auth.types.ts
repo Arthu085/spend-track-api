@@ -1,9 +1,9 @@
-export type JwtTokenConfig = {
+export type JwtTokenOptions = {
   secret: string;
   expiresIn: string;
 };
 
-export type JwtConfig = {
-  access: JwtTokenConfig;
-  refresh: JwtTokenConfig;
+export type JwtOptions = {
+  access: JwtTokenOptions;
+  refresh: JwtTokenOptions;
 };

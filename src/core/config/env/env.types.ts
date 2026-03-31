@@ -1,4 +1,4 @@
-export type EnvConfig = {
+export type EnvOptions = {
   DB_HOST: string;
   DB_PORT: number;
   DB_USERNAME: string;
