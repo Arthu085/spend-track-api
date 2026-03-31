@@ -1,7 +1,8 @@
+import { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface';
 import { envConfig } from '../env/env.config';
 import { isDevelopment } from '../env/env.helpers';
 
-export const corsConfig = {
+export const corsConfig: CorsOptions = {
   origin: isDevelopment ? true : envConfig.CLIENT_URL,
   credentials: true,
 };

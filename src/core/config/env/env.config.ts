@@ -1,4 +1,5 @@
 import { envSchema } from './env-schema.config';
+import { EnvConfig } from './env.types';
 
 const { error, value: envVars } = envSchema.validate(process.env);
 
@@ -6,7 +7,7 @@ if (error) {
   throw new Error(`Erro nas variáveis de ambiente: ${error.message}`);
 }
 
-export const envConfig = {
+export const envConfig: EnvConfig = {
   DB_HOST: envVars.DB_HOST,
   DB_PORT: envVars.DB_PORT,
   DB_USERNAME: envVars.DB_USERNAME,

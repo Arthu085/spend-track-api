@@ -1,7 +1,8 @@
+import { CookieOptions } from 'express';
 import { envConfig } from '../env/env.config';
 import { isProduction } from '../env/env.helpers';
 
-export const cookieConfig = {
+export const cookieConfig: CookieOptions = {
   httpOnly: true,
   secure: envConfig.COOKIE_SECURE ?? isProduction,
   sameSite: envConfig.COOKIE_SAME_SITE,
