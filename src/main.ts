@@ -5,11 +5,13 @@ import { corsConfig } from './core/config/network/cors.config';
 import cookieParser from 'cookie-parser';
 import { setupSwagger } from './core/config/swagger/swagger.setup';
 import { envConfig } from './core/config/env/env.config';
+import { HttpExceptionFilter } from './core/filters/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.setGlobalPrefix('api');
+  app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
