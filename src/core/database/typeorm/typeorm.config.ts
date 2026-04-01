@@ -1,6 +1,6 @@
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { envConfig } from 'src/core/config/env/env.config';
-import { isLoggingEnabled } from 'src/core/config/env/env.helpers';
+import { isLoggingEnabled } from 'src/core/config/env/helpers/env.helpers';
 
 export const typeOrmConfig: TypeOrmModuleOptions = {
   type: 'postgres',
