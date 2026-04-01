@@ -1,4 +1,4 @@
-import { envConfig } from './env.config';
+import { envConfig } from '../env.config';
 
 export const isProduction = envConfig.NODE_ENV === 'production';
 

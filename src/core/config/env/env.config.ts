@@ -1,5 +1,5 @@
-import { envSchema } from './env-schema.config';
-import { EnvOptions } from './env.types';
+import { envSchema } from './schemas/env.schemas';
+import { EnvOptions } from './types/env.types';
 
 const { error, value: envVars } = envSchema.validate(process.env);
 

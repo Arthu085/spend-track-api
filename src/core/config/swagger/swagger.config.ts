@@ -1,4 +1,4 @@
-import { SwaggerOptions } from './swagger.types';
+import { SwaggerOptions } from './types/swagger.types';
 import packageJson from '../../../../package.json';
 
 export const swaggerConfig: SwaggerOptions = {

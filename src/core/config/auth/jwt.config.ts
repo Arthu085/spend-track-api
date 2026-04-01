@@ -1,5 +1,5 @@
 import { envConfig } from '../env/env.config';
-import { JwtOptions } from './auth.types';
+import { JwtOptions } from './types/auth.types';
 
 export const jwtConfig: JwtOptions = {
   access: { secret: envConfig.JWT_SECRET, expiresIn: envConfig.JWT_EXPIRES_IN },

@@ -1,5 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { isDevelopment, isLoggingEnabled } from '../config/env/env.helpers';
+import {
+  isDevelopment,
+  isLoggingEnabled,
+} from '../config/env/helpers/env.helpers';
 
 @Injectable()
 export class AppLogger {

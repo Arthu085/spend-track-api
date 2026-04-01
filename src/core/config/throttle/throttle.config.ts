@@ -1,4 +1,4 @@
-import { ThrottleOptions } from './throttle.types';
+import { ThrottleOptions } from './types/throttle.types';
 
 export const throttleConfig: ThrottleOptions = {
   ttl: 60,
