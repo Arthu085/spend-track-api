@@ -27,11 +27,20 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, any> {
 
         const message = this.getResponseMessage(data, responseMessage);
 
+        const isPaginated = data?.meta && data?.data;
+
         return {
           success: true,
           statusCode,
           message,
-          data: data ?? null,
+          ...(isPaginated
+            ? {
+                data: data.data,
+                meta: data.meta,
+              }
+            : {
+                data: data ?? null,
+              }),
           timestamp: new Date().toISOString(),
         };
       }),

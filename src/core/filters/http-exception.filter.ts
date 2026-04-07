@@ -73,6 +73,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       message: finalMessage,
       path: request.url,
       timestamp: new Date().toISOString(),
+      meta: null,
     });
   }
 }
