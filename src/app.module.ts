@@ -6,6 +6,7 @@ import { AppLogger } from './core/logger/logger.service';
 import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { HttpExceptionFilter } from './core/filters/http-exception.filter';
 import { ResponseInterceptor } from './core/interceptors/response.interceptor';
+import { TransactionInterceptor } from './core/interceptors/transaction.interceptor';
 
 @Module({
   imports: [
@@ -20,6 +21,10 @@ import { ResponseInterceptor } from './core/interceptors/response.interceptor';
   controllers: [],
   providers: [
     AppLogger,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TransactionInterceptor,
+    },
     {
       provide: APP_INTERCEPTOR,
       useClass: ResponseInterceptor,
