@@ -10,16 +10,15 @@ import {
 } from 'typeorm';
 
 export abstract class BaseOrmEntity {
-  @PrimaryGeneratedColumn({ comment: 'Unique identifier of the entity' })
+  @PrimaryGeneratedColumn({ comment: 'Identificador único da entidade' })
   id: number;
 
-  @Generated('uuid')
   @Column({
     type: 'uuid',
-    name: 'uuid',
     nullable: false,
     unique: true,
-    comment: 'Unique identifier of the entity in UUID format',
+    default: () => 'uuid_generate_v4()',
+    comment: 'Identificador único da entidade no formato UUID',
   })
   @Index()
   uuid: string;
@@ -27,23 +26,22 @@ export abstract class BaseOrmEntity {
   @CreateDateColumn({
     name: 'created_at',
     type: 'timestamptz',
-    comment: 'Date of creation of the entity',
+    comment: 'Data de criação da entidade',
   })
   createdAt: Date;
 
   @UpdateDateColumn({
     name: 'updated_at',
     type: 'timestamptz',
-    nullable: true,
-    comment: 'Date of update of the entity',
+    comment: 'Data de atualização da entidade',
   })
-  updatedAt: Date | null;
+  updatedAt: Date;
 
   @DeleteDateColumn({
     name: 'deleted_at',
     type: 'timestamptz',
     nullable: true,
-    comment: 'Date of deletion of the entity',
+    comment: 'Data de exclusão da entidade',
   })
   deletedAt: Date | null;
 
@@ -52,7 +50,7 @@ export abstract class BaseOrmEntity {
     enum: StatusEnum,
     default: StatusEnum.ACTIVE,
     name: 'status',
-    comment: 'Status of the entity',
+    comment: 'Status da entidade',
   })
   @Index()
   status: StatusEnum;

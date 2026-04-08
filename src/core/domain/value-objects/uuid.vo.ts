@@ -1,13 +1,18 @@
 import { randomUUID } from 'crypto';
-import { AppBadRequestException } from 'src/core/exceptions/app-bad-request.exception';
+
+export class InvalidUuidError extends Error {
+  constructor() {
+    super('UUID Invalido');
+  }
+}
 
 export class Uuid {
   private readonly value: string;
 
-  constructor(value?: string) {
+  private constructor(value?: string) {
     if (value) {
       if (!Uuid.isValid(value)) {
-        throw new AppBadRequestException({ message: 'UUID inválido' });
+        throw new InvalidUuidError();
       }
 
       this.value = value;
@@ -18,21 +23,6 @@ export class Uuid {
     this.value = randomUUID();
   }
 
-  public getValue(): string {
-    return this.value;
-  }
-
-  public equals(other: Uuid): boolean {
-    return this.value === other.getValue();
-  }
-
-  public static isValid(uuid: string): boolean {
-    const regex =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-    return regex.test(uuid);
-  }
-
   public static create(): Uuid {
     return new Uuid();
   }
@@ -41,7 +31,19 @@ export class Uuid {
     return new Uuid(value);
   }
 
+  public equals(other?: Uuid): boolean {
+    if (!other) return false;
+    return this.value === other.value;
+  }
+
   public toString(): string {
     return this.value;
+  }
+
+  public static isValid(uuid: string): boolean {
+    const regex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+    return regex.test(uuid);
   }
 }
