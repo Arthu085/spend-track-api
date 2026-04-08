@@ -1,46 +1,27 @@
-import { DataSource, Repository } from 'typeorm';
-import AppDataSource from '../data-source';
-import { SeedHistoryOrmEntity } from '../entities/seed-history.orm.entity';
+import { DataSource } from 'typeorm';
 import { ISeed } from './interfaces/seed.interface';
+import AppDataSource from '../data-source';
 
 class SeedRunner {
   private dataSource: DataSource;
-  private seedHistoryRepository: Repository<SeedHistoryOrmEntity>;
 
   async initialize() {
     this.dataSource = AppDataSource;
     await this.dataSource.initialize();
-    console.log('Connection initialized\n');
-
-    this.seedHistoryRepository =
-      this.dataSource.getRepository(SeedHistoryOrmEntity);
+    console.log('Conexão Inicializada\n');
   }
 
   async runSeed(seed: ISeed): Promise<void> {
-    const hasRun = await this.seedHistoryRepository.findOne({
-      where: { name: seed.name },
-    });
-
-    if (hasRun) {
-      console.log(
-        `${seed.name} already executed on ${hasRun.executedAt.toLocaleString('pt-BR')}\n`,
-      );
-      return;
-    }
-
-    console.log(`Executing ${seed.name}...`);
+    console.log(`Executando ${seed.name}...`);
     await seed.run();
-
-    const history = this.seedHistoryRepository.create({ name: seed.name });
-    await this.seedHistoryRepository.save(history);
-    console.log(`${seed.name} executed successfully!\n`);
+    console.log(`${seed.name} Completado!\n`);
   }
 
   async run() {
     try {
       await this.initialize();
 
-      console.log('Initializing...\n');
+      console.log('Iniciando execução dos seeds...\n');
 
       const seeds: ISeed[] = [
         // Add seeds here
@@ -50,13 +31,13 @@ class SeedRunner {
         await this.runSeed(seed);
       }
 
-      console.log('All seeds processed successfully!');
+      console.log('Todos os seeds executados com sucesso!');
     } catch (error) {
-      console.error('Error occurred while executing seeds:', error);
+      console.error('Erro:', error);
       process.exit(1);
     } finally {
       await this.dataSource.destroy();
-      console.log('Connection with database closed');
+      console.log('Conexão com o banco de dados fechada');
     }
   }
 }
