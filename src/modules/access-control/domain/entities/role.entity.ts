@@ -6,13 +6,13 @@ import { StatusEnum } from 'src/core/domain/enums/status.enum';
 export class RoleEntity extends BaseEntity {
   private _name: RoleEnum;
 
-  constructor(props: {
+  private constructor(props: {
     id?: number;
-    uuid?: Uuid;
-    createdAt?: Date;
-    updatedAt?: Date | null;
+    uuid: Uuid;
+    createdAt: Date;
+    updatedAt: Date;
     deletedAt?: Date | null;
-    status?: StatusEnum;
+    status: StatusEnum;
     name: RoleEnum;
   }) {
     super(props);
@@ -29,7 +29,27 @@ export class RoleEntity extends BaseEntity {
   }
 
   static create(name: RoleEnum): RoleEntity {
-    return new RoleEntity({ name });
+    return new RoleEntity({
+      id: undefined,
+      uuid: Uuid.create(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      deletedAt: null,
+      status: StatusEnum.ACTIVE,
+      name,
+    });
+  }
+
+  static rehydrate(props: {
+    id?: number;
+    uuid: Uuid;
+    createdAt: Date;
+    updatedAt: Date;
+    deletedAt?: Date | null;
+    status: StatusEnum;
+    name: RoleEnum;
+  }): RoleEntity {
+    return new RoleEntity(props);
   }
 
   isAdmin(): boolean {

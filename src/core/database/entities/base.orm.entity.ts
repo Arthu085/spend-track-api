@@ -6,7 +6,6 @@ import {
   DeleteDateColumn,
   Column,
   Index,
-  Generated,
 } from 'typeorm';
 
 export abstract class BaseOrmEntity {
