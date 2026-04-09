@@ -1,6 +1,7 @@
 import { DataSource } from 'typeorm';
 import { ISeed } from './interfaces/seed.interface';
 import AppDataSource from '../data-source';
+import { RoleSeed } from './data/role.seed';
 
 class SeedRunner {
   private dataSource: DataSource;
@@ -23,9 +24,7 @@ class SeedRunner {
 
       console.log('Iniciando execução dos seeds...\n');
 
-      const seeds: ISeed[] = [
-        // Add seeds here
-      ];
+      const seeds: ISeed[] = [new RoleSeed()];
 
       for (const seed of seeds) {
         await this.runSeed(seed);

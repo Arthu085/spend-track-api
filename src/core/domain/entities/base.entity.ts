@@ -1,4 +1,3 @@
-import { randomUUID } from 'crypto';
 import { StatusEnum } from '../enums/status.enum';
 import { Uuid } from '../value-objects/uuid.vo';
 
