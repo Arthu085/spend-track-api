@@ -7,10 +7,10 @@ import { RoleEnum } from 'src/modules/access-control/domain/enums/role.enum';
 export class RoleSeed implements ISeed {
   name = 'RoleSeed';
 
-  async run(): Promise<void> {
-    const dataSource: DataSource = AppDataSource;
+  constructor(private readonly dataSource: DataSource) {}
 
-    const repository = dataSource.getRepository(RoleOrmEntity);
+  async run(): Promise<void> {
+    const repository = this.dataSource.getRepository(RoleOrmEntity);
 
     const roles = Object.values(RoleEnum).map((role) => ({
       name: role,
