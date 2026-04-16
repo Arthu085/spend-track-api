@@ -28,15 +28,15 @@ export class RoleEntity extends BaseEntity {
     return this._name;
   }
 
-  static create(name: RoleEnum): RoleEntity {
+  static create(props: { name: RoleEnum }): RoleEntity {
     return new RoleEntity({
+      ...props,
       id: undefined,
       uuid: Uuid.create(),
       createdAt: new Date(),
       updatedAt: new Date(),
       deletedAt: null,
       status: StatusEnum.ACTIVE,
-      name,
     });
   }
 

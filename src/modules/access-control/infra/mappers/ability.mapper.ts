@@ -15,4 +15,22 @@ export class AbilityMapper {
       subject: orm.subject,
     });
   }
+
+  static toOrm(domain: AbilityEntity): AbilityOrmEntity {
+    const orm = new AbilityOrmEntity();
+
+    if (domain.id !== undefined) {
+      orm.id = domain.id;
+    }
+
+    orm.uuid = domain.uuid.toString();
+    orm.createdAt = domain.createdAt;
+    orm.updatedAt = domain.updatedAt;
+    orm.deletedAt = domain.deletedAt ?? null;
+    orm.status = domain.status;
+    orm.action = domain.action;
+    orm.subject = domain.subject;
+
+    return orm;
+  }
 }
