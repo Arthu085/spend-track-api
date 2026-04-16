@@ -2,9 +2,11 @@ import { BaseEntity } from 'src/core/domain/entities/base.entity';
 import { RoleEnum } from '../enums/role.enum';
 import { Uuid } from 'src/core/domain/value-objects/uuid.vo';
 import { StatusEnum } from 'src/core/domain/enums/status.enum';
+import { AbilityEntity } from './ability.entity';
 
 export class RoleEntity extends BaseEntity {
   private _name: RoleEnum;
+  private _abilities: AbilityEntity[];
 
   private constructor(props: {
     id?: number;
@@ -14,6 +16,7 @@ export class RoleEntity extends BaseEntity {
     deletedAt?: Date | null;
     status: StatusEnum;
     name: RoleEnum;
+    abilities?: AbilityEntity[];
   }) {
     super(props);
 
@@ -22,10 +25,15 @@ export class RoleEntity extends BaseEntity {
     }
 
     this._name = props.name;
+    this._abilities = props.abilities ?? [];
   }
 
   get name(): RoleEnum {
     return this._name;
+  }
+
+  get abilities(): AbilityEntity[] {
+    return this._abilities;
   }
 
   static create(props: { name: RoleEnum }): RoleEntity {
@@ -48,6 +56,7 @@ export class RoleEntity extends BaseEntity {
     deletedAt?: Date | null;
     status: StatusEnum;
     name: RoleEnum;
+    abilities?: AbilityEntity[];
   }): RoleEntity {
     return new RoleEntity(props);
   }

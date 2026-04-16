@@ -1,9 +1,13 @@
 import { Uuid } from 'src/core/domain/value-objects/uuid.vo';
 import { RoleEntity } from '../../domain/entities/role.entity';
 import { RoleOrmEntity } from '../entities/role.orm.entity';
+import { AbilityMapper } from './ability.mapper';
 
 export class RoleMapper {
   static toDomain(orm: RoleOrmEntity): RoleEntity {
+    const abilities =
+      orm.roleAbilities?.map((ra) => AbilityMapper.toDomain(ra.ability)) ?? [];
+
     return RoleEntity.rehydrate({
       id: orm.id,
       uuid: Uuid.from(orm.uuid),
@@ -12,6 +16,7 @@ export class RoleMapper {
       deletedAt: orm.deletedAt,
       status: orm.status,
       name: orm.name,
+      abilities,
     });
   }
 

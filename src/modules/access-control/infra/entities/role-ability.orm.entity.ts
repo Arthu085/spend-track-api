@@ -8,7 +8,7 @@ import { AbilityOrmEntity } from './ability.orm.entity';
 })
 @Unique(['role', 'ability'])
 export class RoleAbilityOrmEntity extends BaseOrmEntity {
-  @ManyToOne(() => RoleOrmEntity)
+  @ManyToOne(() => RoleOrmEntity, (role) => role.roleAbilities)
   @JoinColumn({ name: 'role_id' })
   @Index()
   role: RoleOrmEntity;

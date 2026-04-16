@@ -26,7 +26,14 @@ export class RoleRepository implements IRoleRepository {
   }
 
   async findByUuid(uuid: Uuid): Promise<RoleEntity | null> {
-    const role = await this.repo.findOneBy({ uuid: uuid.toString() });
+    const role = await this.repo.findOne({
+      where: { uuid: uuid.toString() },
+      relations: {
+        roleAbilities: {
+          ability: true,
+        },
+      },
+    });
 
     return role ? RoleMapper.toDomain(role) : null;
   }

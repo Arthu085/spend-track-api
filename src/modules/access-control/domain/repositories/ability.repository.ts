@@ -5,7 +5,7 @@ import { SubjectEnum } from '../enums/subject.enum';
 export interface IAbilityRepository {
   findAll(): Promise<AbilityEntity[]>;
 
-  findByIds(id: number[]): Promise<AbilityEntity[]>;
+  findByIds(ids: number[]): Promise<AbilityEntity[]>;
 
   findByActionAndSubject(
     action: ActionEnum,
