@@ -3,6 +3,7 @@ import { ISeed } from './interfaces/seed.interface';
 import AppDataSource from '../data-source';
 import { RoleSeed } from './data/role.seed';
 import { AbilitySeed } from './data/ability.seed';
+import { RoleAbilitySeed } from './data/role-ability.seed';
 
 class SeedRunner {
   private dataSource: DataSource;
@@ -28,6 +29,7 @@ class SeedRunner {
       const seeds: ISeed[] = [
         new RoleSeed(this.dataSource),
         new AbilitySeed(this.dataSource),
+        new RoleAbilitySeed(this.dataSource),
       ];
 
       for (const seed of seeds) {
