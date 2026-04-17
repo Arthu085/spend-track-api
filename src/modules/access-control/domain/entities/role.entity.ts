@@ -11,7 +11,7 @@ export class RoleEntity extends BaseEntity {
   private _abilities: AbilityEntity[];
 
   private constructor(props: {
-    id?: number;
+    id: number;
     uuid: Uuid;
     createdAt: Date;
     updatedAt: Date;
@@ -41,7 +41,7 @@ export class RoleEntity extends BaseEntity {
   static create(props: { name: RoleEnum }): RoleEntity {
     return new RoleEntity({
       ...props,
-      id: undefined,
+      id: 0,
       uuid: Uuid.create(),
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -51,7 +51,7 @@ export class RoleEntity extends BaseEntity {
   }
 
   static rehydrate(props: {
-    id?: number;
+    id: number;
     uuid: Uuid;
     createdAt: Date;
     updatedAt: Date;

@@ -2,7 +2,7 @@ import { StatusEnum } from '../enums/status.enum';
 import { Uuid } from '../value-objects/uuid.vo';
 
 export abstract class BaseEntity {
-  protected _id?: number;
+  protected _id: number;
   protected _uuid: Uuid;
   protected _createdAt: Date;
   protected _updatedAt: Date;
@@ -10,7 +10,7 @@ export abstract class BaseEntity {
   protected _status: StatusEnum;
 
   constructor(props: {
-    id?: number;
+    id: number;
     uuid: Uuid;
     createdAt: Date;
     updatedAt: Date;
@@ -25,7 +25,7 @@ export abstract class BaseEntity {
     this._status = props.status;
   }
 
-  get id(): number | undefined {
+  get id(): number {
     return this._id;
   }
 

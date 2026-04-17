@@ -9,7 +9,7 @@ export class AbilityEntity extends BaseEntity {
   private _subject: SubjectEnum;
 
   private constructor(props: {
-    id?: number;
+    id: number;
     uuid: Uuid;
     createdAt: Date;
     updatedAt: Date;
