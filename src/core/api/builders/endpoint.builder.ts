@@ -5,6 +5,7 @@ import {
   Post,
   Put,
   Type,
+  UseGuards,
   applyDecorators,
 } from '@nestjs/common';
 import {
@@ -16,6 +17,7 @@ import {
 import { EndpointMethod } from '../enums/endpoint-method.enum';
 import { Transactional } from '../../decorators/transactional.decorator';
 import { ResponseMessage } from '../../decorators/response-message.decorator';
+import { PermissionGuard } from 'src/modules/access-control/presentation/guards/permission.guard';
 
 export interface IEndpointResponse {
   status: number;
@@ -31,9 +33,6 @@ export interface IEndpointData {
   responses: IEndpointResponse[];
   isTransactional?: boolean;
   isProtected?: boolean;
-  // roles?: string[];
-  // actions?: Action[];
-  // abilities?: string[];
 }
 
 interface IEndpointBaseData extends IEndpointData {
@@ -59,6 +58,10 @@ export class Endpoint {
         description: this.createDescription(description, dtoName, isProtected),
       }),
     ];
+
+    if (isProtected) {
+      decorators.push(UseGuards(PermissionGuard));
+    }
 
     if (isTransactional) {
       decorators.push(Transactional());

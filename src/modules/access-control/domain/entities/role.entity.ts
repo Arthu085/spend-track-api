@@ -3,6 +3,8 @@ import { RoleEnum } from '../enums/role.enum';
 import { Uuid } from 'src/core/domain/value-objects/uuid.vo';
 import { StatusEnum } from 'src/core/domain/enums/status.enum';
 import { AbilityEntity } from './ability.entity';
+import { ActionEnum } from '../enums/action.enum';
+import { SubjectEnum } from '../enums/subject.enum';
 
 export class RoleEntity extends BaseEntity {
   private _name: RoleEnum;
@@ -61,11 +63,9 @@ export class RoleEntity extends BaseEntity {
     return new RoleEntity(props);
   }
 
-  isAdmin(): boolean {
-    return this._name === RoleEnum.ADMIN;
-  }
+  hasPermission(action: ActionEnum, subject: SubjectEnum): boolean {
+    const key = `${action}:${subject}`;
 
-  isUser(): boolean {
-    return this._name === RoleEnum.USER;
+    return this._abilities.some((ability) => ability.toKey() === key);
   }
 }
