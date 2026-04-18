@@ -6,6 +6,7 @@ import { CheckPermissionUseCase } from './application/use-cases/check-permission
 import { UpdateRoleAbilitiesUseCase } from './application/use-cases/update-role-abilities.use-case';
 import { PermissionGuard } from './presentation/guards/permission.guard';
 import { RoleController } from './presentation/controllers/role.controller';
+import { FindAllRoleUseCase } from './application/use-cases/find-all-role.use-case';
 
 @Module({
   controllers: [RoleController],
@@ -31,6 +32,11 @@ import { RoleController } from './presentation/controllers/role.controller';
       useFactory: (roleRepo, roleAbilityRepo) =>
         new UpdateRoleAbilitiesUseCase(roleRepo, roleAbilityRepo),
       inject: ['IRoleRepository', 'IRoleAbilityRepository'],
+    },
+    {
+      provide: FindAllRoleUseCase,
+      useFactory: (roleRepo) => new FindAllRoleUseCase(roleRepo),
+      inject: ['IRoleRepository'],
     },
     PermissionGuard,
   ],

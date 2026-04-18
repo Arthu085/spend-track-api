@@ -1,10 +1,12 @@
 import { DataSource, Repository } from 'typeorm';
 import { RoleEntity } from '../../domain/entities/role.entity';
-import { IRoleRepository } from '../../domain/repositories/role.repository';
+import { IRoleRepository } from '../../domain/repositories/role.repository.interface';
 import { RoleOrmEntity } from '../entities/role.orm.entity';
 import { RoleMapper } from '../mappers/role.mapper';
 import { Uuid } from 'src/core/domain/value-objects/uuid.vo';
 import { RoleEnum } from '../../domain/enums/role.enum';
+import { FindAllRoleRequestDto } from '../../application/dtos/request/find-all-role.request.dto';
+import { QueryBuilderHelper } from 'src/core/database/helpers/query-builder.helper';
 
 export class RoleRepository implements IRoleRepository {
   private repo: Repository<RoleOrmEntity>;
@@ -13,33 +15,45 @@ export class RoleRepository implements IRoleRepository {
     this.repo = this.dataSource.getRepository(RoleOrmEntity);
   }
 
-  async findAll(): Promise<RoleEntity[]> {
-    const roles = await this.repo.find();
+  async findAll(query: FindAllRoleRequestDto): Promise<[RoleEntity[], number]> {
+    const { page = 1, limit = 10 } = query;
 
-    return roles.map((role) => RoleMapper.toDomain(role));
+    const qb = this.repo.createQueryBuilder('role');
+
+    QueryBuilderHelper.applyBaseFilters(qb, 'role', query);
+    QueryBuilderHelper.applyDefaultOrder(qb, 'role');
+    QueryBuilderHelper.applyPagination(qb, page, limit);
+
+    const [roles, total] = await qb.getManyAndCount();
+
+    return [roles.map(RoleMapper.toDomain), total];
   }
 
   async findById(id: number): Promise<RoleEntity | null> {
-    const role = await this.repo.findOneBy({ id });
+    const role = await this.repo
+      .createQueryBuilder('role')
+      .where('role.id = :id', { id })
+      .getOne();
 
     return role ? RoleMapper.toDomain(role) : null;
   }
 
   async findByUuid(uuid: Uuid): Promise<RoleEntity | null> {
-    const role = await this.repo.findOne({
-      where: { uuid: uuid.toString() },
-      relations: {
-        roleAbilities: {
-          ability: true,
-        },
-      },
-    });
+    const role = await this.repo
+      .createQueryBuilder('role')
+      .leftJoinAndSelect('role.roleAbilities', 'roleAbilities')
+      .leftJoinAndSelect('roleAbilities.ability', 'ability')
+      .where('role.uuid = :uuid', { uuid: uuid.toString() })
+      .getOne();
 
     return role ? RoleMapper.toDomain(role) : null;
   }
 
   async findByName(name: RoleEnum): Promise<RoleEntity | null> {
-    const role = await this.repo.findOneBy({ name });
+    const role = await this.repo
+      .createQueryBuilder('role')
+      .where('role.name = :name', { name })
+      .getOne();
 
     return role ? RoleMapper.toDomain(role) : null;
   }

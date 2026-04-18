@@ -1,7 +1,7 @@
 import { Uuid } from 'src/core/domain/value-objects/uuid.vo';
-import { IRoleRepository } from '../../domain/repositories/role.repository';
+import { IRoleRepository } from '../../domain/repositories/role.repository.interface';
 import { UpdateRoleAbilitiesRequestDto } from '../dtos/request/update-role-abilities.request.dto';
-import { IRoleAbilityRepository } from '../../domain/repositories/role-ability.repository';
+import { IRoleAbilityRepository } from '../../domain/repositories/role-ability.repository.interface';
 import { AppNotFoundException } from 'src/core/exceptions/app-not-found.execption';
 
 export class UpdateRoleAbilitiesUseCase {

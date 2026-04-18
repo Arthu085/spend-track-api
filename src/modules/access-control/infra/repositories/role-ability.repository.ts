@@ -1,5 +1,5 @@
 import { DataSource, Repository } from 'typeorm';
-import { IRoleAbilityRepository } from '../../domain/repositories/role-ability.repository';
+import { IRoleAbilityRepository } from '../../domain/repositories/role-ability.repository.interface';
 import { RoleAbilityOrmEntity } from '../entities/role-ability.orm.entity';
 import { AbilityEntity } from '../../domain/entities/ability.entity';
 import { AbilityMapper } from '../mappers/ability.mapper';
@@ -12,14 +12,11 @@ export class RoleAbilityRepository implements IRoleAbilityRepository {
   }
 
   async findAbilitiesByRoleId(roleId: number): Promise<AbilityEntity[]> {
-    const roleAbilities = await this.repo.find({
-      where: {
-        role: { id: roleId },
-      },
-      relations: {
-        ability: true,
-      },
-    });
+    const roleAbilities = await this.repo
+      .createQueryBuilder('roleAbility')
+      .leftJoinAndSelect('roleAbility.ability', 'ability')
+      .where('roleAbility.role.id = :roleId', { roleId })
+      .getMany();
 
     return roleAbilities.map((ra) => AbilityMapper.toDomain(ra.ability));
   }
