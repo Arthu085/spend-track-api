@@ -7,8 +7,7 @@ export interface IAbilityRepository {
 
   findByIds(ids: number[]): Promise<AbilityEntity[]>;
 
-  findByActionAndSubject(
-    action: ActionEnum,
-    subject: SubjectEnum,
-  ): Promise<AbilityEntity | null>;
+  findByActionsAndSubjects(
+    items: { action: ActionEnum; subject: SubjectEnum }[],
+  ): Promise<AbilityEntity[]>;
 }

@@ -34,16 +34,31 @@ export class AbilityRepository implements IAbilityRepository {
     return abilities.map(AbilityMapper.toDomain);
   }
 
-  async findByActionAndSubject(
-    action: ActionEnum,
-    subject: SubjectEnum,
-  ): Promise<AbilityEntity | null> {
-    const ability = await this.repo
-      .createQueryBuilder('ability')
-      .where('ability.action = :action', { action })
-      .andWhere('ability.subject = :subject', { subject })
-      .getOne();
+  async findByActionsAndSubjects(
+    items: { action: ActionEnum; subject: SubjectEnum }[],
+  ): Promise<AbilityEntity[]> {
+    if (!items.length) return [];
 
-    return ability ? AbilityMapper.toDomain(ability) : null;
+    const qb = this.repo.createQueryBuilder('ability');
+
+    const conditions = items
+      .map(
+        (_, index) =>
+          `(ability.action = :action${index} AND ability.subject = :subject${index})`,
+      )
+      .join(' OR ');
+
+    const params = items.reduce(
+      (acc, item, index) => {
+        acc[`action${index}`] = item.action;
+        acc[`subject${index}`] = item.subject;
+        return acc;
+      },
+      {} as Record<string, any>,
+    );
+
+    const abilities = await qb.where(conditions, params).getMany();
+
+    return abilities.map(AbilityMapper.toDomain);
   }
 }

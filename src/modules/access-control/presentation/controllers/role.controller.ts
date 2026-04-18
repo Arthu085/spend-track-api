@@ -10,20 +10,23 @@ import { FindAllRoleResponseDto } from '../../application/dtos/response/find-all
 import { PaginatedResponse } from 'src/shared/interfaces/paginated-response.interface';
 import { FindAllRoleUseCase } from '../../application/use-cases/find-all-role.use-case';
 import { FindAllRoleRequestDto } from '../../application/dtos/request/find-all-role.request.dto';
+import { FindOneRoleResponseDto } from '../../application/dtos/response/find-one-role.response.dto';
+import { FindOneRoleUseCase } from '../../application/use-cases/find-one-role.use.case';
 
 @Controller('roles')
 @ApiTags('Role')
 @ApiCookieAuth('token')
 export class RoleController {
   constructor(
-    private readonly findAllRolesUseCase: FindAllRoleUseCase,
+    private readonly findAllRoleUseCase: FindAllRoleUseCase,
+    private readonly findOneRoleUseCase: FindOneRoleUseCase,
     private readonly updateRoleAbilitiesUseCase: UpdateRoleAbilitiesUseCase,
   ) {}
 
   @Endpoint.get({
     url: '',
     description: 'Listar funções',
-    dtoName: 'PaginationDto',
+    dtoName: 'FindAllRoleRequestDto',
     isProtected: true,
     responses: [
       {
@@ -34,11 +37,29 @@ export class RoleController {
     ],
     responseMessage: 'Lista de funções retornada com sucesso',
   })
-  // @CheckPermissions([{ action: ActionEnum.READ, subject: SubjectEnum.ROLE }])
+  @CheckPermissions([{ action: ActionEnum.READ, subject: SubjectEnum.ROLE }])
   async findAll(
     @Query() query: FindAllRoleRequestDto,
   ): Promise<PaginatedResponse<FindAllRoleResponseDto>> {
-    return this.findAllRolesUseCase.execute(query);
+    return this.findAllRoleUseCase.execute(query);
+  }
+
+  @Endpoint.get({
+    url: ':uuid',
+    description: 'Obter detalhes de uma função',
+    isProtected: true,
+    responses: [
+      {
+        status: 200,
+        description: 'Detalhes da função retornados com sucesso',
+        responseType: FindOneRoleResponseDto,
+      },
+    ],
+    responseMessage: 'Detalhes da função retornados com sucesso',
+  })
+  @CheckPermissions([{ action: ActionEnum.READ, subject: SubjectEnum.ROLE }])
+  async findOne(@Param('uuid') uuid: string): Promise<FindOneRoleResponseDto> {
+    return this.findOneRoleUseCase.execute(uuid);
   }
 
   @Endpoint.put({
