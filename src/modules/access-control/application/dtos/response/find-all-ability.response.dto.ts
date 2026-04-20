@@ -8,7 +8,7 @@ import {
   SubjectEnumTranslation,
 } from 'src/modules/access-control/domain/enums/subject.enum';
 
-export class AbilityResponseDto {
+export class FindAllAbilityResponseDto {
   action: ActionEnum;
   subject: SubjectEnum;
   labelAction: string;

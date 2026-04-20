@@ -43,6 +43,8 @@ export class RoleRepository implements IRoleRepository {
       .createQueryBuilder('role')
       .leftJoinAndSelect('role.roleAbilities', 'roleAbilities')
       .leftJoinAndSelect('roleAbilities.ability', 'ability')
+      .orderBy('ability.subject', 'ASC')
+      .addOrderBy('ability.action', 'ASC')
       .where('role.uuid = :uuid', { uuid: uuid.toString() })
       .getOne();
 
