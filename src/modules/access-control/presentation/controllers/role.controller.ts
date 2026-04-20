@@ -12,6 +12,7 @@ import { FindAllRoleUseCase } from '../../application/use-cases/find-all-role.us
 import { FindAllRoleRequestDto } from '../../application/dtos/request/find-all-role.request.dto';
 import { FindOneRoleResponseDto } from '../../application/dtos/response/find-one-role.response.dto';
 import { FindOneRoleUseCase } from '../../application/use-cases/find-one-role.use.case';
+import { UuidValidationPipe } from 'src/shared/utils/pipes/uuid-validation.pipe';
 
 @Controller('roles')
 @ApiTags('Role')
@@ -58,7 +59,9 @@ export class RoleController {
     responseMessage: 'Detalhes da função retornados com sucesso',
   })
   @CheckPermissions([{ action: ActionEnum.READ, subject: SubjectEnum.ROLE }])
-  async findOne(@Param('uuid') uuid: string): Promise<FindOneRoleResponseDto> {
+  async findOne(
+    @Param('uuid', UuidValidationPipe) uuid: string,
+  ): Promise<FindOneRoleResponseDto> {
     return this.findOneRoleUseCase.execute(uuid);
   }
 
@@ -80,7 +83,7 @@ export class RoleController {
     { action: ActionEnum.UPDATE, subject: SubjectEnum.ROLE },
   ])
   async updateAbilities(
-    @Param('uuid') uuid: string,
+    @Param('uuid', UuidValidationPipe) uuid: string,
     @Body() dto: UpdateRoleAbilitiesRequestDto,
   ): Promise<void> {
     await this.updateRoleAbilitiesUseCase.execute(uuid, dto);
