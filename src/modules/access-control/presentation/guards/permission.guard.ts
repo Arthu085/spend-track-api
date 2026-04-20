@@ -12,6 +12,7 @@ import {
 import { CheckPermissionUseCase } from '../../application/use-cases/check-permission.use-case';
 import { ActionEnumTranslation } from '../../domain/enums/action.enum';
 import { SubjectEnumTranslation } from '../../domain/enums/subject.enum';
+import { RequestWithUser } from '../../../../core/api/types/request-with-user.type';
 
 @Injectable()
 export class PermissionGuard implements CanActivate {
@@ -37,7 +38,7 @@ export class PermissionGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<RequestWithUser>();
 
     const user = request.user;
 

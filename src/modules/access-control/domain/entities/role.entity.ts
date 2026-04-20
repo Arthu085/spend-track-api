@@ -5,6 +5,7 @@ import { StatusEnum } from 'src/core/domain/enums/status.enum';
 import { AbilityEntity } from './ability.entity';
 import { ActionEnum } from '../enums/action.enum';
 import { SubjectEnum } from '../enums/subject.enum';
+import { AppConflictException } from 'src/core/exceptions/app-conflict.exception';
 
 export class RoleEntity extends BaseEntity {
   private _name: RoleEnum;
@@ -67,5 +68,13 @@ export class RoleEntity extends BaseEntity {
     const key = `${action}:${subject}`;
 
     return this._abilities.some((ability) => ability.toKey() === key);
+  }
+
+  ensureIsNotAdmin(): void {
+    if (this._name === RoleEnum.ADMIN) {
+      throw new AppConflictException({
+        message: 'Não é permitido alterar as permissões da função ADMIN.',
+      });
+    }
   }
 }

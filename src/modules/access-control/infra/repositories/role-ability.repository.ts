@@ -1,8 +1,6 @@
 import { DataSource, Repository } from 'typeorm';
 import { IRoleAbilityRepository } from '../../domain/repositories/role-ability.repository.interface';
 import { RoleAbilityOrmEntity } from '../entities/role-ability.orm.entity';
-import { AbilityEntity } from '../../domain/entities/ability.entity';
-import { AbilityMapper } from '../mappers/ability.mapper';
 
 export class RoleAbilityRepository implements IRoleAbilityRepository {
   private repo: Repository<RoleAbilityOrmEntity>;

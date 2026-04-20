@@ -4,8 +4,6 @@ import { UpdateRoleAbilitiesRequestDto } from '../dtos/request/update-role-abili
 import { IRoleAbilityRepository } from '../../domain/repositories/role-ability.repository.interface';
 import { AppNotFoundException } from 'src/core/exceptions/app-not-found.exception';
 import { IAbilityRepository } from '../../domain/repositories/ability.repository.interface';
-import { RoleEnum } from '../../domain/enums/role.enum';
-import { AppConflictException } from 'src/core/exceptions/app-conflict.exception';
 
 export class UpdateRoleAbilitiesUseCase {
   constructor(
@@ -24,11 +22,7 @@ export class UpdateRoleAbilitiesUseCase {
       throw new AppNotFoundException({ resource: 'Função', gender: 'F' });
     }
 
-    if (role.name === RoleEnum.ADMIN) {
-      throw new AppConflictException({
-        message: 'Não é permitido alterar as permissões da função ADMIN.',
-      });
-    }
+    role.ensureIsNotAdmin();
 
     const abilities = await this.abilityRepo.findByActionsAndSubjects(
       dto.abilities,

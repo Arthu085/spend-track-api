@@ -48,4 +48,4 @@ class SeedRunner {
 }
 
 const seedRunner = new SeedRunner();
-seedRunner.run();
+void seedRunner.run();

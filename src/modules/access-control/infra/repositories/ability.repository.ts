@@ -1,4 +1,4 @@
-import { DataSource, In, Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { IAbilityRepository } from '../../domain/repositories/ability.repository.interface';
 import { AbilityOrmEntity } from '../entities/ability.orm.entity';
 import { AbilityMapper } from '../mappers/ability.mapper';
@@ -20,7 +20,7 @@ export class AbilityRepository implements IAbilityRepository {
       .addOrderBy('ability.action', 'ASC')
       .getMany();
 
-    return abilities.map(AbilityMapper.toDomain);
+    return abilities.map((ability) => AbilityMapper.toDomain(ability));
   }
 
   async findByActionsAndSubjects(
@@ -48,6 +48,6 @@ export class AbilityRepository implements IAbilityRepository {
 
     const abilities = await qb.where(conditions, params).getMany();
 
-    return abilities.map(AbilityMapper.toDomain);
+    return abilities.map((ability) => AbilityMapper.toDomain(ability));
   }
 }

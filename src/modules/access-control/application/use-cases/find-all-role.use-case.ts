@@ -1,4 +1,3 @@
-import { PaginationDto } from 'src/shared/dtos/pagination.dto';
 import { IRoleRepository } from '../../domain/repositories/role.repository.interface';
 import { PaginatedResponse } from 'src/shared/interfaces/paginated-response.interface';
 import { FindAllRoleResponseDto } from '../dtos/response/find-all-role.respose.dto';

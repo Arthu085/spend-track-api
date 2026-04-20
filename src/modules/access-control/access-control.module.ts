@@ -11,6 +11,9 @@ import { FindOneRoleUseCase } from './application/use-cases/find-one-role.use.ca
 import { AbilityRepository } from './infra/repositories/ability.repository';
 import { AbilityController } from './presentation/controllers/ability.controller';
 import { FindAllAbilityUseCase } from './application/use-cases/find-all-ability.use.case';
+import { IRoleRepository } from './domain/repositories/role.repository.interface';
+import { IRoleAbilityRepository } from './domain/repositories/role-ability.repository.interface';
+import { IAbilityRepository } from './domain/repositories/ability.repository.interface';
 
 @Module({
   controllers: [RoleController, AbilityController],
@@ -33,12 +36,17 @@ import { FindAllAbilityUseCase } from './application/use-cases/find-all-ability.
     },
     {
       provide: CheckPermissionUseCase,
-      useFactory: (roleRepo) => new CheckPermissionUseCase(roleRepo),
+      useFactory: (roleRepo: IRoleRepository) =>
+        new CheckPermissionUseCase(roleRepo),
       inject: ['IRoleRepository'],
     },
     {
       provide: UpdateRoleAbilitiesUseCase,
-      useFactory: (roleRepo, roleAbilityRepo, abilityRepo) =>
+      useFactory: (
+        roleRepo: IRoleRepository,
+        roleAbilityRepo: IRoleAbilityRepository,
+        abilityRepo: IAbilityRepository,
+      ) =>
         new UpdateRoleAbilitiesUseCase(roleRepo, roleAbilityRepo, abilityRepo),
       inject: [
         'IRoleRepository',
@@ -48,17 +56,20 @@ import { FindAllAbilityUseCase } from './application/use-cases/find-all-ability.
     },
     {
       provide: FindAllRoleUseCase,
-      useFactory: (roleRepo) => new FindAllRoleUseCase(roleRepo),
+      useFactory: (roleRepo: IRoleRepository) =>
+        new FindAllRoleUseCase(roleRepo),
       inject: ['IRoleRepository'],
     },
     {
       provide: FindOneRoleUseCase,
-      useFactory: (roleRepo) => new FindOneRoleUseCase(roleRepo),
+      useFactory: (roleRepo: IRoleRepository) =>
+        new FindOneRoleUseCase(roleRepo),
       inject: ['IRoleRepository'],
     },
     {
       provide: FindAllAbilityUseCase,
-      useFactory: (abilityRepo) => new FindAllAbilityUseCase(abilityRepo),
+      useFactory: (abilityRepo: IAbilityRepository) =>
+        new FindAllAbilityUseCase(abilityRepo),
       inject: ['IAbilityRepository'],
     },
     PermissionGuard,

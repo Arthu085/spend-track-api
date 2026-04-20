@@ -34,7 +34,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
         exceptionResponse !== null &&
         'message' in exceptionResponse
       ) {
-        message = (exceptionResponse as any).message;
+        message = (exceptionResponse as Record<string, unknown>).message as
+          | string
+          | string[];
       } else {
         message = exception.message;
       }
@@ -48,7 +50,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       exceptionResponse !== null &&
       'error' in exceptionResponse
     ) {
-      error = (exceptionResponse as any).error;
+      error = (exceptionResponse as Record<string, unknown>).error as string;
     }
 
     const finalMessage = Array.isArray(message) ? message[0] : message;

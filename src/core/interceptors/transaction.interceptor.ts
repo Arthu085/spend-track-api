@@ -5,7 +5,7 @@ import {
   CallHandler,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
-import { catchError, tap } from 'rxjs/operators';
+import { catchError, concatMap } from 'rxjs/operators';
 import { Reflector } from '@nestjs/core';
 import AppDataSource from '../database/data-source';
 import { TRANSACTIONAL_KEY } from '../decorators/transactional.decorator';
@@ -37,8 +37,9 @@ export class TransactionInterceptor implements NestInterceptor {
     request.queryRunner = queryRunner;
 
     return next.handle().pipe(
-      tap(async () => {
+      concatMap(async (data: unknown) => {
         await queryRunner.commitTransaction();
+        return data;
       }),
       catchError(async (error) => {
         await queryRunner.rollbackTransaction();

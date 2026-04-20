@@ -1,5 +1,4 @@
 import { RoleOrmEntity } from 'src/modules/access-control/infra/entities/role.orm.entity';
-import AppDataSource from '../../data-source';
 import { ISeed } from '../interfaces/seed.interface';
 import { DataSource } from 'typeorm';
 import { RoleEnum } from 'src/modules/access-control/domain/enums/role.enum';

@@ -4,7 +4,6 @@ import { IRoleRepository } from '../../domain/repositories/role.repository.inter
 import { RoleOrmEntity } from '../entities/role.orm.entity';
 import { RoleMapper } from '../mappers/role.mapper';
 import { Uuid } from 'src/core/domain/value-objects/uuid.vo';
-import { RoleEnum } from '../../domain/enums/role.enum';
 import { FindAllRoleRequestDto } from '../../application/dtos/request/find-all-role.request.dto';
 import { QueryBuilderHelper } from 'src/core/database/helpers/query-builder.helper';
 
@@ -26,7 +25,7 @@ export class RoleRepository implements IRoleRepository {
 
     const [roles, total] = await qb.getManyAndCount();
 
-    return [roles.map(RoleMapper.toDomain), total];
+    return [roles.map((role) => RoleMapper.toDomain(role)), total];
   }
 
   async findByUuid(uuid: Uuid): Promise<RoleEntity | null> {
