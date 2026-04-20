@@ -2,7 +2,7 @@ import { Uuid } from 'src/core/domain/value-objects/uuid.vo';
 import { IRoleRepository } from '../../domain/repositories/role.repository.interface';
 import { UpdateRoleAbilitiesRequestDto } from '../dtos/request/update-role-abilities.request.dto';
 import { IRoleAbilityRepository } from '../../domain/repositories/role-ability.repository.interface';
-import { AppNotFoundException } from 'src/core/exceptions/app-not-found.execption';
+import { AppNotFoundException } from 'src/core/exceptions/app-not-found.exception';
 import { IAbilityRepository } from '../../domain/repositories/ability.repository.interface';
 import { RoleEnum } from '../../domain/enums/role.enum';
 import { AppConflictException } from 'src/core/exceptions/app-conflict.exception';

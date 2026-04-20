@@ -11,16 +11,6 @@ export class RoleAbilityRepository implements IRoleAbilityRepository {
     this.repo = this.dataSource.getRepository(RoleAbilityOrmEntity);
   }
 
-  async findAbilitiesByRoleId(roleId: number): Promise<AbilityEntity[]> {
-    const roleAbilities = await this.repo
-      .createQueryBuilder('roleAbility')
-      .leftJoinAndSelect('roleAbility.ability', 'ability')
-      .where('roleAbility.role.id = :roleId', { roleId })
-      .getMany();
-
-    return roleAbilities.map((ra) => AbilityMapper.toDomain(ra.ability));
-  }
-
   async replaceRoleAbilities(
     roleId: number,
     abilityIds: number[],

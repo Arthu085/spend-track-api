@@ -23,17 +23,6 @@ export class AbilityRepository implements IAbilityRepository {
     return abilities.map(AbilityMapper.toDomain);
   }
 
-  async findByIds(ids: number[]): Promise<AbilityEntity[]> {
-    if (!ids.length) return [];
-
-    const abilities = await this.repo
-      .createQueryBuilder('ability')
-      .where('ability.id IN (:...ids)', { ids })
-      .getMany();
-
-    return abilities.map(AbilityMapper.toDomain);
-  }
-
   async findByActionsAndSubjects(
     items: { action: ActionEnum; subject: SubjectEnum }[],
   ): Promise<AbilityEntity[]> {

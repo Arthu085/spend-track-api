@@ -29,15 +29,6 @@ export class RoleRepository implements IRoleRepository {
     return [roles.map(RoleMapper.toDomain), total];
   }
 
-  async findById(id: number): Promise<RoleEntity | null> {
-    const role = await this.repo
-      .createQueryBuilder('role')
-      .where('role.id = :id', { id })
-      .getOne();
-
-    return role ? RoleMapper.toDomain(role) : null;
-  }
-
   async findByUuid(uuid: Uuid): Promise<RoleEntity | null> {
     const role = await this.repo
       .createQueryBuilder('role')
@@ -46,15 +37,6 @@ export class RoleRepository implements IRoleRepository {
       .orderBy('ability.subject', 'ASC')
       .addOrderBy('ability.action', 'ASC')
       .where('role.uuid = :uuid', { uuid: uuid.toString() })
-      .getOne();
-
-    return role ? RoleMapper.toDomain(role) : null;
-  }
-
-  async findByName(name: RoleEnum): Promise<RoleEntity | null> {
-    const role = await this.repo
-      .createQueryBuilder('role')
-      .where('role.name = :name', { name })
       .getOne();
 
     return role ? RoleMapper.toDomain(role) : null;

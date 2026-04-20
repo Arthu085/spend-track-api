@@ -1,6 +1,6 @@
 import { Uuid } from 'src/core/domain/value-objects/uuid.vo';
 import { IRoleRepository } from '../../domain/repositories/role.repository.interface';
-import { AppNotFoundException } from 'src/core/exceptions/app-not-found.execption';
+import { AppNotFoundException } from 'src/core/exceptions/app-not-found.exception';
 import { FindOneRoleResponseDto } from '../dtos/response/find-one-role.response.dto';
 
 export class FindOneRoleUseCase {
