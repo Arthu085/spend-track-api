@@ -9,18 +9,13 @@ export class CheckPermissionUseCase {
   async execute(
     dto: CheckPermissionRequestDto,
   ): Promise<CheckPermissionResponseDto> {
-    const params = {
-      ...dto,
-      roleUuid: Uuid.from(dto.roleUuid),
-    };
-
-    const role = await this.roleRepo.findByUuid(params.roleUuid);
+    const role = await this.roleRepo.findByUuid(Uuid.from(dto.roleUuid));
 
     if (!role) {
       return new CheckPermissionResponseDto(false);
     }
 
-    const allowed = role.hasPermission(params.action, params.subject);
+    const allowed = role.hasPermission(dto.action, dto.subject);
 
     return new CheckPermissionResponseDto(allowed);
   }

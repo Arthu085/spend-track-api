@@ -40,6 +40,21 @@ export class AbilityEntity extends BaseEntity {
     return this._subject;
   }
 
+  static create(props: {
+    action: ActionEnum;
+    subject: SubjectEnum;
+  }): AbilityEntity {
+    return new AbilityEntity({
+      ...props,
+      id: 0,
+      uuid: Uuid.create(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      deletedAt: null,
+      status: StatusEnum.ACTIVE,
+    });
+  }
+
   static rehydrate(props: {
     id: number;
     uuid: Uuid;
