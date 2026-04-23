@@ -10,4 +10,4 @@ COPY . .
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "npm run migration:run && npm run seed && npm run start:dev"]
+CMD ["sh", "-c", "npm run migration:run && npm run seed && npm run test && npm run start:dev"]
