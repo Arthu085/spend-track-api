@@ -1,32 +1,31 @@
-import { randomUUID } from 'crypto';
 import { StatusEnum } from '../enums/status.enum';
 import { Uuid } from '../value-objects/uuid.vo';
 
 export abstract class BaseEntity {
-  protected _id?: number;
+  protected _id: number;
   protected _uuid: Uuid;
   protected _createdAt: Date;
-  protected _updatedAt: Date | null;
-  protected _deletedAt: Date | null;
+  protected _updatedAt: Date;
+  protected _deletedAt?: Date | null;
   protected _status: StatusEnum;
 
-  constructor(props?: {
-    id?: number;
-    uuid?: Uuid;
-    createdAt?: Date;
-    updatedAt?: Date | null;
+  constructor(props: {
+    id: number;
+    uuid: Uuid;
+    createdAt: Date;
+    updatedAt: Date;
     deletedAt?: Date | null;
-    status?: StatusEnum;
+    status: StatusEnum;
   }) {
-    this._id = props?.id;
-    this._uuid = props?.uuid ?? Uuid.create();
-    this._createdAt = props?.createdAt ?? new Date();
-    this._updatedAt = props?.updatedAt ?? null;
-    this._deletedAt = props?.deletedAt ?? null;
-    this._status = props?.status ?? StatusEnum.ACTIVE;
+    this._id = props.id;
+    this._uuid = props.uuid;
+    this._createdAt = props.createdAt;
+    this._updatedAt = props.updatedAt;
+    this._deletedAt = props.deletedAt ?? null;
+    this._status = props.status;
   }
 
-  get id(): number | undefined {
+  get id(): number {
     return this._id;
   }
 
@@ -38,11 +37,11 @@ export abstract class BaseEntity {
     return this._createdAt;
   }
 
-  get updatedAt(): Date | null {
+  get updatedAt(): Date {
     return this._updatedAt;
   }
 
-  get deletedAt(): Date | null {
+  get deletedAt(): Date | null | undefined {
     return this._deletedAt;
   }
 

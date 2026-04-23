@@ -5,17 +5,20 @@ import {
   Post,
   Put,
   Type,
+  UseGuards,
   applyDecorators,
 } from '@nestjs/common';
 import {
   ApiExtraModels,
   ApiOperation,
   ApiResponse,
+  ApiResponseOptions,
   getSchemaPath,
 } from '@nestjs/swagger';
 import { EndpointMethod } from '../enums/endpoint-method.enum';
 import { Transactional } from '../../decorators/transactional.decorator';
 import { ResponseMessage } from '../../decorators/response-message.decorator';
+import { PermissionGuard } from 'src/modules/access-control/presentation/guards/permission.guard';
 
 export interface IEndpointResponse {
   status: number;
@@ -31,9 +34,6 @@ export interface IEndpointData {
   responses: IEndpointResponse[];
   isTransactional?: boolean;
   isProtected?: boolean;
-  // roles?: string[];
-  // actions?: Action[];
-  // abilities?: string[];
 }
 
 interface IEndpointBaseData extends IEndpointData {
@@ -60,6 +60,10 @@ export class Endpoint {
       }),
     ];
 
+    if (isProtected) {
+      decorators.push(UseGuards(PermissionGuard));
+    }
+
     if (isTransactional) {
       decorators.push(Transactional());
     }
@@ -84,7 +88,7 @@ export class Endpoint {
       case EndpointMethod.DELETE:
         return Delete(url);
       default:
-        throw new Error(`Método HTTP desconhecido: ${type}`);
+        throw new Error(`Método HTTP desconhecido: ${String(type)}`);
     }
   }
 
@@ -115,18 +119,19 @@ export class Endpoint {
     }
 
     return allResponses.map(({ status, description, responseType }) => {
-      const apiResponseObj: any = {
+      const apiResponseObj: ApiResponseOptions = {
         status: status,
         description: description,
+        ...(responseType && {
+          schema: {
+            $ref: getSchemaPath(responseType),
+          },
+        }),
       };
 
-      if (responseType) {
-        apiResponseObj.schema = {
-          $ref: getSchemaPath(responseType),
-        };
-      }
-
-      const decoratorList: any[] = [ApiResponse(apiResponseObj)];
+      const decoratorList: (MethodDecorator | ClassDecorator)[] = [
+        ApiResponse(apiResponseObj),
+      ];
 
       if (responseType) {
         decoratorList.push(ApiExtraModels(responseType));

@@ -1,7 +1,9 @@
 import { envSchema } from './schemas/env.schemas';
 import { EnvOptions } from './types/env.types';
 
-const { error, value: envVars } = envSchema.validate(process.env);
+const validationResult = envSchema.validate(process.env);
+const { error } = validationResult;
+const envVars = validationResult.value as EnvOptions;
 
 if (error) {
   throw new Error(`Erro nas variáveis de ambiente: ${error.message}`);

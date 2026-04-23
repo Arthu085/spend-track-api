@@ -7,6 +7,7 @@ import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { HttpExceptionFilter } from './core/filters/http-exception.filter';
 import { ResponseInterceptor } from './core/interceptors/response.interceptor';
 import { TransactionInterceptor } from './core/interceptors/transaction.interceptor';
+import { AccessControlModule } from './modules/access-control/access-control.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { TransactionInterceptor } from './core/interceptors/transaction.intercep
         limit: throttleConfig.limit,
       },
     ]),
+    AccessControlModule,
   ],
   controllers: [],
   providers: [
