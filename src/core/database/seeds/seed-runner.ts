@@ -4,6 +4,7 @@ import AppDataSource from '../data-source';
 import { RoleSeed } from './data/role.seed';
 import { AbilitySeed } from './data/ability.seed';
 import { RoleAbilitySeed } from './data/role-ability.seed';
+import { UserSeed } from './data/user.seed';
 
 class SeedRunner {
   private dataSource: DataSource;
@@ -30,6 +31,7 @@ class SeedRunner {
         new RoleSeed(this.dataSource),
         new AbilitySeed(this.dataSource),
         new RoleAbilitySeed(this.dataSource),
+        new UserSeed(this.dataSource),
       ];
 
       for (const seed of seeds) {

@@ -74,6 +74,6 @@ import { IAbilityRepository } from './domain/repositories/ability.repository.int
     },
     PermissionGuard,
   ],
-  exports: [CheckPermissionUseCase],
+  exports: [CheckPermissionUseCase, 'IRoleRepository'],
 })
 export class AccessControlModule {}

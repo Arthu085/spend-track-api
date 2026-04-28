@@ -19,6 +19,7 @@ import { EndpointMethod } from '../enums/endpoint-method.enum';
 import { Transactional } from '../../decorators/transactional.decorator';
 import { ResponseMessage } from '../../decorators/response-message.decorator';
 import { PermissionGuard } from 'src/modules/access-control/presentation/guards/permission.guard';
+import { JwtAuthGuard } from 'src/modules/auth/presentation/guards/jwt-auth.guard';
 
 export interface IEndpointResponse {
   status: number;
@@ -61,7 +62,7 @@ export class Endpoint {
     ];
 
     if (isProtected) {
-      decorators.push(UseGuards(PermissionGuard));
+      decorators.push(UseGuards(JwtAuthGuard, PermissionGuard));
     }
 
     if (isTransactional) {

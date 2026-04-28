@@ -1,0 +1,38 @@
+import { IUserRepository } from 'src/modules/user/domain/repositories/user.repository.interface';
+import { ProfileResponseDto } from '../dtos/response/profile.response.dto';
+import { Uuid } from 'src/core/domain/value-objects/uuid.vo';
+import { AppUnauthorizedException } from 'src/core/exceptions/app-unauthorized.exception';
+import { IRoleRepository } from 'src/modules/access-control/domain/repositories/role.repository.interface';
+
+export class ProfileUseCase {
+  constructor(
+    private readonly userRepo: IUserRepository,
+    private readonly roleRepo: IRoleRepository,
+  ) {}
+
+  async execute(userUuid: string): Promise<ProfileResponseDto> {
+    const user = await this.userRepo.findByUuid(Uuid.from(userUuid));
+
+    if (!user) {
+      throw new AppUnauthorizedException({
+        message: 'Usuário não encontrado',
+      });
+    }
+
+    const role = await this.roleRepo.findByUuid(user.roleUuid);
+
+    if (!role) {
+      throw new AppUnauthorizedException({
+        message: 'Role não encontrada',
+      });
+    }
+
+    return new ProfileResponseDto({
+      uuid: user.uuid.toString(),
+      roleUuid: user.roleUuid.toString(),
+      fullName: user.fullName.getValue(),
+      email: user.email.getValue(),
+      role: role.name,
+    });
+  }
+}
