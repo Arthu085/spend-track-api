@@ -1,5 +1,6 @@
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import { Request } from 'express';
 import { jwtConfig } from 'src/core/config/auth/jwt.config';
 import { JwtPayload } from '../../domain/types/jwt-payload.type';
 import { IUserRepository } from 'src/modules/user/domain/repositories/user.repository.interface';
@@ -7,11 +8,20 @@ import { Uuid } from 'src/core/domain/value-objects/uuid.vo';
 import { StatusEnum } from 'src/core/domain/enums/status.enum';
 import { AppUnauthorizedException } from 'src/core/exceptions/app-unauthorized.exception';
 import { AuthUser } from '../../domain/types/auth-user.type';
+import { Inject, Injectable } from '@nestjs/common';
 
+@Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
-  constructor(private readonly userRepo: IUserRepository) {
+  constructor(
+    @Inject('IUserRepository')
+    private readonly userRepo: IUserRepository,
+  ) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        (request: Request): string | null => {
+          return (request?.cookies?.token as string) || null;
+        },
+      ]),
       secretOrKey: jwtConfig.access.secret,
       ignoreExpiration: false,
     });

@@ -1,3 +1,4 @@
+import { Injectable } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { UserEntity } from '../../domain/entities/user.entity';
 import { IUserRepository } from '../../domain/repositories/user.repository.interface';
@@ -6,6 +7,7 @@ import { UserOrmEntity } from '../entities/user.orm.entity';
 import { UserMapper } from '../mappers/user.mapper';
 import { Uuid } from 'src/core/domain/value-objects/uuid.vo';
 
+@Injectable()
 export class UserRepository implements IUserRepository {
   private repo: Repository<UserOrmEntity>;
 

@@ -3,10 +3,13 @@ import { ProfileResponseDto } from '../dtos/response/profile.response.dto';
 import { Uuid } from 'src/core/domain/value-objects/uuid.vo';
 import { AppUnauthorizedException } from 'src/core/exceptions/app-unauthorized.exception';
 import { IRoleRepository } from 'src/modules/access-control/domain/repositories/role.repository.interface';
+import { Inject } from '@nestjs/common';
 
 export class ProfileUseCase {
   constructor(
+    @Inject('IUserRepository')
     private readonly userRepo: IUserRepository,
+    @Inject('IRoleRepository')
     private readonly roleRepo: IRoleRepository,
   ) {}
 

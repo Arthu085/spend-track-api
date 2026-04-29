@@ -1,3 +1,4 @@
+import { Injectable } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { RoleEntity } from '../../domain/entities/role.entity';
 import { IRoleRepository } from '../../domain/repositories/role.repository.interface';
@@ -7,6 +8,7 @@ import { Uuid } from 'src/core/domain/value-objects/uuid.vo';
 import { FindAllRoleRequestDto } from '../../application/dtos/request/find-all-role.request.dto';
 import { QueryBuilderHelper } from 'src/core/database/helpers/query-builder.helper';
 
+@Injectable()
 export class RoleRepository implements IRoleRepository {
   private repo: Repository<RoleOrmEntity>;
 

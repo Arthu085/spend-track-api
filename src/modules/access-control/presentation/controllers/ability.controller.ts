@@ -1,5 +1,5 @@
 import { Controller } from '@nestjs/common';
-import { ApiCookieAuth, ApiTags } from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
 import { FindAllAbilityUseCase } from '../../application/use-cases/find-all-ability.use.case';
 import { Endpoint } from 'src/core/api/builders/endpoint.builder';
 import { FindAllAbilityResponseDto } from '../../application/dtos/response/find-all-ability.response.dto';
@@ -9,7 +9,6 @@ import { SubjectEnum } from '../../domain/enums/subject.enum';
 
 @Controller('abilities')
 @ApiTags('Ability')
-@ApiCookieAuth('token')
 export class AbilityController {
   constructor(private readonly findAllAbilityUseCase: FindAllAbilityUseCase) {}
 

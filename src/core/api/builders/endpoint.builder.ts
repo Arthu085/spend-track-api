@@ -14,6 +14,7 @@ import {
   ApiResponse,
   ApiResponseOptions,
   getSchemaPath,
+  ApiCookieAuth,
 } from '@nestjs/swagger';
 import { EndpointMethod } from '../enums/endpoint-method.enum';
 import { Transactional } from '../../decorators/transactional.decorator';
@@ -63,6 +64,7 @@ export class Endpoint {
 
     if (isProtected) {
       decorators.push(UseGuards(JwtAuthGuard, PermissionGuard));
+      decorators.push(ApiCookieAuth('token'));
     }
 
     if (isTransactional) {

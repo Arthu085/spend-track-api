@@ -1,7 +1,10 @@
-import { Body, Controller } from '@nestjs/common';
+import { Body, Controller, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { ApiTags } from '@nestjs/swagger';
 import { LoginUseCase } from '../../application/use-cases/login.use-case';
 import { Endpoint } from 'src/core/api/builders/endpoint.builder';
+import { cookieConfig } from 'src/core/config/auth/cookie.config';
+import { envConfig } from 'src/core/config/env/env.config';
 import { LoginResponseDto } from '../../application/dtos/response/login.response.dto';
 import { LoginRequestDto } from '../../application/dtos/request/login.request.dto';
 import { ProfileUseCase } from '../../application/use-cases/profile.use-case';
@@ -31,8 +34,23 @@ export class AuthController {
     ],
     responseMessage: 'Login realizado com sucesso',
   })
-  async login(@Body() dto: LoginRequestDto): Promise<LoginResponseDto> {
-    return this.loginUseCase.execute(dto);
+  async login(
+    @Body() dto: LoginRequestDto,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<LoginResponseDto> {
+    const result = await this.loginUseCase.execute(dto);
+
+    response.cookie('token', result.accessToken, {
+      ...cookieConfig,
+      maxAge: envConfig.COOKIE_ACCESS_MAX_AGE,
+    });
+
+    response.cookie('refreshToken', result.refreshToken, {
+      ...cookieConfig,
+      maxAge: envConfig.COOKIE_REFRESH_MAX_AGE,
+    });
+
+    return result;
   }
 
   @Endpoint.get({

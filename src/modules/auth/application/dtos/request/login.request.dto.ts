@@ -4,7 +4,7 @@ import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 export class LoginRequestDto {
   @ApiProperty({
     description: 'Email do usuário',
-    example: 'john.doe@example.com',
+    example: 'admin@gmail.com',
   })
   @IsNotEmpty({ message: 'O email é obrigatório' })
   @IsEmail({}, { message: 'O email deve ser um endereço de email válido' })
@@ -12,7 +12,7 @@ export class LoginRequestDto {
 
   @ApiProperty({
     description: 'Senha do usuário',
-    example: 'P@ssw0rd!',
+    example: 'admin123',
   })
   @IsNotEmpty({ message: 'A senha é obrigatória' })
   @IsString({ message: 'A senha deve ser uma string' })

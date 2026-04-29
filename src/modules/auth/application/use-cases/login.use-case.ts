@@ -5,10 +5,14 @@ import { JwtPayload } from '../../domain/types/jwt-payload.type';
 import { LoginResponseDto } from '../dtos/response/login.response.dto';
 import { IUserRepository } from 'src/modules/user/domain/repositories/user.repository.interface';
 import { UserEmail } from 'src/modules/user/domain/value-objects/user-email.vo';
+import { Inject, Injectable } from '@nestjs/common';
 
+@Injectable()
 export class LoginUseCase {
   constructor(
+    @Inject('ITokenService')
     private readonly tokenService: ITokenService,
+    @Inject('IUserRepository')
     private readonly userRepo: IUserRepository,
   ) {}
 
