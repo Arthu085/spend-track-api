@@ -27,7 +27,8 @@ export class RoleController {
     url: '',
     description: 'Listar funções',
     dtoName: 'FindAllRoleRequestDto',
-    isProtected: true,
+    authType: 'access',
+    requirePermission: true,
     responses: [
       {
         status: 200,
@@ -47,7 +48,8 @@ export class RoleController {
   @Endpoint.get({
     url: ':uuid',
     description: 'Obter detalhes de uma função',
-    isProtected: true,
+    authType: 'access',
+    requirePermission: true,
     responses: [
       {
         status: 200,
@@ -68,7 +70,8 @@ export class RoleController {
     url: ':uuid/abilities',
     description: 'Atualizar permissões da função',
     dtoName: 'UpdateRoleAbilitiesRequestDto',
-    isProtected: true,
+    authType: 'access',
+    requirePermission: true,
     responses: [
       {
         status: 200,

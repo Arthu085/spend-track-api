@@ -15,7 +15,8 @@ export class AbilityController {
   @Endpoint.get({
     url: '',
     description: 'Listar todas permissões do sistema',
-    isProtected: true,
+    authType: 'access',
+    requirePermission: true,
     responses: [
       {
         status: 200,

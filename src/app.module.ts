@@ -20,9 +20,9 @@ import { AuthModule } from './modules/auth/auth.module';
         limit: throttleConfig.limit,
       },
     ]),
+    AuthModule,
     AccessControlModule,
     UserModule,
-    AuthModule,
   ],
   controllers: [],
   providers: [

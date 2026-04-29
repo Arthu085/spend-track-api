@@ -9,10 +9,12 @@ import { LoginUseCase } from './application/use-cases/login.use-case';
 import { JwtStrategy } from './infra/strategies/jwt.strategy';
 import { ProfileUseCase } from './application/use-cases/profile.use-case';
 import { AccessControlModule } from '../access-control/access-control.module';
+import { JwtRefreshStrategy } from './infra/strategies/jwt-refresh.strategy';
+import { RefreshUseCase } from './application/use-cases/refresh.use-case';
 
 @Module({
   imports: [
-    PassportModule.register({ defaultStrategy: 'jwt' }),
+    PassportModule.register({}),
     JwtModule.register({
       secret: jwtConfig.access.secret,
       signOptions: { expiresIn: jwtConfig.access.expiresIn },
@@ -23,12 +25,14 @@ import { AccessControlModule } from '../access-control/access-control.module';
   controllers: [AuthController],
   providers: [
     JwtStrategy,
+    JwtRefreshStrategy,
     {
       provide: 'ITokenService',
       useClass: JwtTokenService,
     },
     LoginUseCase,
     ProfileUseCase,
+    RefreshUseCase,
   ],
   exports: ['ITokenService'],
 })
