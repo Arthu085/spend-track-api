@@ -1,9 +1,4 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  Injectable,
-  ForbiddenException,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import {
   CHECK_PERMISSIONS_KEY,
@@ -13,6 +8,7 @@ import { CheckPermissionUseCase } from '../../application/use-cases/check-permis
 import { ActionEnumTranslation } from '../../domain/enums/action.enum';
 import { SubjectEnumTranslation } from '../../domain/enums/subject.enum';
 import { RequestWithUser } from '../../../../core/api/types/request-with-user.type';
+import { AppForbiddenException } from 'src/core/exceptions/app-forbiden.exeception';
 
 @Injectable()
 export class PermissionGuard implements CanActivate {
@@ -43,7 +39,7 @@ export class PermissionGuard implements CanActivate {
     const user = request.user;
 
     if (!user) {
-      throw new ForbiddenException('Usuário não autenticado');
+      throw new AppForbiddenException({ message: 'Usuário não autenticado' });
     }
 
     const missingPermissions: ICheckPermission[] = [];
@@ -55,13 +51,13 @@ export class PermissionGuard implements CanActivate {
         subject: permission.subject,
       });
 
-      if (!allowed) {
+      if (!allowed.allowed) {
         missingPermissions.push(permission);
       }
     }
 
     if (missingPermissions.length > 0) {
-      throw new ForbiddenException({
+      throw new AppForbiddenException({
         message: 'Permissões insuficientes',
         missingPermissions: this.translatePermissions(missingPermissions),
       });

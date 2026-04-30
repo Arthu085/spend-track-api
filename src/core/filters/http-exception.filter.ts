@@ -68,6 +68,15 @@ export class HttpExceptionFilter implements ExceptionFilter {
       );
     }
 
+    const responseBody =
+      typeof exceptionResponse === 'object' && exceptionResponse !== null
+        ? (exceptionResponse as Record<string, unknown>)
+        : {};
+
+    const rest = { ...responseBody };
+    delete rest.message;
+    delete rest.error;
+
     response.status(status).json({
       success: false,
       statusCode: status,
@@ -75,7 +84,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       message: finalMessage,
       path: request.url,
       timestamp: new Date().toISOString(),
-      meta: null,
+      ...(Object.keys(rest).length > 0 && { meta: rest }),
     });
   }
 }

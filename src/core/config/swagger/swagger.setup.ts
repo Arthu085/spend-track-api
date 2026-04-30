@@ -14,6 +14,7 @@ export function setupSwagger(app: INestApplication) {
   const document = SwaggerModule.createDocument(app, config);
 
   SwaggerModule.setup('docs', app, document, {
+    useGlobalPrefix: false,
     swaggerOptions: {
       withCredentials: true,
     },
