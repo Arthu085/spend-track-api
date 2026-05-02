@@ -18,7 +18,7 @@ export class UserPassword {
       throw new InvalidUserPasswordError();
     }
 
-    const hash = await bcrypt.hash(plain, 10);
+    const hash = await bcrypt.hash(plain, 12);
     return new UserPassword(hash);
   }
 
@@ -37,6 +37,9 @@ export class UserPassword {
   private static isValid(value: string): boolean {
     if (!value) return false;
 
-    return value.length >= 6;
+    const strongPasswordRegex =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+
+    return strongPasswordRegex.test(value);
   }
 }

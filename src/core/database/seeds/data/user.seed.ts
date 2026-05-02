@@ -24,7 +24,7 @@ export class UserSeed implements ISeed {
       );
     }
 
-    const hashedPassword = await bcrypt.hash('admin123', 10);
+    const hashedPassword = await bcrypt.hash('admin123', 12);
 
     const users = [
       {

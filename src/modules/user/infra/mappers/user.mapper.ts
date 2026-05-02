@@ -4,6 +4,8 @@ import { UserOrmEntity } from '../entities/user.orm.entity';
 import { UserFullName } from '../../domain/value-objects/user-full-name.vo';
 import { UserEmail } from '../../domain/value-objects/user-email.vo';
 import { UserPassword } from '../../domain/value-objects/user-password.vo';
+import { RoleEntity } from 'src/modules/access-control/domain/entities/role.entity';
+import { RoleMapper } from 'src/modules/access-control/infra/mappers/role.mapper';
 
 export class UserMapper {
   static toDomain(orm: UserOrmEntity): UserEntity {
@@ -25,7 +27,7 @@ export class UserMapper {
     });
   }
 
-  static toOrm(domain: UserEntity): UserOrmEntity {
+  static toOrm(domain: UserEntity, role: RoleEntity): UserOrmEntity {
     const orm = new UserOrmEntity();
 
     if (domain.id !== undefined) {
@@ -40,6 +42,7 @@ export class UserMapper {
     orm.fullName = domain.fullName.getValue();
     orm.email = domain.email.getValue();
     orm.password = domain.password.getValue();
+    orm.role = RoleMapper.toOrm(role);
 
     return orm;
   }
