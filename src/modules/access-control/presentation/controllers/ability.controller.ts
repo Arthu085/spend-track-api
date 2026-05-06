@@ -4,8 +4,8 @@ import { FindAllAbilityUseCase } from '../../application/use-cases/find-all-abil
 import { Endpoint } from 'src/core/api/builders/endpoint.builder';
 import { FindAllAbilityResponseDto } from '../../application/dtos/response/find-all-ability.response.dto';
 import { CheckPermissions } from '../decorators/check-permission.decorator';
-import { ActionEnum } from '../../domain/enums/action.enum';
-import { SubjectEnum } from '../../domain/enums/subject.enum';
+import { ActionEnum } from '../../../../core/domain/enums/action.enum';
+import { SubjectEnum } from '../../../../core/domain/enums/subject.enum';
 
 @Controller('abilities')
 @ApiTags('Ability')

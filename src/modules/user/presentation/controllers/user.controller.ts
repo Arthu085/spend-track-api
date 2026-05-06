@@ -3,8 +3,8 @@ import { ApiTags } from '@nestjs/swagger';
 import { CreateUserUseCase } from '../../application/use-cases/create-user.use-case';
 import { Endpoint } from 'src/core/api/builders/endpoint.builder';
 import { CheckPermissions } from 'src/modules/access-control/presentation/decorators/check-permission.decorator';
-import { ActionEnum } from 'src/modules/access-control/domain/enums/action.enum';
-import { SubjectEnum } from 'src/modules/access-control/domain/enums/subject.enum';
+import { ActionEnum } from 'src/core/domain/enums/action.enum';
+import { SubjectEnum } from 'src/core/domain/enums/subject.enum';
 import { CreateUserRequestDto } from '../../application/dtos/request/create-user.request.dto';
 
 @Controller('users')

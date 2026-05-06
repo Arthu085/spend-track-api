@@ -5,8 +5,8 @@ import {
   ICheckPermission,
 } from '../decorators/check-permission.decorator';
 import { CheckPermissionUseCase } from '../../application/use-cases/check-permission.use-case';
-import { ActionEnumTranslation } from '../../domain/enums/action.enum';
-import { SubjectEnumTranslation } from '../../domain/enums/subject.enum';
+import { ActionEnumTranslation } from '../../../../core/domain/enums/action.enum';
+import { SubjectEnumTranslation } from '../../../../core/domain/enums/subject.enum';
 import { RequestWithUser } from '../../../../core/api/types/request-with-user.type';
 import { AppForbiddenException } from 'src/core/exceptions/app-forbiden.exeception';
 

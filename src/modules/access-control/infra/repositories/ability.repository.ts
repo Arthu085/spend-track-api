@@ -4,8 +4,8 @@ import { IAbilityRepository } from '../../domain/repositories/ability.repository
 import { AbilityOrmEntity } from '../entities/ability.orm.entity';
 import { AbilityMapper } from '../mappers/ability.mapper';
 import { AbilityEntity } from '../../domain/entities/ability.entity';
-import { ActionEnum } from '../../domain/enums/action.enum';
-import { SubjectEnum } from '../../domain/enums/subject.enum';
+import { ActionEnum } from '../../../../core/domain/enums/action.enum';
+import { SubjectEnum } from '../../../../core/domain/enums/subject.enum';
 
 @Injectable()
 export class AbilityRepository implements IAbilityRepository {

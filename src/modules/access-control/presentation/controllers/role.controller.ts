@@ -1,8 +1,8 @@
 import { Endpoint } from 'src/core/api/builders/endpoint.builder';
 import { UpdateRoleAbilitiesUseCase } from '../../application/use-cases/update-role-abilities.use-case';
 import { CheckPermissions } from '../decorators/check-permission.decorator';
-import { ActionEnum } from '../../domain/enums/action.enum';
-import { SubjectEnum } from '../../domain/enums/subject.enum';
+import { ActionEnum } from '../../../../core/domain/enums/action.enum';
+import { SubjectEnum } from '../../../../core/domain/enums/subject.enum';
 import { Body, Controller, Param, Query } from '@nestjs/common';
 import { UpdateRoleAbilitiesRequestDto } from '../../application/dtos/request/update-role-abilities.request.dto';
 import { ApiTags } from '@nestjs/swagger';

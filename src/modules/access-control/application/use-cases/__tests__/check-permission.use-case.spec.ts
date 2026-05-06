@@ -2,8 +2,8 @@ import { CheckPermissionUseCase } from '../check-permission.use-case';
 import { IRoleRepository } from 'src/modules/access-control/domain/repositories/role.repository.interface';
 import { RoleEntity } from 'src/modules/access-control/domain/entities/role.entity';
 import { RoleEnum } from 'src/modules/access-control/domain/enums/role.enum';
-import { ActionEnum } from 'src/modules/access-control/domain/enums/action.enum';
-import { SubjectEnum } from 'src/modules/access-control/domain/enums/subject.enum';
+import { ActionEnum } from 'src/core/domain/enums/action.enum';
+import { SubjectEnum } from 'src/core/domain/enums/subject.enum';
 import { CheckPermissionResponseDto } from '../../dtos/response/check-permission.response.dto';
 
 describe('CheckPermissionUseCase', () => {

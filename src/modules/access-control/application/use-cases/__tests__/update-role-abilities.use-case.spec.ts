@@ -6,8 +6,8 @@ import { IRoleAbilityRepository } from 'src/modules/access-control/domain/reposi
 import { IAbilityRepository } from 'src/modules/access-control/domain/repositories/ability.repository.interface';
 import { AppNotFoundException } from 'src/core/exceptions/app-not-found.exception';
 import { AppConflictException } from 'src/core/exceptions/app-conflict.exception';
-import { ActionEnum } from 'src/modules/access-control/domain/enums/action.enum';
-import { SubjectEnum } from 'src/modules/access-control/domain/enums/subject.enum';
+import { ActionEnum } from 'src/core/domain/enums/action.enum';
+import { SubjectEnum } from 'src/core/domain/enums/subject.enum';
 import { AbilityEntity } from 'src/modules/access-control/domain/entities/ability.entity';
 
 describe('UpdateRoleAbilitiesUseCase', () => {

@@ -1,6 +1,6 @@
 import { AbilityEntity } from '../ability.entity';
-import { ActionEnum } from '../../enums/action.enum';
-import { SubjectEnum } from '../../enums/subject.enum';
+import { ActionEnum } from '../../../../../core/domain/enums/action.enum';
+import { SubjectEnum } from '../../../../../core/domain/enums/subject.enum';
 
 describe('AbilityEntity', () => {
   it('Deve criar uma habilidade com nome válido', () => {

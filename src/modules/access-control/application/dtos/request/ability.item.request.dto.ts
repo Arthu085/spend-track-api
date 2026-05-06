@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsNotEmpty } from 'class-validator';
-import { ActionEnum } from 'src/modules/access-control/domain/enums/action.enum';
-import { SubjectEnum } from 'src/modules/access-control/domain/enums/subject.enum';
+import { ActionEnum } from 'src/core/domain/enums/action.enum';
+import { SubjectEnum } from 'src/core/domain/enums/subject.enum';
 
 export class AbilityItemRequestDto {
   @ApiProperty({

@@ -1,6 +1,6 @@
 import { BaseEntity } from 'src/core/domain/entities/base.entity';
-import { ActionEnum } from '../enums/action.enum';
-import { SubjectEnum } from '../enums/subject.enum';
+import { ActionEnum } from '../../../../core/domain/enums/action.enum';
+import { SubjectEnum } from '../../../../core/domain/enums/subject.enum';
 import { Uuid } from 'src/core/domain/value-objects/uuid.vo';
 import { StatusEnum } from 'src/core/domain/enums/status.enum';
 

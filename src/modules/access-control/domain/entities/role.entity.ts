@@ -3,8 +3,8 @@ import { RoleEnum } from '../enums/role.enum';
 import { Uuid } from 'src/core/domain/value-objects/uuid.vo';
 import { StatusEnum } from 'src/core/domain/enums/status.enum';
 import { AbilityEntity } from './ability.entity';
-import { ActionEnum } from '../enums/action.enum';
-import { SubjectEnum } from '../enums/subject.enum';
+import { ActionEnum } from '../../../../core/domain/enums/action.enum';
+import { SubjectEnum } from '../../../../core/domain/enums/subject.enum';
 import { AppConflictException } from 'src/core/exceptions/app-conflict.exception';
 
 export class RoleEntity extends BaseEntity {
