@@ -6,6 +6,7 @@ import { UserEmail } from '../../domain/value-objects/user-email.vo';
 import { UserPassword } from '../../domain/value-objects/user-password.vo';
 import { AppBadRequestException } from 'src/core/exceptions/app-bad-request.exception';
 import { SaveUserRelations } from '../../application/types/save-user-relations.type';
+import { RoleMapper } from 'src/modules/access-control/infra/mappers/role.mapper';
 
 export class UserMapper {
   static toDomain(orm: UserOrmEntity): UserEntity {
@@ -25,7 +26,7 @@ export class UserMapper {
       fullName: UserFullName.create(orm.fullName),
       email: UserEmail.create(orm.email),
       password: UserPassword.fromHash(orm.password),
-      roleUuid: Uuid.from(orm.role?.uuid),
+      role: RoleMapper.toDomain(orm.role),
     });
   }
 

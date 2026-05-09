@@ -5,12 +5,13 @@ import { UserPassword } from '../value-objects/user-password.vo';
 import { Uuid } from 'src/core/domain/value-objects/uuid.vo';
 import { StatusEnum } from 'src/core/domain/enums/status.enum';
 import { UpdateUserProps } from '../types/update-user.props';
+import { RoleEntity } from 'src/modules/access-control/domain/entities/role.entity';
 
 export class UserEntity extends BaseEntity {
   private _fullName: UserFullName;
   private _email: UserEmail;
   private _password: UserPassword;
-  private _roleUuid: Uuid;
+  private _role: RoleEntity;
 
   private constructor(props: {
     id: number;
@@ -22,14 +23,14 @@ export class UserEntity extends BaseEntity {
     fullName: UserFullName;
     email: UserEmail;
     password: UserPassword;
-    roleUuid: Uuid;
+    role: RoleEntity;
   }) {
     super(props);
 
     this._fullName = props.fullName;
     this._email = props.email;
     this._password = props.password;
-    this._roleUuid = props.roleUuid;
+    this._role = props.role;
   }
 
   get fullName(): UserFullName {
@@ -44,15 +45,15 @@ export class UserEntity extends BaseEntity {
     return this._password;
   }
 
-  get roleUuid(): Uuid {
-    return this._roleUuid;
+  get role(): RoleEntity {
+    return this._role;
   }
 
   static create(props: {
     fullName: UserFullName;
     email: UserEmail;
     password: UserPassword;
-    roleUuid: Uuid;
+    role: RoleEntity;
   }): UserEntity {
     return new UserEntity({
       ...props,
@@ -75,7 +76,7 @@ export class UserEntity extends BaseEntity {
     fullName: UserFullName;
     email: UserEmail;
     password: UserPassword;
-    roleUuid: Uuid;
+    role: RoleEntity;
   }): UserEntity {
     return new UserEntity(props);
   }
@@ -96,8 +97,8 @@ export class UserEntity extends BaseEntity {
     this._password = newPassword;
   }
 
-  changeRole(newRoleUuid: Uuid): void {
-    this._roleUuid = newRoleUuid;
+  changeRole(newRole: RoleEntity): void {
+    this._role = newRole;
   }
 
   update(props: UpdateUserProps): void {
@@ -118,8 +119,8 @@ export class UserEntity extends BaseEntity {
       changed = true;
     }
 
-    if (props.roleUuid) {
-      this.changeRole(props.roleUuid);
+    if (props.role) {
+      this.changeRole(props.role);
       changed = true;
     }
 

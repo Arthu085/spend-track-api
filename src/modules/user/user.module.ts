@@ -5,6 +5,7 @@ import { CreateUserUseCase } from './application/use-cases/create-user.use-case'
 import { AccessControlModule } from '../access-control/access-control.module';
 import { UpdateUserUseCase } from './application/use-cases/update-user.use-case';
 import { UserApplicationService } from './application/services/user-application.service';
+import { FindAllUserUseCase } from './application/use-cases/find-all-user.use-case';
 
 @Module({
   imports: [AccessControlModule],
@@ -15,6 +16,7 @@ import { UserApplicationService } from './application/services/user-application.
       useClass: UserRepository,
     },
     UserApplicationService,
+    FindAllUserUseCase,
     CreateUserUseCase,
     UpdateUserUseCase,
   ],

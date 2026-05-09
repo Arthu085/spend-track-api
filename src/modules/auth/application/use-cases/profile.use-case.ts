@@ -22,7 +22,7 @@ export class ProfileUseCase {
       });
     }
 
-    const role = await this.roleRepo.findByUuid(user.roleUuid);
+    const role = await this.roleRepo.findByUuid(user.role.uuid);
 
     if (!role) {
       throw new AppUnauthorizedException({
@@ -32,7 +32,7 @@ export class ProfileUseCase {
 
     return new ProfileResponseDto({
       uuid: user.uuid.toString(),
-      roleUuid: user.roleUuid.toString(),
+      roleUuid: user.role.uuid.toString(),
       fullName: user.fullName.getValue(),
       email: user.email.getValue(),
       role: role.name,

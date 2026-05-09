@@ -7,6 +7,9 @@ import { UserOrmEntity } from '../entities/user.orm.entity';
 import { UserMapper } from '../mappers/user.mapper';
 import { Uuid } from 'src/core/domain/value-objects/uuid.vo';
 import { SaveUserRelations } from '../../application/types/save-user-relations.type';
+import { FindAllUserRequestDto } from '../../application/dtos/request/find-all-user.request.dto';
+import { QueryBuilderHelper } from 'src/core/database/helpers/query-builder.helper';
+import { UserQueryBuilderHelper } from '../helpers/user-query-builder.helper';
 
 @Injectable()
 export class UserRepository implements IUserRepository {
@@ -14,6 +17,23 @@ export class UserRepository implements IUserRepository {
 
   constructor(private readonly dataSource: DataSource) {
     this.repo = this.dataSource.getRepository(UserOrmEntity);
+  }
+
+  async findAll(query: FindAllUserRequestDto): Promise<[UserEntity[], number]> {
+    const { page = 1, limit = 10 } = query;
+
+    const qb = this.repo
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.role', 'role');
+
+    QueryBuilderHelper.applyBaseFilters(qb, 'user', query);
+    UserQueryBuilderHelper.applyFilters(qb, query);
+    QueryBuilderHelper.applyDefaultOrder(qb, 'user');
+    QueryBuilderHelper.applyPagination(qb, page, limit);
+
+    const [users, total] = await qb.getManyAndCount();
+
+    return [users.map((user) => UserMapper.toDomain(user)), total];
   }
 
   async findByUuid(uuid: Uuid): Promise<UserEntity | null> {

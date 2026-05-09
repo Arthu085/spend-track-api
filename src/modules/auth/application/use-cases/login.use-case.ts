@@ -36,7 +36,7 @@ export class LoginUseCase {
 
     const payload: JwtPayload = {
       sub: user.uuid.toString(),
-      roleUuid: user.roleUuid.toString(),
+      roleUuid: user.role.uuid.toString(),
     };
 
     const accessToken = this.tokenService.generateAccessToken(payload);

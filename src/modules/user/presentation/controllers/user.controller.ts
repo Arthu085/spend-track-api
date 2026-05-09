@@ -8,14 +8,41 @@ import { SubjectEnum } from 'src/core/domain/enums/subject.enum';
 import { CreateUserRequestDto } from '../../application/dtos/request/create-user.request.dto';
 import { UpdateUserRequestDto } from '../../application/dtos/request/update-user.request.dto';
 import { UpdateUserUseCase } from '../../application/use-cases/update-user.use-case';
+import { FindAllUserResponseDto } from '../../application/dtos/response/find-all-user.response.dto';
+import { FindAllUserRequestDto } from '../../application/dtos/request/find-all-user.request.dto';
+import { PaginatedResponse } from 'src/shared/interfaces/paginated-response.interface';
+import { FindAllUserUseCase } from '../../application/use-cases/find-all-user.use-case';
 
 @Controller('users')
 @ApiTags('User')
 export class UserController {
   constructor(
+    private readonly findAllUserUseCase: FindAllUserUseCase,
     private readonly createUserUseCase: CreateUserUseCase,
     private readonly updateUserUseCase: UpdateUserUseCase,
   ) {}
+
+  @Endpoint.get({
+    url: '',
+    description: 'Listar usuários',
+    dtoName: 'FindAllUserRequestDto',
+    authType: 'access',
+    requirePermission: true,
+    responses: [
+      {
+        status: 200,
+        description: 'Lista de usuários retornada com sucesso',
+        responseType: FindAllUserResponseDto,
+      },
+    ],
+    responseMessage: 'Lista de usuários retornada com sucesso',
+  })
+  @CheckPermissions([{ action: ActionEnum.READ, subject: SubjectEnum.USER }])
+  async findAll(
+    @Query() query: FindAllUserRequestDto,
+  ): Promise<PaginatedResponse<FindAllUserResponseDto>> {
+    return this.findAllUserUseCase.execute(query);
+  }
 
   @Endpoint.post({
     url: '',

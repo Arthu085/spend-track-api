@@ -40,7 +40,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 
     return {
       uuid: user.uuid.toString(),
-      roleUuid: user.roleUuid.toString(),
+      roleUuid: user.role.uuid.toString(),
     };
   }
 }

@@ -26,7 +26,7 @@ export class CreateUserUseCase {
       fullName: UserFullName.create(dto.fullName),
       email,
       password: await UserPassword.create(dto.password),
-      roleUuid: role.uuid,
+      role: role,
     });
 
     await this.userRepo.save(user, {

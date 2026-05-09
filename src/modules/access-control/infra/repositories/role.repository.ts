@@ -7,6 +7,7 @@ import { RoleMapper } from '../mappers/role.mapper';
 import { Uuid } from 'src/core/domain/value-objects/uuid.vo';
 import { FindAllRoleRequestDto } from '../../application/dtos/request/find-all-role.request.dto';
 import { QueryBuilderHelper } from 'src/core/database/helpers/query-builder.helper';
+import { RoleQueryBuilderHelper } from '../helpers/role-query-builder.helper';
 
 @Injectable()
 export class RoleRepository implements IRoleRepository {
@@ -22,6 +23,7 @@ export class RoleRepository implements IRoleRepository {
     const qb = this.repo.createQueryBuilder('role');
 
     QueryBuilderHelper.applyBaseFilters(qb, 'role', query);
+    RoleQueryBuilderHelper.applyFilters(qb, query);
     QueryBuilderHelper.applyDefaultOrder(qb, 'role');
     QueryBuilderHelper.applyPagination(qb, page, limit);
 

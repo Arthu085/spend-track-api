@@ -42,7 +42,7 @@ export class JwtRefreshStrategy extends PassportStrategy(
 
     return {
       uuid: user.uuid.toString(),
-      roleUuid: user.roleUuid.toString(),
+      roleUuid: user.role.uuid.toString(),
     };
   }
 }

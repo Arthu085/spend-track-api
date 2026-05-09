@@ -25,7 +25,7 @@ export class UpdateUserUseCase {
 
     const role = await this.userAppService.resolveRole(
       dto.roleUuid,
-      user.roleUuid,
+      user.role.uuid,
     );
 
     user.update({
@@ -34,7 +34,7 @@ export class UpdateUserUseCase {
       password: dto.password
         ? await UserPassword.create(dto.password)
         : undefined,
-      roleUuid: role.uuid,
+      role: role,
     });
 
     await this.userRepo.save(user, {
