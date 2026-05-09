@@ -11,7 +11,5 @@ export interface IUserRepository {
 
   findByEmail(email: UserEmail): Promise<UserEntity | null>;
 
-  save(user: UserEntity, relations: SaveUserRelations): Promise<void>;
-
-  delete(user: UserEntity): Promise<void>;
+  save(user: UserEntity, relations?: SaveUserRelations): Promise<void>;
 }

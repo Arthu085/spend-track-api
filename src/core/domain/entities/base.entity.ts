@@ -82,6 +82,14 @@ export abstract class BaseEntity {
     this.touch();
   }
 
+  delete(): void {
+    if (this._deletedAt) return;
+
+    this.deactivate();
+    this._deletedAt = new Date();
+    this.touch();
+  }
+
   protected touch(): void {
     this._updatedAt = new Date();
   }

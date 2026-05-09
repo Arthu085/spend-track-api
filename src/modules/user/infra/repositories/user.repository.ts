@@ -56,13 +56,9 @@ export class UserRepository implements IUserRepository {
     return user ? UserMapper.toDomain(user) : null;
   }
 
-  async save(user: UserEntity, relations: SaveUserRelations): Promise<void> {
+  async save(user: UserEntity, relations?: SaveUserRelations): Promise<void> {
     const ormUser = UserMapper.toOrm(user, relations);
 
     await this.repo.save(ormUser);
-  }
-
-  async delete(user: UserEntity): Promise<void> {
-    await this.repo.softRemove(UserMapper.toOrm(user));
   }
 }

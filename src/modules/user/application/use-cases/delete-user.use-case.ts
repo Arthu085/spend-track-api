@@ -16,6 +16,8 @@ export class DeleteUserUseCase {
       throw new AppNotFoundException({ resource: 'Usuário', gender: 'M' });
     }
 
-    await this.userRepo.delete(user);
+    user.delete();
+
+    await this.userRepo.save(user);
   }
 }
