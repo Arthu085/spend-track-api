@@ -35,4 +35,7 @@ export class UserOrmEntity extends BaseOrmEntity {
   @JoinColumn({ name: 'role_id' })
   @Index()
   role: RoleOrmEntity;
+
+  @Column({ name: 'role_id' })
+  roleId: number;
 }

@@ -37,6 +37,8 @@ export class UpdateUserUseCase {
       roleUuid: role.uuid,
     });
 
-    await this.userRepo.save(user, role);
+    await this.userRepo.save(user, {
+      roleId: role.id,
+    });
   }
 }

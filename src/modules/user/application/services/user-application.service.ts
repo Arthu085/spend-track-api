@@ -31,16 +31,18 @@ export class UserApplicationService {
 
   async ensureEmailAvailable(
     email: UserEmail,
-    currentEmail: UserEmail,
+    currentEmail?: UserEmail,
   ): Promise<void> {
-    if (email.equals(currentEmail)) {
+    if (currentEmail && email.equals(currentEmail)) {
       return;
     }
 
     const existingUser = await this.userRepo.findByEmail(email);
 
     if (existingUser) {
-      throw new AppConflictException({ message: 'Email já está em uso' });
+      throw new AppConflictException({
+        message: 'Email já está em uso',
+      });
     }
   }
 

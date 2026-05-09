@@ -6,7 +6,7 @@ import { UserEmail } from '../../domain/value-objects/user-email.vo';
 import { UserOrmEntity } from '../entities/user.orm.entity';
 import { UserMapper } from '../mappers/user.mapper';
 import { Uuid } from 'src/core/domain/value-objects/uuid.vo';
-import { RoleEntity } from 'src/modules/access-control/domain/entities/role.entity';
+import { SaveUserRelations } from '../../application/types/save-user-relations.type';
 
 @Injectable()
 export class UserRepository implements IUserRepository {
@@ -36,8 +36,8 @@ export class UserRepository implements IUserRepository {
     return user ? UserMapper.toDomain(user) : null;
   }
 
-  async save(user: UserEntity, role: RoleEntity): Promise<void> {
-    const ormUser = UserMapper.toOrm(user, role);
+  async save(user: UserEntity, relations: SaveUserRelations): Promise<void> {
+    const ormUser = UserMapper.toOrm(user, relations);
 
     await this.repo.save(ormUser);
   }
