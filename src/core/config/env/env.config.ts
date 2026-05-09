@@ -1,3 +1,4 @@
+import { AppBadRequestException } from 'src/core/exceptions/app-bad-request.exception';
 import { envSchema } from './schemas/env.schemas';
 import { EnvOptions } from './types/env.types';
 
@@ -6,7 +7,9 @@ const { error } = validationResult;
 const envVars = validationResult.value as EnvOptions;
 
 if (error) {
-  throw new Error(`Erro nas variáveis de ambiente: ${error.message}`);
+  throw new AppBadRequestException({
+    message: `Erro nas variáveis de ambiente: ${error.message}`,
+  });
 }
 
 export const envConfig: EnvOptions = {

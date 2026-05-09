@@ -4,6 +4,7 @@ import { UserEmail } from '../value-objects/user-email.vo';
 import { UserPassword } from '../value-objects/user-password.vo';
 import { Uuid } from 'src/core/domain/value-objects/uuid.vo';
 import { StatusEnum } from 'src/core/domain/enums/status.enum';
+import { UpdateUserProps } from '../types/update-user.props';
 
 export class UserEntity extends BaseEntity {
   private _fullName: UserFullName;
@@ -79,27 +80,51 @@ export class UserEntity extends BaseEntity {
     return new UserEntity(props);
   }
 
-  changeFullName(newFullName: UserFullName): void {
-    this._fullName = newFullName;
-    this.touch();
-  }
-
-  changeEmail(newEmail: UserEmail): void {
-    this._email = newEmail;
-    this.touch();
-  }
-
   comparePassword(plain: string): Promise<boolean> {
     return this._password.compare(plain);
   }
 
+  changeFullName(newFullName: UserFullName): void {
+    this._fullName = newFullName;
+  }
+
+  changeEmail(newEmail: UserEmail): void {
+    this._email = newEmail;
+  }
+
   changePassword(newPassword: UserPassword): void {
     this._password = newPassword;
-    this.touch();
   }
 
   changeRole(newRoleUuid: Uuid): void {
     this._roleUuid = newRoleUuid;
-    this.touch();
+  }
+
+  update(props: UpdateUserProps): void {
+    let changed = false;
+
+    if (props.fullName) {
+      this.changeFullName(props.fullName);
+      changed = true;
+    }
+
+    if (props.email) {
+      this.changeEmail(props.email);
+      changed = true;
+    }
+
+    if (props.password) {
+      this.changePassword(props.password);
+      changed = true;
+    }
+
+    if (props.roleUuid) {
+      this.changeRole(props.roleUuid);
+      changed = true;
+    }
+
+    if (changed) {
+      this.touch();
+    }
   }
 }

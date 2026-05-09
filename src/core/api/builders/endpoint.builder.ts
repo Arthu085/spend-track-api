@@ -22,6 +22,7 @@ import { ResponseMessage } from '../../decorators/response-message.decorator';
 import { PermissionGuard } from 'src/modules/access-control/presentation/guards/permission.guard';
 import { JwtAuthGuard } from 'src/modules/auth/presentation/guards/jwt-auth.guard';
 import { JwtRefreshAuthGuard } from 'src/modules/auth/presentation/guards/jwt-refresh-auth.guard';
+import { AppBadRequestException } from 'src/core/exceptions/app-bad-request.exception';
 
 export interface IEndpointResponse {
   status: number;
@@ -106,7 +107,9 @@ export class Endpoint {
       case EndpointMethod.DELETE:
         return Delete(url);
       default:
-        throw new Error(`Método HTTP desconhecido: ${String(type)}`);
+        throw new AppBadRequestException({
+          message: `Método HTTP desconhecido: ${String(type)}`,
+        });
     }
   }
 

@@ -6,6 +6,7 @@ import { AbilityEntity } from './ability.entity';
 import { ActionEnum } from '../../../../core/domain/enums/action.enum';
 import { SubjectEnum } from '../../../../core/domain/enums/subject.enum';
 import { AppConflictException } from 'src/core/exceptions/app-conflict.exception';
+import { AppBadRequestException } from 'src/core/exceptions/app-bad-request.exception';
 
 export class RoleEntity extends BaseEntity {
   private _name: RoleEnum;
@@ -24,7 +25,9 @@ export class RoleEntity extends BaseEntity {
     super(props);
 
     if (!props.name) {
-      throw new Error('Nome da função é obrigatório');
+      throw new AppBadRequestException({
+        message: 'Nome da função é obrigatório',
+      });
     }
 
     this._name = props.name;

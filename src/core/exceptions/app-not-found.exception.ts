@@ -4,7 +4,8 @@ import { AppNotFoundExceptionOptions } from './types/app-not-found.execption.typ
 export class AppNotFoundException extends NotFoundException {
   constructor(options: AppNotFoundExceptionOptions) {
     super(
-      `${options.resource} não ${options.gender === 'M' ? 'encontrado' : 'encontrada'}.`,
+      options.message ||
+        `${options.resource || 'Entidade'} não ${options.gender === 'M' ? 'encontrado' : 'encontrada'}.`,
     );
   }
 }

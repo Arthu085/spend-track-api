@@ -6,11 +6,14 @@ import { UserEmail } from '../../domain/value-objects/user-email.vo';
 import { UserPassword } from '../../domain/value-objects/user-password.vo';
 import { RoleEntity } from 'src/modules/access-control/domain/entities/role.entity';
 import { RoleMapper } from 'src/modules/access-control/infra/mappers/role.mapper';
+import { AppBadRequestException } from 'src/core/exceptions/app-bad-request.exception';
 
 export class UserMapper {
   static toDomain(orm: UserOrmEntity): UserEntity {
     if (!orm.role) {
-      throw new Error('Função não carregada');
+      throw new AppBadRequestException({
+        message: 'Função não carregada',
+      });
     }
 
     return UserEntity.rehydrate({

@@ -4,6 +4,7 @@ import { RoleEnum } from 'src/modules/access-control/domain/enums/role.enum';
 import { UserOrmEntity } from 'src/modules/user/infra/entities/user.orm.entity';
 import { RoleOrmEntity } from 'src/modules/access-control/infra/entities/role.orm.entity';
 import * as bcrypt from 'bcrypt';
+import { AppNotFoundException } from 'src/core/exceptions/app-not-found.exception';
 
 export class UserSeed implements ISeed {
   name = 'UserSeed';
@@ -19,9 +20,9 @@ export class UserSeed implements ISeed {
     });
 
     if (!adminRole) {
-      throw new Error(
-        'Role ADMIN não encontrada. Rode a seed de roles primeiro.',
-      );
+      throw new AppNotFoundException({
+        message: 'Role ADMIN não encontrada. Rode a seed de roles primeiro.',
+      });
     }
 
     const hashedPassword = await bcrypt.hash('admin123', 12);
