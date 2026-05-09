@@ -8,6 +8,8 @@ import { UserApplicationService } from './application/services/user-application.
 import { FindAllUserUseCase } from './application/use-cases/find-all-user.use-case';
 import { FindOneUserUseCase } from './application/use-cases/find-one-user.use-case';
 import { DeleteUserUseCase } from './application/use-cases/delete-user.use-case';
+import { ActivateUserUseCase } from './application/use-cases/active-user.use-case';
+import { DeactivateUserUseCase } from './application/use-cases/deactive-user.use-case';
 
 @Module({
   imports: [AccessControlModule],
@@ -23,6 +25,8 @@ import { DeleteUserUseCase } from './application/use-cases/delete-user.use-case'
     CreateUserUseCase,
     UpdateUserUseCase,
     DeleteUserUseCase,
+    ActivateUserUseCase,
+    DeactivateUserUseCase,
   ],
   exports: ['IUserRepository'],
 })

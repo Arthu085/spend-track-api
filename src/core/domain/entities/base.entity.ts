@@ -60,10 +60,16 @@ export abstract class BaseEntity {
     }
   }
 
-  activate(): void {
+  activate(resource: string, gender: Gender): void {
     if (this._deletedAt) {
       throw new AppBadRequestException({
-        message: 'Não é possível ativar uma entidade excluída',
+        message: `Não é possível ativar um dadod excluído`,
+      });
+    }
+
+    if (this._status === StatusEnum.ACTIVE) {
+      throw new AppBadRequestException({
+        message: `${resource} já está ${gender === 'M' ? 'ativo' : 'ativa'}`,
       });
     }
 
@@ -71,10 +77,16 @@ export abstract class BaseEntity {
     this.touch();
   }
 
-  deactivate(): void {
+  deactivate(resource: string, gender: Gender): void {
     if (this._deletedAt) {
       throw new AppBadRequestException({
-        message: 'Não é possível desativar uma entidade excluída',
+        message: `Não é possível desativar um dado excluído`,
+      });
+    }
+
+    if (this._status === StatusEnum.INACTIVE) {
+      throw new AppBadRequestException({
+        message: `${resource} já está ${gender === 'M' ? 'inativo' : 'inativa'}`,
       });
     }
 
@@ -85,7 +97,7 @@ export abstract class BaseEntity {
   delete(): void {
     if (this._deletedAt) return;
 
-    this.deactivate();
+    this.deactivate('entidade', 'M');
     this._deletedAt = new Date();
     this.touch();
   }

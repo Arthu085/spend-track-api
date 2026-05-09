@@ -15,6 +15,8 @@ import { FindAllUserUseCase } from '../../application/use-cases/find-all-user.us
 import { FindOneUserResponseDto } from '../../application/dtos/response/find-one-user.response.dto';
 import { FindOneUserUseCase } from '../../application/use-cases/find-one-user.use-case';
 import { DeleteUserUseCase } from '../../application/use-cases/delete-user.use-case';
+import { ActivateUserUseCase } from '../../application/use-cases/active-user.use-case';
+import { DeactivateUserUseCase } from '../../application/use-cases/deactive-user.use-case';
 
 @Controller('users')
 @ApiTags('User')
@@ -25,6 +27,8 @@ export class UserController {
     private readonly createUserUseCase: CreateUserUseCase,
     private readonly updateUserUseCase: UpdateUserUseCase,
     private readonly deleteUserUseCase: DeleteUserUseCase,
+    private readonly activateUserUseCase: ActivateUserUseCase,
+    private readonly deactivateUserUseCase: DeactivateUserUseCase,
   ) {}
 
   @Endpoint.get({
@@ -142,5 +146,49 @@ export class UserController {
   ])
   async delete(@Query('uuid') uuid: string): Promise<void> {
     await this.deleteUserUseCase.execute(uuid);
+  }
+
+  @Endpoint.patch({
+    url: '/:uuid/activate',
+    description: 'Ativar usuário',
+    authType: 'access',
+    requirePermission: true,
+    responses: [
+      {
+        status: 200,
+        description: 'Usuário ativado com sucesso',
+      },
+      {
+        status: 404,
+        description: 'Usuário não encontrado',
+      },
+    ],
+    responseMessage: 'Usuário ativado com sucesso',
+  })
+  @CheckPermissions([{ action: ActionEnum.UPDATE, subject: SubjectEnum.USER }])
+  async activate(@Query('uuid') uuid: string): Promise<void> {
+    await this.activateUserUseCase.execute(uuid);
+  }
+
+  @Endpoint.patch({
+    url: '/:uuid/deactivate',
+    description: 'Desativar usuário',
+    authType: 'access',
+    requirePermission: true,
+    responses: [
+      {
+        status: 200,
+        description: 'Usuário desativado com sucesso',
+      },
+      {
+        status: 404,
+        description: 'Usuário não encontrado',
+      },
+    ],
+    responseMessage: 'Usuário desativado com sucesso',
+  })
+  @CheckPermissions([{ action: ActionEnum.UPDATE, subject: SubjectEnum.USER }])
+  async deactivate(@Query('uuid') uuid: string): Promise<void> {
+    await this.deactivateUserUseCase.execute(uuid);
   }
 }
