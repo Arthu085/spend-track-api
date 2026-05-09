@@ -14,6 +14,7 @@ import { PaginatedResponse } from 'src/shared/interfaces/paginated-response.inte
 import { FindAllUserUseCase } from '../../application/use-cases/find-all-user.use-case';
 import { FindOneUserResponseDto } from '../../application/dtos/response/find-one-user.response.dto';
 import { FindOneUserUseCase } from '../../application/use-cases/find-one-user.use-case';
+import { DeleteUserUseCase } from '../../application/use-cases/delete-user.use-case';
 
 @Controller('users')
 @ApiTags('User')
@@ -23,6 +24,7 @@ export class UserController {
     private readonly findOneUserUseCase: FindOneUserUseCase,
     private readonly createUserUseCase: CreateUserUseCase,
     private readonly updateUserUseCase: UpdateUserUseCase,
+    private readonly deleteUserUseCase: DeleteUserUseCase,
   ) {}
 
   @Endpoint.get({
@@ -115,5 +117,30 @@ export class UserController {
     @Body() dto: UpdateUserRequestDto,
   ): Promise<void> {
     await this.updateUserUseCase.execute(uuid, dto);
+  }
+
+  @Endpoint.delete({
+    url: '/:uuid',
+    description: 'Excluir um usuário',
+    authType: 'access',
+    requirePermission: true,
+    responses: [
+      {
+        status: 200,
+        description: 'Usuário excluído com sucesso',
+      },
+      {
+        status: 404,
+        description: 'Usuário não encontrado',
+      },
+    ],
+    responseMessage: 'Usuário excluído com sucesso',
+  })
+  @CheckPermissions([
+    { action: ActionEnum.READ, subject: SubjectEnum.USER },
+    { action: ActionEnum.DELETE, subject: SubjectEnum.USER },
+  ])
+  async delete(@Query('uuid') uuid: string): Promise<void> {
+    await this.deleteUserUseCase.execute(uuid);
   }
 }

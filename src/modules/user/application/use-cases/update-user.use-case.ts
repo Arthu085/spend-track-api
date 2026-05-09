@@ -10,7 +10,6 @@ export class UpdateUserUseCase {
   constructor(
     @Inject('IUserRepository')
     private readonly userRepo: IUserRepository,
-
     private readonly userAppService: UserApplicationService,
   ) {}
 

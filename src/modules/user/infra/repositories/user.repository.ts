@@ -61,4 +61,8 @@ export class UserRepository implements IUserRepository {
 
     await this.repo.save(ormUser);
   }
+
+  async delete(user: UserEntity): Promise<void> {
+    await this.repo.softRemove(UserMapper.toOrm(user));
+  }
 }

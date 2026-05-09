@@ -32,12 +32,16 @@ export class UserMapper {
 
   static toOrm(
     domain: UserEntity,
-    relations: SaveUserRelations,
+    relations?: SaveUserRelations,
   ): UserOrmEntity {
     const orm = new UserOrmEntity();
 
     if (domain.id !== undefined) {
       orm.id = domain.id;
+    }
+
+    if (relations) {
+      orm.roleId = relations.roleId;
     }
 
     orm.uuid = domain.uuid.toString();
@@ -48,7 +52,6 @@ export class UserMapper {
     orm.fullName = domain.fullName.getValue();
     orm.email = domain.email.getValue();
     orm.password = domain.password.getValue();
-    orm.roleId = relations.roleId;
 
     return orm;
   }
