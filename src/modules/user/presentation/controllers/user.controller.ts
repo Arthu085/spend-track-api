@@ -12,12 +12,15 @@ import { FindAllUserResponseDto } from '../../application/dtos/response/find-all
 import { FindAllUserRequestDto } from '../../application/dtos/request/find-all-user.request.dto';
 import { PaginatedResponse } from 'src/shared/interfaces/paginated-response.interface';
 import { FindAllUserUseCase } from '../../application/use-cases/find-all-user.use-case';
+import { FindOneUserResponseDto } from '../../application/dtos/response/find-one-user.response.dto';
+import { FindOneUserUseCase } from '../../application/use-cases/find-one-user.use-case';
 
 @Controller('users')
 @ApiTags('User')
 export class UserController {
   constructor(
     private readonly findAllUserUseCase: FindAllUserUseCase,
+    private readonly findOneUserUseCase: FindOneUserUseCase,
     private readonly createUserUseCase: CreateUserUseCase,
     private readonly updateUserUseCase: UpdateUserUseCase,
   ) {}
@@ -42,6 +45,25 @@ export class UserController {
     @Query() query: FindAllUserRequestDto,
   ): Promise<PaginatedResponse<FindAllUserResponseDto>> {
     return this.findAllUserUseCase.execute(query);
+  }
+
+  @Endpoint.get({
+    url: '/:uuid',
+    description: 'Obter detalhes de um usuário',
+    authType: 'access',
+    requirePermission: true,
+    responses: [
+      {
+        status: 200,
+        description: 'Detalhes do usuário retornados com sucesso',
+        responseType: FindOneUserResponseDto,
+      },
+    ],
+    responseMessage: 'Detalhes do usuário retornados com sucesso',
+  })
+  @CheckPermissions([{ action: ActionEnum.READ, subject: SubjectEnum.USER }])
+  async findOne(@Query('uuid') uuid: string): Promise<FindOneUserResponseDto> {
+    return this.findOneUserUseCase.execute(uuid);
   }
 
   @Endpoint.post({
