@@ -1,7 +1,7 @@
 import { BaseOrmEntity } from 'src/core/database/entities/base.orm.entity';
 import { Column, Entity, Index, Unique } from 'typeorm';
-import { ActionEnum } from '../../domain/enums/action.enum';
-import { SubjectEnum } from '../../domain/enums/subject.enum';
+import { ActionEnum } from '../../../../core/domain/enums/action.enum';
+import { SubjectEnum } from '../../../../core/domain/enums/subject.enum';
 
 @Entity('abilities', {
   comment: 'Tabela para armazenar as permissões dos usuários',

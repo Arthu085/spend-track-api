@@ -8,10 +8,16 @@ export function setupSwagger(app: INestApplication) {
     .setDescription(swaggerConfig.description)
     .setVersion(swaggerConfig.version)
     .addTag(swaggerConfig.tag)
-    .addCookieAuth('access_token')
+    .addCookieAuth('token')
+    .addCookieAuth('refreshToken')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
 
-  SwaggerModule.setup('docs', app, document);
+  SwaggerModule.setup('docs', app, document, {
+    useGlobalPrefix: false,
+    swaggerOptions: {
+      withCredentials: true,
+    },
+  });
 }

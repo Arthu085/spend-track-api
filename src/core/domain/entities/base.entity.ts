@@ -1,5 +1,8 @@
 import { StatusEnum } from '../enums/status.enum';
 import { Uuid } from '../value-objects/uuid.vo';
+import { AppBadRequestException } from 'src/core/exceptions/app-bad-request.exception';
+
+type Gender = 'M' | 'F';
 
 export abstract class BaseEntity {
   protected _id: number;
@@ -49,22 +52,42 @@ export abstract class BaseEntity {
     return this._status;
   }
 
-  isActive(): boolean {
-    return this._status === StatusEnum.ACTIVE && !this._deletedAt;
+  ensureIsNotInactive(resource: string, gender: Gender): void {
+    if (this._status === StatusEnum.INACTIVE) {
+      throw new AppBadRequestException({
+        message: `${resource} está ${gender === 'M' ? 'inativo' : 'inativa'}`,
+      });
+    }
   }
 
-  activate(): void {
+  activate(resource: string, gender: Gender): void {
     if (this._deletedAt) {
-      throw new Error('Não é possível ativar uma entidade excluída');
+      throw new AppBadRequestException({
+        message: `Não é possível ativar um dado excluído`,
+      });
+    }
+
+    if (this._status === StatusEnum.ACTIVE) {
+      throw new AppBadRequestException({
+        message: `${resource} já está ${gender === 'M' ? 'ativo' : 'ativa'}`,
+      });
     }
 
     this._status = StatusEnum.ACTIVE;
     this.touch();
   }
 
-  deactivate(): void {
+  deactivate(resource: string, gender: Gender): void {
     if (this._deletedAt) {
-      throw new Error('Não é possível desativar uma entidade excluída');
+      throw new AppBadRequestException({
+        message: `Não é possível desativar um dado excluído`,
+      });
+    }
+
+    if (this._status === StatusEnum.INACTIVE) {
+      throw new AppBadRequestException({
+        message: `${resource} já está ${gender === 'M' ? 'inativo' : 'inativa'}`,
+      });
     }
 
     this._status = StatusEnum.INACTIVE;
@@ -74,6 +97,7 @@ export abstract class BaseEntity {
   delete(): void {
     if (this._deletedAt) return;
 
+    this.deactivate('entidade', 'M');
     this._deletedAt = new Date();
     this.touch();
   }

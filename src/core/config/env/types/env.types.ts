@@ -1,3 +1,5 @@
+import type { StringValue } from 'ms';
+
 export type EnvOptions = {
   DB_HOST: string;
   DB_PORT: number;
@@ -10,9 +12,9 @@ export type EnvOptions = {
   NODE_ENV: 'development' | 'production' | 'test';
   CLIENT_URL: string;
   JWT_SECRET: string;
-  JWT_EXPIRES_IN: string;
+  JWT_EXPIRES_IN: StringValue;
   JWT_REFRESH_SECRET: string;
-  JWT_REFRESH_EXPIRES_IN: string;
+  JWT_REFRESH_EXPIRES_IN: StringValue;
   COOKIE_DOMAIN?: string;
   COOKIE_SECURE: boolean;
   COOKIE_SAME_SITE: 'strict' | 'lax' | 'none';

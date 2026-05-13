@@ -1,7 +1,9 @@
+import { Injectable } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { IRoleAbilityRepository } from '../../domain/repositories/role-ability.repository.interface';
 import { RoleAbilityOrmEntity } from '../entities/role-ability.orm.entity';
 
+@Injectable()
 export class RoleAbilityRepository implements IRoleAbilityRepository {
   private repo: Repository<RoleAbilityOrmEntity>;
 

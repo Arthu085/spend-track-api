@@ -2,11 +2,11 @@ import { AbilityEntity } from 'src/modules/access-control/domain/entities/abilit
 import {
   ActionEnum,
   ActionEnumTranslation,
-} from 'src/modules/access-control/domain/enums/action.enum';
+} from 'src/core/domain/enums/action.enum';
 import {
   SubjectEnum,
   SubjectEnumTranslation,
-} from 'src/modules/access-control/domain/enums/subject.enum';
+} from 'src/core/domain/enums/subject.enum';
 
 export class FindAllAbilityResponseDto {
   action: ActionEnum;

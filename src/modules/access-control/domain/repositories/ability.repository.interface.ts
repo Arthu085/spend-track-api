@@ -1,6 +1,6 @@
 import { AbilityEntity } from '../entities/ability.entity';
-import { ActionEnum } from '../enums/action.enum';
-import { SubjectEnum } from '../enums/subject.enum';
+import { ActionEnum } from '../../../../core/domain/enums/action.enum';
+import { SubjectEnum } from '../../../../core/domain/enums/subject.enum';
 
 export interface IAbilityRepository {
   findAll(): Promise<AbilityEntity[]>;

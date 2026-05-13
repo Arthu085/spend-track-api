@@ -1,3 +1,4 @@
+import { Injectable } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { RoleEntity } from '../../domain/entities/role.entity';
 import { IRoleRepository } from '../../domain/repositories/role.repository.interface';
@@ -6,7 +7,9 @@ import { RoleMapper } from '../mappers/role.mapper';
 import { Uuid } from 'src/core/domain/value-objects/uuid.vo';
 import { FindAllRoleRequestDto } from '../../application/dtos/request/find-all-role.request.dto';
 import { QueryBuilderHelper } from 'src/core/database/helpers/query-builder.helper';
+import { RoleQueryBuilderHelper } from '../helpers/role-query-builder.helper';
 
+@Injectable()
 export class RoleRepository implements IRoleRepository {
   private repo: Repository<RoleOrmEntity>;
 
@@ -20,6 +23,7 @@ export class RoleRepository implements IRoleRepository {
     const qb = this.repo.createQueryBuilder('role');
 
     QueryBuilderHelper.applyBaseFilters(qb, 'role', query);
+    RoleQueryBuilderHelper.applyFilters(qb, query);
     QueryBuilderHelper.applyDefaultOrder(qb, 'role');
     QueryBuilderHelper.applyPagination(qb, page, limit);
 
@@ -33,8 +37,6 @@ export class RoleRepository implements IRoleRepository {
       .createQueryBuilder('role')
       .leftJoinAndSelect('role.roleAbilities', 'roleAbilities')
       .leftJoinAndSelect('roleAbilities.ability', 'ability')
-      .orderBy('ability.subject', 'ASC')
-      .addOrderBy('ability.action', 'ASC')
       .where('role.uuid = :uuid', { uuid: uuid.toString() })
       .getOne();
 

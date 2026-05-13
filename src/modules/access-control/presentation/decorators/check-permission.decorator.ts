@@ -1,6 +1,6 @@
 import { SetMetadata } from '@nestjs/common';
-import { ActionEnum } from '../../domain/enums/action.enum';
-import { SubjectEnum } from '../../domain/enums/subject.enum';
+import { ActionEnum } from '../../../../core/domain/enums/action.enum';
+import { SubjectEnum } from '../../../../core/domain/enums/subject.enum';
 
 export const CHECK_PERMISSIONS_KEY = 'check_permissions';
 

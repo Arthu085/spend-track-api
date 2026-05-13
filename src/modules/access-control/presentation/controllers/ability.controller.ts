@@ -1,22 +1,22 @@
 import { Controller } from '@nestjs/common';
-import { ApiCookieAuth, ApiTags } from '@nestjs/swagger';
-import { FindAllAbilityUseCase } from '../../application/use-cases/find-all-ability.use.case';
+import { ApiTags } from '@nestjs/swagger';
+import { FindAllAbilityUseCase } from '../../application/use-cases/find-all-ability.use-case';
 import { Endpoint } from 'src/core/api/builders/endpoint.builder';
 import { FindAllAbilityResponseDto } from '../../application/dtos/response/find-all-ability.response.dto';
 import { CheckPermissions } from '../decorators/check-permission.decorator';
-import { ActionEnum } from '../../domain/enums/action.enum';
-import { SubjectEnum } from '../../domain/enums/subject.enum';
+import { ActionEnum } from '../../../../core/domain/enums/action.enum';
+import { SubjectEnum } from '../../../../core/domain/enums/subject.enum';
 
 @Controller('abilities')
 @ApiTags('Ability')
-@ApiCookieAuth('token')
 export class AbilityController {
   constructor(private readonly findAllAbilityUseCase: FindAllAbilityUseCase) {}
 
   @Endpoint.get({
     url: '',
     description: 'Listar todas permissões do sistema',
-    isProtected: true,
+    authType: 'access',
+    requirePermission: true,
     responses: [
       {
         status: 200,

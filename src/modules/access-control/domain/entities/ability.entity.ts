@@ -1,8 +1,9 @@
 import { BaseEntity } from 'src/core/domain/entities/base.entity';
-import { ActionEnum } from '../enums/action.enum';
-import { SubjectEnum } from '../enums/subject.enum';
+import { ActionEnum } from '../../../../core/domain/enums/action.enum';
+import { SubjectEnum } from '../../../../core/domain/enums/subject.enum';
 import { Uuid } from 'src/core/domain/value-objects/uuid.vo';
 import { StatusEnum } from 'src/core/domain/enums/status.enum';
+import { AppBadRequestException } from 'src/core/exceptions/app-bad-request.exception';
 
 export class AbilityEntity extends BaseEntity {
   private _action: ActionEnum;
@@ -21,11 +22,15 @@ export class AbilityEntity extends BaseEntity {
     super(props);
 
     if (!props.action) {
-      throw new Error('Ação é obrigatória');
+      throw new AppBadRequestException({
+        message: 'Ação é obrigatória',
+      });
     }
 
     if (!props.subject) {
-      throw new Error('Sujeito é obrigatório');
+      throw new AppBadRequestException({
+        message: 'Sujeito é obrigatório',
+      });
     }
 
     this._action = props.action;

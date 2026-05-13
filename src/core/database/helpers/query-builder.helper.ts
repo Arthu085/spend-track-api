@@ -1,4 +1,5 @@
 import { ObjectLiteral, SelectQueryBuilder } from 'typeorm';
+import dayjs from 'dayjs';
 
 interface IBaseFilter {
   status?: string;
@@ -22,13 +23,13 @@ export class QueryBuilderHelper {
 
     if (createdAtFrom) {
       qb.andWhere(`${alias}.createdAt >= :createdAtFrom`, {
-        createdAtFrom,
+        createdAtFrom: dayjs(createdAtFrom).startOf('day').toDate(),
       });
     }
 
     if (createdAtTo) {
       qb.andWhere(`${alias}.createdAt <= :createdAtTo`, {
-        createdAtTo,
+        createdAtTo: dayjs(createdAtTo).endOf('day').toDate(),
       });
     }
 

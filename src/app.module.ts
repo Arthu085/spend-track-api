@@ -8,6 +8,8 @@ import { HttpExceptionFilter } from './core/filters/http-exception.filter';
 import { ResponseInterceptor } from './core/interceptors/response.interceptor';
 import { TransactionInterceptor } from './core/interceptors/transaction.interceptor';
 import { AccessControlModule } from './modules/access-control/access-control.module';
+import { UserModule } from './modules/user/user.module';
+import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
   imports: [
@@ -18,7 +20,9 @@ import { AccessControlModule } from './modules/access-control/access-control.mod
         limit: throttleConfig.limit,
       },
     ]),
+    AuthModule,
     AccessControlModule,
+    UserModule,
   ],
   controllers: [],
   providers: [

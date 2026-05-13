@@ -4,6 +4,7 @@ import { RoleOrmEntity } from 'src/modules/access-control/infra/entities/role.or
 import { AbilityOrmEntity } from 'src/modules/access-control/infra/entities/ability.orm.entity';
 import { RoleAbilityOrmEntity } from 'src/modules/access-control/infra/entities/role-ability.orm.entity';
 import { RoleEnum } from 'src/modules/access-control/domain/enums/role.enum';
+import { AppNotFoundException } from 'src/core/exceptions/app-not-found.exception';
 
 export class RoleAbilitySeed implements ISeed {
   name = 'RoleAbilitySeed';
@@ -18,7 +19,9 @@ export class RoleAbilitySeed implements ISeed {
     const admin = await roleRepo.findOneBy({ name: RoleEnum.ADMIN });
 
     if (!admin) {
-      throw new Error('Role ADMIN não encontrada');
+      throw new AppNotFoundException({
+        message: 'Role ADMIN não encontrada',
+      });
     }
 
     const abilities = await abilityRepo.find();

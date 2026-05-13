@@ -1,6 +1,8 @@
+import type { StringValue } from 'ms';
+
 export type JwtTokenOptions = {
   secret: string;
-  expiresIn: string;
+  expiresIn: StringValue | number;
 };
 
 export type JwtOptions = {

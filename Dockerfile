@@ -1,13 +1,11 @@
-FROM node:20.11-alpine3.19 AS development
+FROM node:20-alpine
 
 WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm ci
+RUN npm install
 
 COPY . .
 
 EXPOSE 3000
-
-CMD ["sh", "-c", "npm run migration:run && npm run seed && npm run test && npm run start:dev"]

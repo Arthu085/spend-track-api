@@ -1,10 +1,15 @@
+import { Injectable, Inject } from '@nestjs/common';
 import { Uuid } from 'src/core/domain/value-objects/uuid.vo';
 import { IRoleRepository } from '../../domain/repositories/role.repository.interface';
 import { CheckPermissionRequestDto } from '../dtos/request/check-permission.request.dto';
 import { CheckPermissionResponseDto } from '../dtos/response/check-permission.response.dto';
 
+@Injectable()
 export class CheckPermissionUseCase {
-  constructor(private readonly roleRepo: IRoleRepository) {}
+  constructor(
+    @Inject('IRoleRepository')
+    private readonly roleRepo: IRoleRepository,
+  ) {}
 
   async execute(
     dto: CheckPermissionRequestDto,

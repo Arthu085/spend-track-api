@@ -14,17 +14,23 @@ import {
   ApiResponse,
   ApiResponseOptions,
   getSchemaPath,
+  ApiCookieAuth,
 } from '@nestjs/swagger';
 import { EndpointMethod } from '../enums/endpoint-method.enum';
 import { Transactional } from '../../decorators/transactional.decorator';
 import { ResponseMessage } from '../../decorators/response-message.decorator';
 import { PermissionGuard } from 'src/modules/access-control/presentation/guards/permission.guard';
+import { JwtAuthGuard } from 'src/modules/auth/presentation/guards/jwt-auth.guard';
+import { JwtRefreshAuthGuard } from 'src/modules/auth/presentation/guards/jwt-refresh-auth.guard';
+import { AppBadRequestException } from 'src/core/exceptions/app-bad-request.exception';
 
 export interface IEndpointResponse {
   status: number;
   description: string;
   responseType?: Type<unknown>;
 }
+
+type AuthType = 'none' | 'access' | 'refresh';
 
 export interface IEndpointData {
   url: string;
@@ -33,7 +39,8 @@ export interface IEndpointData {
   dtoName?: string;
   responses: IEndpointResponse[];
   isTransactional?: boolean;
-  isProtected?: boolean;
+  authType?: AuthType;
+  requirePermission?: boolean;
 }
 
 interface IEndpointBaseData extends IEndpointData {
@@ -49,19 +56,31 @@ export class Endpoint {
     dtoName,
     responses,
     isTransactional = false,
-    isProtected = false,
+    authType = 'none',
+    requirePermission = false,
   }: IEndpointBaseData) {
     const decorators: Array<MethodDecorator | ClassDecorator> = [
       this.defineMethod(type, url),
-      ...this.defineResponses(responses, isProtected, !!dtoName),
+      ...this.defineResponses(responses, authType, !!dtoName),
       ApiOperation({
         summary: description,
-        description: this.createDescription(description, dtoName, isProtected),
+        description: this.createDescription(description, dtoName, authType),
       }),
     ];
 
-    if (isProtected) {
-      decorators.push(UseGuards(PermissionGuard));
+    if (authType === 'access') {
+      decorators.push(UseGuards(JwtAuthGuard));
+
+      if (requirePermission) {
+        decorators.push(UseGuards(PermissionGuard));
+      }
+
+      decorators.push(ApiCookieAuth('token'));
+    }
+
+    if (authType === 'refresh') {
+      decorators.push(UseGuards(JwtRefreshAuthGuard));
+      decorators.push(ApiCookieAuth('refreshToken'));
     }
 
     if (isTransactional) {
@@ -88,13 +107,15 @@ export class Endpoint {
       case EndpointMethod.DELETE:
         return Delete(url);
       default:
-        throw new Error(`Método HTTP desconhecido: ${String(type)}`);
+        throw new AppBadRequestException({
+          message: `Método HTTP desconhecido: ${String(type)}`,
+        });
     }
   }
 
   private static defineResponses(
     responses: IEndpointResponse[],
-    isProtected: boolean,
+    authType: AuthType,
     haveDto: boolean,
   ) {
     const allResponses = [...responses];
@@ -104,7 +125,7 @@ export class Endpoint {
       description: 'Erro interno no servidor',
     });
 
-    if (isProtected) {
+    if (authType !== 'none') {
       allResponses.push({
         status: 401,
         description: 'Autenticação necessária para acessar este endpoint',
@@ -144,7 +165,7 @@ export class Endpoint {
   private static createDescription(
     description: string,
     dtoName?: string,
-    isProtected?: boolean,
+    authType?: AuthType,
   ): string {
     let fullDescription = description;
 
@@ -152,8 +173,12 @@ export class Endpoint {
       fullDescription += `\n\n**DTO:** ${dtoName}`;
     }
 
-    if (isProtected) {
-      fullDescription += `\n\n**Requer autenticação:** Bearer token obrigatório`;
+    if (authType === 'access') {
+      fullDescription += `\n\n**Requer Access Token (cookie)**`;
+    }
+
+    if (authType === 'refresh') {
+      fullDescription += `\n\n**Requer Refresh Token (cookie)**`;
     }
 
     return fullDescription;

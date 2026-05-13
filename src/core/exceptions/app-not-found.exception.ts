@@ -1,10 +1,11 @@
 import { NotFoundException } from '@nestjs/common';
-import { AppNotFoundExceptionOptions } from './types/app-not-found.execption.types';
+import { AppNotFoundExceptionOptions } from './types/app-not-found.exception.type';
 
 export class AppNotFoundException extends NotFoundException {
   constructor(options: AppNotFoundExceptionOptions) {
     super(
-      `${options.resource} não ${options.gender === 'M' ? 'encontrado' : 'encontrada'}.`,
+      options.message ||
+        `${options.resource || 'Entidade'} não ${options.gender === 'M' ? 'encontrado' : 'encontrada'}.`,
     );
   }
 }

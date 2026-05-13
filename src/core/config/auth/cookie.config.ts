@@ -4,7 +4,7 @@ import { isProduction } from '../env/helpers/env.helpers';
 
 export const cookieConfig: CookieOptions = {
   httpOnly: true,
-  secure: envConfig.COOKIE_SECURE ?? isProduction,
+  secure: isProduction || envConfig.COOKIE_SECURE,
   sameSite: envConfig.COOKIE_SAME_SITE,
   domain: envConfig.COOKIE_DOMAIN,
 };
