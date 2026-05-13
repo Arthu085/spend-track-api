@@ -6,12 +6,12 @@ import { SubjectEnum } from '../../../../core/domain/enums/subject.enum';
 import { Body, Controller, Param, Query } from '@nestjs/common';
 import { UpdateRoleAbilitiesRequestDto } from '../../application/dtos/request/update-role-abilities.request.dto';
 import { ApiTags } from '@nestjs/swagger';
-import { FindAllRoleResponseDto } from '../../application/dtos/response/find-all-role.respose.dto';
+import { FindAllRoleResponseDto } from '../../application/dtos/response/find-all-role.response.dto';
 import { PaginatedResponse } from 'src/shared/interfaces/paginated-response.interface';
 import { FindAllRoleUseCase } from '../../application/use-cases/find-all-role.use-case';
 import { FindAllRoleRequestDto } from '../../application/dtos/request/find-all-role.request.dto';
 import { FindOneRoleResponseDto } from '../../application/dtos/response/find-one-role.response.dto';
-import { FindOneRoleUseCase } from '../../application/use-cases/find-one-role.use.case';
+import { FindOneRoleUseCase } from '../../application/use-cases/find-one-role.use-case';
 import { UuidValidationPipe } from 'src/shared/utils/pipes/uuid-validation.pipe';
 
 @Controller('roles')

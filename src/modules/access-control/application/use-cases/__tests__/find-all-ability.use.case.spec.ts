@@ -1,4 +1,4 @@
-import { FindAllAbilityUseCase } from '../find-all-ability.use.case';
+import { FindAllAbilityUseCase } from '../find-all-ability.use-case';
 import { IAbilityRepository } from 'src/modules/access-control/domain/repositories/ability.repository.interface';
 import { AbilityEntity } from 'src/modules/access-control/domain/entities/ability.entity';
 import { ActionEnum } from 'src/core/domain/enums/action.enum';

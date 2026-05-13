@@ -1,4 +1,4 @@
-import { DeactivateUserUseCase } from '../deactive-user.use-case';
+import { DeactivateUserUseCase } from '../deactivate-user.use-case';
 import { IUserRepository } from 'src/modules/user/domain/repositories/user.repository.interface';
 import { UserEntity } from 'src/modules/user/domain/entities/user.entity';
 import { AppNotFoundException } from 'src/core/exceptions/app-not-found.exception';

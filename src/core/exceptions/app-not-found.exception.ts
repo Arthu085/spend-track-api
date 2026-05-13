@@ -1,5 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
-import { AppNotFoundExceptionOptions } from './types/app-not-found.execption.type';
+import { AppNotFoundExceptionOptions } from './types/app-not-found.exception.type';
 
 export class AppNotFoundException extends NotFoundException {
   constructor(options: AppNotFoundExceptionOptions) {

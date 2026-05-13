@@ -9,6 +9,7 @@ export function setupSwagger(app: INestApplication) {
     .setVersion(swaggerConfig.version)
     .addTag(swaggerConfig.tag)
     .addCookieAuth('token')
+    .addCookieAuth('refreshToken')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

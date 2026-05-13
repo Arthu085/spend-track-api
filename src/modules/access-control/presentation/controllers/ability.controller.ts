@@ -1,6 +1,6 @@
 import { Controller } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { FindAllAbilityUseCase } from '../../application/use-cases/find-all-ability.use.case';
+import { FindAllAbilityUseCase } from '../../application/use-cases/find-all-ability.use-case';
 import { Endpoint } from 'src/core/api/builders/endpoint.builder';
 import { FindAllAbilityResponseDto } from '../../application/dtos/response/find-all-ability.response.dto';
 import { CheckPermissions } from '../decorators/check-permission.decorator';

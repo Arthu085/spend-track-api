@@ -1,4 +1,4 @@
-import { Body, Controller, Query } from '@nestjs/common';
+import { Body, Controller, Param, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { CreateUserUseCase } from '../../application/use-cases/create-user.use-case';
 import { Endpoint } from 'src/core/api/builders/endpoint.builder';
@@ -15,8 +15,9 @@ import { FindAllUserUseCase } from '../../application/use-cases/find-all-user.us
 import { FindOneUserResponseDto } from '../../application/dtos/response/find-one-user.response.dto';
 import { FindOneUserUseCase } from '../../application/use-cases/find-one-user.use-case';
 import { DeleteUserUseCase } from '../../application/use-cases/delete-user.use-case';
-import { ActivateUserUseCase } from '../../application/use-cases/active-user.use-case';
-import { DeactivateUserUseCase } from '../../application/use-cases/deactive-user.use-case';
+import { ActivateUserUseCase } from '../../application/use-cases/activate-user.use-case';
+import { DeactivateUserUseCase } from '../../application/use-cases/deactivate-user.use-case';
+import { UuidValidationPipe } from 'src/shared/utils/pipes/uuid-validation.pipe';
 
 @Controller('users')
 @ApiTags('User')
@@ -54,7 +55,7 @@ export class UserController {
   }
 
   @Endpoint.get({
-    url: '/:uuid',
+    url: ':uuid',
     description: 'Obter detalhes de um usuário',
     authType: 'access',
     requirePermission: true,
@@ -68,7 +69,9 @@ export class UserController {
     responseMessage: 'Detalhes do usuário retornados com sucesso',
   })
   @CheckPermissions([{ action: ActionEnum.READ, subject: SubjectEnum.USER }])
-  async findOne(@Query('uuid') uuid: string): Promise<FindOneUserResponseDto> {
+  async findOne(
+    @Param('uuid', UuidValidationPipe) uuid: string,
+  ): Promise<FindOneUserResponseDto> {
     return this.findOneUserUseCase.execute(uuid);
   }
 
@@ -95,7 +98,7 @@ export class UserController {
   }
 
   @Endpoint.patch({
-    url: '/:uuid',
+    url: ':uuid',
     description: 'Atualizar um usuário existente',
     dtoName: 'UpdateUserRequestDto',
     authType: 'access',
@@ -117,14 +120,14 @@ export class UserController {
     { action: ActionEnum.UPDATE, subject: SubjectEnum.USER },
   ])
   async update(
-    @Query('uuid') uuid: string,
+    @Param('uuid', UuidValidationPipe) uuid: string,
     @Body() dto: UpdateUserRequestDto,
   ): Promise<void> {
     await this.updateUserUseCase.execute(uuid, dto);
   }
 
   @Endpoint.delete({
-    url: '/:uuid',
+    url: ':uuid',
     description: 'Excluir um usuário',
     authType: 'access',
     requirePermission: true,
@@ -144,12 +147,12 @@ export class UserController {
     { action: ActionEnum.READ, subject: SubjectEnum.USER },
     { action: ActionEnum.DELETE, subject: SubjectEnum.USER },
   ])
-  async delete(@Query('uuid') uuid: string): Promise<void> {
+  async delete(@Param('uuid', UuidValidationPipe) uuid: string): Promise<void> {
     await this.deleteUserUseCase.execute(uuid);
   }
 
   @Endpoint.patch({
-    url: '/:uuid/activate',
+    url: ':uuid/activate',
     description: 'Ativar usuário',
     authType: 'access',
     requirePermission: true,
@@ -166,12 +169,14 @@ export class UserController {
     responseMessage: 'Usuário ativado com sucesso',
   })
   @CheckPermissions([{ action: ActionEnum.UPDATE, subject: SubjectEnum.USER }])
-  async activate(@Query('uuid') uuid: string): Promise<void> {
+  async activate(
+    @Param('uuid', UuidValidationPipe) uuid: string,
+  ): Promise<void> {
     await this.activateUserUseCase.execute(uuid);
   }
 
   @Endpoint.patch({
-    url: '/:uuid/deactivate',
+    url: ':uuid/deactivate',
     description: 'Desativar usuário',
     authType: 'access',
     requirePermission: true,
@@ -188,7 +193,9 @@ export class UserController {
     responseMessage: 'Usuário desativado com sucesso',
   })
   @CheckPermissions([{ action: ActionEnum.UPDATE, subject: SubjectEnum.USER }])
-  async deactivate(@Query('uuid') uuid: string): Promise<void> {
+  async deactivate(
+    @Param('uuid', UuidValidationPipe) uuid: string,
+  ): Promise<void> {
     await this.deactivateUserUseCase.execute(uuid);
   }
 }

@@ -39,10 +39,25 @@ export class TransactionInterceptor implements NestInterceptor {
     return next.handle().pipe(
       concatMap(async (data: unknown) => {
         await queryRunner.commitTransaction();
+        try {
+          await queryRunner.release();
+        } catch (releaseError) {
+          void releaseError;
+        }
         return data;
       }),
       catchError(async (error) => {
-        await queryRunner.rollbackTransaction();
+        try {
+          await queryRunner.rollbackTransaction();
+        } catch (rollbackError) {
+          void rollbackError;
+        } finally {
+          try {
+            await queryRunner.release();
+          } catch (releaseError) {
+            void releaseError;
+          }
+        }
         throw error;
       }),
     );

@@ -1,7 +1,7 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { IRoleRepository } from '../../domain/repositories/role.repository.interface';
 import { PaginatedResponse } from 'src/shared/interfaces/paginated-response.interface';
-import { FindAllRoleResponseDto } from '../dtos/response/find-all-role.respose.dto';
+import { FindAllRoleResponseDto } from '../dtos/response/find-all-role.response.dto';
 import { FindAllRoleRequestDto } from '../dtos/request/find-all-role.request.dto';
 
 @Injectable()

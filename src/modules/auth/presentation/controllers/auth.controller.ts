@@ -1,4 +1,4 @@
-import { Body, Controller, Res } from '@nestjs/common';
+import { Body, Controller, HttpCode, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { ApiTags } from '@nestjs/swagger';
 import { LoginUseCase } from '../../application/use-cases/login.use-case';
@@ -36,6 +36,7 @@ export class AuthController {
     ],
     responseMessage: 'Login realizado com sucesso',
   })
+  @HttpCode(200)
   async login(
     @Body() dto: LoginRequestDto,
     @Res({ passthrough: true }) response: Response,
@@ -68,6 +69,7 @@ export class AuthController {
     ],
     responseMessage: 'Sessão renovada com sucesso',
   })
+  @HttpCode(200)
   refresh(
     @CurrentUser() user: AuthUser,
     @Res({ passthrough: true }) response: Response,
@@ -99,6 +101,7 @@ export class AuthController {
     ],
     responseMessage: 'Logout realizado com sucesso',
   })
+  @HttpCode(200)
   logout(@Res({ passthrough: true }) response: Response) {
     response.clearCookie('token', cookieConfig);
     response.clearCookie('refreshToken', cookieConfig);

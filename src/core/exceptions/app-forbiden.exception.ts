@@ -1,5 +1,5 @@
 import { ForbiddenException } from '@nestjs/common';
-import { AppForbiddenExceptionOptions } from './types/app-forbiden.execption.type';
+import { AppForbiddenExceptionOptions } from './types/app-forbiden.exception.type';
 
 export class AppForbiddenException extends ForbiddenException {
   constructor(options?: AppForbiddenExceptionOptions) {

@@ -63,7 +63,7 @@ export abstract class BaseEntity {
   activate(resource: string, gender: Gender): void {
     if (this._deletedAt) {
       throw new AppBadRequestException({
-        message: `Não é possível ativar um dadod excluído`,
+        message: `Não é possível ativar um dado excluído`,
       });
     }
 

@@ -5,6 +5,7 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
+import { STATUS_CODES } from 'http';
 import { Request, Response } from 'express';
 import { AppLogger } from '../logger/logger.service';
 
@@ -29,7 +30,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
     let message: string | string[] = 'Erro interno do servidor';
 
     if (isHttpException) {
-      if (
+      if (typeof exceptionResponse === 'string') {
+        message = exceptionResponse;
+      } else if (
         typeof exceptionResponse === 'object' &&
         exceptionResponse !== null &&
         'message' in exceptionResponse
@@ -42,7 +45,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       }
     }
 
-    let error = 'Internal Server Error';
+    let error = STATUS_CODES[status] ?? 'Internal Server Error';
 
     if (
       isHttpException &&
@@ -50,10 +53,18 @@ export class HttpExceptionFilter implements ExceptionFilter {
       exceptionResponse !== null &&
       'error' in exceptionResponse
     ) {
-      error = (exceptionResponse as Record<string, unknown>).error as string;
+      const candidate = (exceptionResponse as Record<string, unknown>).error;
+      if (typeof candidate === 'string') {
+        error = candidate;
+      }
     }
 
-    const finalMessage = Array.isArray(message) ? message[0] : message;
+    const messages = Array.isArray(message) ? message : undefined;
+    const finalMessage = Array.isArray(message)
+      ? message.length > 0
+        ? message[0]
+        : 'Erro interno do servidor'
+      : message;
 
     if (status >= 500) {
       this.logger.error(
@@ -76,6 +87,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const rest = { ...responseBody };
     delete rest.message;
     delete rest.error;
+    delete rest.statusCode;
+
+    const meta = {
+      ...rest,
+      ...(messages && { messages }),
+    };
 
     response.status(status).json({
       success: false,
@@ -84,7 +101,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       message: finalMessage,
       path: request.url,
       timestamp: new Date().toISOString(),
-      ...(Object.keys(rest).length > 0 && { meta: rest }),
+      ...(Object.keys(meta).length > 0 && { meta }),
     });
   }
 }

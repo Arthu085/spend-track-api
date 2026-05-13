@@ -1,5 +1,5 @@
 import { IRoleRepository } from 'src/modules/access-control/domain/repositories/role.repository.interface';
-import { FindOneRoleUseCase } from '../find-one-role.use.case';
+import { FindOneRoleUseCase } from '../find-one-role.use-case';
 import { RoleEntity } from 'src/modules/access-control/domain/entities/role.entity';
 import { RoleEnum } from 'src/modules/access-control/domain/enums/role.enum';
 import { FindOneRoleResponseDto } from '../../dtos/response/find-one-role.response.dto';

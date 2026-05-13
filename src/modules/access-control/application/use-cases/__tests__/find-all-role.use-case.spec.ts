@@ -2,7 +2,7 @@ import { IRoleRepository } from 'src/modules/access-control/domain/repositories/
 import { RoleEntity } from 'src/modules/access-control/domain/entities/role.entity';
 import { RoleEnum } from 'src/modules/access-control/domain/enums/role.enum';
 import { FindAllRoleUseCase } from '../find-all-role.use-case';
-import { FindAllRoleResponseDto } from '../../dtos/response/find-all-role.respose.dto';
+import { FindAllRoleResponseDto } from '../../dtos/response/find-all-role.response.dto';
 
 describe('FindAllRoleUseCase', () => {
   let useCase: FindAllRoleUseCase;

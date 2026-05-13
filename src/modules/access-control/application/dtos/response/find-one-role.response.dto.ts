@@ -1,6 +1,6 @@
 import { RoleEntity } from 'src/modules/access-control/domain/entities/role.entity';
 import { FindAllAbilityResponseDto } from './find-all-ability.response.dto';
-import { FindAllRoleResponseDto } from './find-all-role.respose.dto';
+import { FindAllRoleResponseDto } from './find-all-role.response.dto';
 
 export class FindOneRoleResponseDto extends FindAllRoleResponseDto {
   abilities: FindAllAbilityResponseDto[];

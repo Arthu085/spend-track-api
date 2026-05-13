@@ -6,10 +6,10 @@ import { UpdateRoleAbilitiesUseCase } from './application/use-cases/update-role-
 import { PermissionGuard } from './presentation/guards/permission.guard';
 import { RoleController } from './presentation/controllers/role.controller';
 import { FindAllRoleUseCase } from './application/use-cases/find-all-role.use-case';
-import { FindOneRoleUseCase } from './application/use-cases/find-one-role.use.case';
+import { FindOneRoleUseCase } from './application/use-cases/find-one-role.use-case';
 import { AbilityRepository } from './infra/repositories/ability.repository';
 import { AbilityController } from './presentation/controllers/ability.controller';
-import { FindAllAbilityUseCase } from './application/use-cases/find-all-ability.use.case';
+import { FindAllAbilityUseCase } from './application/use-cases/find-all-ability.use-case';
 
 @Module({
   controllers: [RoleController, AbilityController],

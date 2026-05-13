@@ -8,7 +8,7 @@ import { CheckPermissionUseCase } from '../../application/use-cases/check-permis
 import { ActionEnumTranslation } from '../../../../core/domain/enums/action.enum';
 import { SubjectEnumTranslation } from '../../../../core/domain/enums/subject.enum';
 import { RequestWithUser } from '../../../../core/api/types/request-with-user.type';
-import { AppForbiddenException } from 'src/core/exceptions/app-forbiden.exeception';
+import { AppForbiddenException } from 'src/core/exceptions/app-forbiden.exception';
 
 @Injectable()
 export class PermissionGuard implements CanActivate {
