@@ -10,7 +10,7 @@ import {
 
 export abstract class BaseOrmEntity {
   @PrimaryGeneratedColumn({ comment: 'Identificador único da entidade' })
-  id: number;
+  id!: number;
 
   @Column({
     type: 'uuid',
@@ -20,21 +20,21 @@ export abstract class BaseOrmEntity {
     comment: 'Identificador único da entidade no formato UUID',
   })
   @Index()
-  uuid: string;
+  uuid!: string;
 
   @CreateDateColumn({
     name: 'created_at',
     type: 'timestamptz',
     comment: 'Data de criação da entidade',
   })
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn({
     name: 'updated_at',
     type: 'timestamptz',
     comment: 'Data de atualização da entidade',
   })
-  updatedAt: Date;
+  updatedAt!: Date;
 
   @DeleteDateColumn({
     name: 'deleted_at',
@@ -42,7 +42,7 @@ export abstract class BaseOrmEntity {
     nullable: true,
     comment: 'Data de exclusão da entidade',
   })
-  deletedAt: Date | null;
+  deletedAt!: Date | null;
 
   @Column({
     type: 'enum',
@@ -52,5 +52,5 @@ export abstract class BaseOrmEntity {
     comment: 'Status da entidade',
   })
   @Index()
-  status: StatusEnum;
+  status!: StatusEnum;
 }

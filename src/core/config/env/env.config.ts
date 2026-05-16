@@ -2,6 +2,12 @@ import { AppBadRequestException } from 'src/core/exceptions/app-bad-request.exce
 import { envSchema } from './schemas/env.schemas';
 import { EnvOptions } from './types/env.types';
 
+try {
+  if (typeof process.loadEnvFile === 'function') {
+    process.loadEnvFile();
+  }
+} catch {}
+
 const validationResult = envSchema.validate(process.env);
 const { error } = validationResult;
 const envVars = validationResult.value as EnvOptions;

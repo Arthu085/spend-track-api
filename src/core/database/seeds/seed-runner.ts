@@ -7,7 +7,7 @@ import { RoleAbilitySeed } from './data/role-ability.seed';
 import { UserSeed } from './data/user.seed';
 
 class SeedRunner {
-  private dataSource: DataSource;
+  private dataSource!: DataSource;
 
   async initialize() {
     this.dataSource = AppDataSource;

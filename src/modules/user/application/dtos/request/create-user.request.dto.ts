@@ -22,7 +22,7 @@ export class CreateUserRequestDto {
   @MaxLength(255, {
     message: 'O nome completo deve conter no máximo 255 caracteres',
   })
-  fullName: string;
+  fullName!: string;
 
   @ApiProperty({
     description: 'Endereço de email do usuário',
@@ -33,7 +33,7 @@ export class CreateUserRequestDto {
   @MaxLength(255, {
     message: 'O endereço de email deve conter no máximo 255 caracteres',
   })
-  email: string;
+  email!: string;
 
   @ApiProperty({
     description: 'Senha do usuário',
@@ -51,7 +51,7 @@ export class CreateUserRequestDto {
     message:
       'A senha deve conter pelo menos 1 letra maiúscula, 1 minúscula, 1 número e 1 caractere especial',
   })
-  password: string;
+  password!: string;
 
   @ApiProperty({
     description: 'UUID da função do usuário',
@@ -59,5 +59,5 @@ export class CreateUserRequestDto {
   })
   @IsNotEmpty({ message: 'O UUID da função é obrigatório' })
   @IsUUID('4', { message: 'O UUID da função deve ser um UUID válido' })
-  roleUuid: string;
+  roleUuid!: string;
 }

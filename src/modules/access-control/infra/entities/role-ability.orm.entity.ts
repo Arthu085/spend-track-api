@@ -11,10 +11,10 @@ export class RoleAbilityOrmEntity extends BaseOrmEntity {
   @ManyToOne(() => RoleOrmEntity, (role) => role.roleAbilities)
   @JoinColumn({ name: 'role_id' })
   @Index()
-  role: RoleOrmEntity;
+  role!: RoleOrmEntity;
 
   @ManyToOne(() => AbilityOrmEntity)
   @JoinColumn({ name: 'ability_id' })
   @Index()
-  ability: AbilityOrmEntity;
+  ability!: AbilityOrmEntity;
 }

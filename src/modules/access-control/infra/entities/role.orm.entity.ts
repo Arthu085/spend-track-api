@@ -13,11 +13,11 @@ export class RoleOrmEntity extends BaseOrmEntity {
     nullable: false,
     comment: 'Nome da função',
   })
-  name: RoleEnum;
+  name!: RoleEnum;
 
-  @OneToMany(() => RoleAbilityOrmEntity, (ra) => ra.role)
-  roleAbilities: RoleAbilityOrmEntity[];
+  @OneToMany(() => RoleAbilityOrmEntity, (roleAbility) => roleAbility.role)
+  roleAbilities!: RoleAbilityOrmEntity[];
 
   @OneToMany(() => UserOrmEntity, (user) => user.role)
-  users: UserOrmEntity[];
+  users!: UserOrmEntity[];
 }

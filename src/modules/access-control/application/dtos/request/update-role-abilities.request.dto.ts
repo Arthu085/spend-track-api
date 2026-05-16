@@ -12,5 +12,5 @@ export class UpdateRoleAbilitiesRequestDto {
   @ArrayMinSize(0)
   @ValidateNested({ each: true })
   @Type(() => AbilityItemRequestDto)
-  abilities: AbilityItemRequestDto[];
+  abilities!: AbilityItemRequestDto[];
 }

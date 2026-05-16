@@ -15,7 +15,7 @@ export class AbilityOrmEntity extends BaseOrmEntity {
     comment: 'Ação da permissão (CREATE, READ, etc)',
   })
   @Index()
-  action: ActionEnum;
+  action!: ActionEnum;
 
   @Column({
     type: 'enum',
@@ -24,5 +24,5 @@ export class AbilityOrmEntity extends BaseOrmEntity {
     comment: 'Recurso da permissão (USER, ROLE, etc)',
   })
   @Index()
-  subject: SubjectEnum;
+  subject!: SubjectEnum;
 }

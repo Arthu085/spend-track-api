@@ -10,7 +10,7 @@ export class CheckPermissionRequestDto {
   })
   @IsNotEmpty({ message: 'O UUID da função é obrigatório' })
   @IsUUID('4', { message: 'O UUID da função deve ser um UUID válido' })
-  roleUuid: string;
+  roleUuid!: string;
 
   @ApiProperty({
     description: 'Ação a ser verificada',
@@ -20,7 +20,7 @@ export class CheckPermissionRequestDto {
   @IsEnum(ActionEnum, {
     message: 'A ação deve ser um enum',
   })
-  action: ActionEnum;
+  action!: ActionEnum;
 
   @ApiProperty({
     description: 'Sujeito da permissão',
@@ -30,5 +30,5 @@ export class CheckPermissionRequestDto {
   @IsEnum(SubjectEnum, {
     message: 'O sujeito deve ser um enum',
   })
-  subject: SubjectEnum;
+  subject!: SubjectEnum;
 }

@@ -11,7 +11,7 @@ export class UserOrmEntity extends BaseOrmEntity {
     comment: 'Nome completo do usuário',
   })
   @Index()
-  fullName: string;
+  fullName!: string;
 
   @Column({
     name: 'email',
@@ -21,7 +21,7 @@ export class UserOrmEntity extends BaseOrmEntity {
     comment: 'Endereço de email do usuário',
   })
   @Index()
-  email: string;
+  email!: string;
 
   @Column({
     name: 'password',
@@ -29,13 +29,13 @@ export class UserOrmEntity extends BaseOrmEntity {
     nullable: false,
     comment: 'Senha do usuário (armazenada com hash)',
   })
-  password: string;
+  password!: string;
 
   @ManyToOne(() => RoleOrmEntity, (role) => role.users, { nullable: false })
   @JoinColumn({ name: 'role_id' })
   @Index()
-  role: RoleOrmEntity;
+  role!: RoleOrmEntity;
 
   @Column({ name: 'role_id' })
-  roleId: number;
+  roleId!: number;
 }

@@ -10,7 +10,7 @@ export class AbilityItemRequestDto {
   })
   @IsNotEmpty({ message: 'A ação é obrigatória' })
   @IsEnum(ActionEnum, { message: 'A ação deve ser um enum' })
-  action: ActionEnum;
+  action!: ActionEnum;
 
   @ApiProperty({
     enum: SubjectEnum,
@@ -18,5 +18,5 @@ export class AbilityItemRequestDto {
   })
   @IsNotEmpty({ message: 'O sujeito é obrigatório' })
   @IsEnum(SubjectEnum, { message: 'O sujeito deve ser um enum' })
-  subject: SubjectEnum;
+  subject!: SubjectEnum;
 }
