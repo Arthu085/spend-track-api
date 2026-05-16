@@ -66,15 +66,18 @@ export class HttpExceptionFilter implements ExceptionFilter {
         : 'Erro interno do servidor'
       : message;
 
+    const exceptionName =
+      exception instanceof Error ? `[${exception.name}] ` : '';
+
     if (status >= 500) {
       this.logger.error(
-        `${status} - ${request.method} ${request.url} - ${finalMessage}`,
+        `${status} - ${request.method} ${request.url} - ${exceptionName}${finalMessage}`,
         exception instanceof Error ? exception.stack : undefined,
         'HttpExceptionFilter',
       );
     } else {
       this.logger.warn(
-        `${status} - ${request.method} ${request.url} - ${finalMessage}`,
+        `${status} - ${request.method} ${request.url} - ${exceptionName}${finalMessage}`,
         'HttpExceptionFilter',
       );
     }
@@ -84,10 +87,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
         ? (exceptionResponse as Record<string, unknown>)
         : {};
 
-    const rest = { ...responseBody };
-    delete rest.message;
-    delete rest.error;
-    delete rest.statusCode;
+    /* eslint-disable @typescript-eslint/no-unused-vars */
+    const {
+      message: _msg,
+      error: _err,
+      statusCode: _code,
+      ...rest
+    } = responseBody;
+    /* eslint-enable @typescript-eslint/no-unused-vars */
 
     const meta = {
       ...rest,

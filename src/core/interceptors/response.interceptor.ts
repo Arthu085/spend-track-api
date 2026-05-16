@@ -32,12 +32,22 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, unknown> {
     const response = ctx.getResponse<Response>();
 
     return next.handle().pipe(
-      map((data: ResponseData | null | undefined) => {
+      map((data: unknown) => {
         const statusCode = response.statusCode;
 
-        const message = this.getResponseMessage(data, responseMessage);
+        if (statusCode === 204) {
+          return data;
+        }
 
-        const isPaginated = !!(data?.meta && data?.data);
+        const isObject = typeof data === 'object' && data !== null;
+        const responseData = isObject ? (data as ResponseData) : null;
+        const primitiveData = !isObject && data !== undefined ? data : null;
+
+        const message = this.getResponseMessage(responseData, responseMessage);
+
+        const isPaginated =
+          isObject &&
+          !!(responseData?.meta && responseData?.data !== undefined);
 
         return {
           success: true,
@@ -45,11 +55,11 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, unknown> {
           message,
           ...(isPaginated
             ? {
-                data: data.data,
-                meta: data.meta,
+                data: responseData.data,
+                meta: responseData.meta,
               }
             : {
-                data: data ?? null,
+                data: isObject ? responseData : (primitiveData ?? null),
               }),
           timestamp: new Date().toISOString(),
         };
@@ -58,7 +68,7 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, unknown> {
   }
 
   private getResponseMessage(
-    data: ResponseData | null | undefined,
+    data: ResponseData | null,
     defaultMessage: string,
   ): string {
     if (data?.meta?.total === 0) {
