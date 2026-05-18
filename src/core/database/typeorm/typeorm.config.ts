@@ -1,16 +1,16 @@
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
-import { envConfig } from 'src/core/config/env/env.config';
+import { EnvOptions } from 'src/core/config/env/types/env.types';
 import { isLoggingEnabled } from 'src/core/config/env/helpers/env.helpers';
 
-export const typeOrmConfig: TypeOrmModuleOptions = {
+export const getTypeOrmConfig = (env: EnvOptions): TypeOrmModuleOptions => ({
   type: 'postgres',
-  host: envConfig.DB_HOST,
-  port: envConfig.DB_PORT,
-  username: envConfig.DB_USERNAME,
-  password: envConfig.DB_PASSWORD,
-  database: envConfig.DB_NAME,
-  schema: envConfig.DB_SCHEMA,
-  ssl: envConfig.DB_SSL ? { rejectUnauthorized: false } : false,
+  host: env.DB_HOST,
+  port: env.DB_PORT,
+  username: env.DB_USERNAME,
+  password: env.DB_PASSWORD,
+  database: env.DB_NAME,
+  schema: env.DB_SCHEMA,
+  ssl: env.DB_SSL ? { rejectUnauthorized: false } : false,
   autoLoadEntities: true,
   synchronize: false,
   logging: isLoggingEnabled,
@@ -18,4 +18,4 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
     __dirname + '/../entities/**/*.entity{.ts,.js}',
     __dirname + '/../../../modules/**/infra/entities/**/*.entity{.ts,.js}',
   ],
-};
+});

@@ -1,13 +1,13 @@
-import { envConfig } from '../env/env.config';
+import { EnvOptions } from '../env/types/env.types';
 import { JwtOptions } from './types/auth.types';
 
-export const jwtConfig: JwtOptions = {
+export const getJwtConfig = (env: EnvOptions): JwtOptions => ({
   access: {
-    secret: envConfig.JWT_SECRET,
-    expiresIn: envConfig.JWT_EXPIRES_IN,
+    secret: env.JWT_SECRET,
+    expiresIn: env.JWT_EXPIRES_IN,
   },
   refresh: {
-    secret: envConfig.JWT_REFRESH_SECRET,
-    expiresIn: envConfig.JWT_REFRESH_EXPIRES_IN,
+    secret: env.JWT_REFRESH_SECRET,
+    expiresIn: env.JWT_REFRESH_EXPIRES_IN,
   },
-};
+});

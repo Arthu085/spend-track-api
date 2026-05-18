@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { DatabaseModule } from './core/database/typeorm/typeorm.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { throttleConfig } from './core/config/throttle/throttle.config';
+import { envConfig } from './core/config/env/env.config';
+import { envSchema } from './core/config/env/schemas/env.schemas';
 import { AppLogger } from './core/logger/logger.service';
 import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { HttpExceptionFilter } from './core/filters/http-exception.filter';
@@ -13,13 +16,25 @@ import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
   imports: [
-    DatabaseModule,
-    ThrottlerModule.forRoot([
-      {
-        ttl: throttleConfig.ttl,
-        limit: throttleConfig.limit,
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [envConfig],
+      validationSchema: envSchema,
+      validationOptions: {
+        abortEarly: true,
       },
-    ]),
+    }),
+    DatabaseModule,
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: () => [
+        {
+          ttl: throttleConfig.ttl,
+          limit: throttleConfig.limit,
+        },
+      ],
+    }),
     AuthModule,
     AccessControlModule,
     UserModule,

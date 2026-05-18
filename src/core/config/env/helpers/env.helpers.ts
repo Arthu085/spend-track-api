@@ -1,11 +1,9 @@
-import { envConfig } from '../env.config';
+export const isProduction = process.env.NODE_ENV === 'production';
 
-export const isProduction = envConfig.NODE_ENV === 'production';
+export const isDevelopment = process.env.NODE_ENV === 'development';
 
-export const isDevelopment = envConfig.NODE_ENV === 'development';
+export const isTest = process.env.NODE_ENV === 'test';
 
-export const isTest = envConfig.NODE_ENV === 'test';
+export const isLoggingEnabled = process.env.NODE_ENV !== 'test';
 
-export const isLoggingEnabled = envConfig.NODE_ENV !== 'test';
-
-export const isLocalhost = envConfig.CLIENT_URL.includes('localhost');
+export const isLocalhost = (process.env.CLIENT_URL || '').includes('localhost');

@@ -1,7 +1,9 @@
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { Request } from 'express';
-import { jwtConfig } from 'src/core/config/auth/jwt.config';
+import { getJwtConfig } from 'src/core/config/auth/jwt.config';
+import { EnvOptions } from 'src/core/config/env/types/env.types';
+import { ConfigService } from '@nestjs/config';
 import { JwtPayload } from '../../domain/types/jwt-payload.type';
 import { IUserRepository } from 'src/modules/user/domain/repositories/user.repository.interface';
 import { Uuid } from 'src/core/domain/value-objects/uuid.vo';
@@ -15,14 +17,16 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(
     @Inject('IUserRepository')
     private readonly userRepo: IUserRepository,
+    private readonly configService: ConfigService,
   ) {
+    const env = configService.get<EnvOptions>('env')!;
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         (request: Request): string | null => {
           return (request?.cookies?.token as string) || null;
         },
       ]),
-      secretOrKey: jwtConfig.access.secret,
+      secretOrKey: getJwtConfig(env).access.secret,
       ignoreExpiration: false,
     });
   }

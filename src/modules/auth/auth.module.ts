@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
-import { jwtConfig } from '../../core/config/auth/jwt.config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { getJwtConfig } from '../../core/config/auth/jwt.config';
+import { EnvOptions } from '../../core/config/env/types/env.types';
 import { JwtTokenService } from './infra/services/jwt-token.service';
 import { UserModule } from '../user/user.module';
 import { AuthController } from './presentation/controllers/auth.controller';
@@ -15,9 +17,17 @@ import { RefreshUseCase } from './application/use-cases/refresh.use-case';
 @Module({
   imports: [
     PassportModule.register({}),
-    JwtModule.register({
-      secret: jwtConfig.access.secret,
-      signOptions: { expiresIn: jwtConfig.access.expiresIn },
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        const env = configService.get<EnvOptions>('env')!;
+        const jwtConf = getJwtConfig(env);
+        return {
+          secret: jwtConf.access.secret,
+          signOptions: { expiresIn: jwtConf.access.expiresIn },
+        };
+      },
     }),
     UserModule,
     AccessControlModule,

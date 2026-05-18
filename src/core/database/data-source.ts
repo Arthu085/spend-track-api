@@ -1,8 +1,19 @@
 import { DataSource, DataSourceOptions } from 'typeorm';
-import { typeOrmConfig } from './typeorm/typeorm.config';
+import { getTypeOrmConfig } from './typeorm/typeorm.config';
+import { envConfig } from '../config/env/env.config';
+
+try {
+  if (typeof process.loadEnvFile === 'function') {
+    process.loadEnvFile();
+  }
+} catch {
+  // Ignora caso arquivo não exista ou erro ao carregar
+}
+
+const env = envConfig();
 
 const dataSourceOptions: DataSourceOptions = {
-  ...(typeOrmConfig as DataSourceOptions),
+  ...(getTypeOrmConfig(env) as DataSourceOptions),
   migrations: [__dirname + '/migrations/*{.ts,.js}'],
 };
 

@@ -1,10 +1,11 @@
 import { Body, Controller, HttpCode, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { ApiTags } from '@nestjs/swagger';
+import { ConfigService } from '@nestjs/config';
+import { EnvOptions } from 'src/core/config/env/types/env.types';
 import { LoginUseCase } from '../../application/use-cases/login.use-case';
 import { Endpoint } from 'src/core/api/builders/endpoint.builder';
-import { cookieConfig } from 'src/core/config/auth/cookie.config';
-import { envConfig } from 'src/core/config/env/env.config';
+import { getCookieConfig } from 'src/core/config/auth/cookie.config';
 import { LoginResponseDto } from '../../application/dtos/response/login.response.dto';
 import { LoginRequestDto } from '../../application/dtos/request/login.request.dto';
 import { ProfileUseCase } from '../../application/use-cases/profile.use-case';
@@ -20,6 +21,7 @@ export class AuthController {
     private readonly loginUseCase: LoginUseCase,
     private readonly profileUseCase: ProfileUseCase,
     private readonly refreshUseCase: RefreshUseCase,
+    private readonly configService: ConfigService,
   ) {}
 
   @Endpoint.post({
@@ -41,16 +43,19 @@ export class AuthController {
     @Body() dto: LoginRequestDto,
     @Res({ passthrough: true }) response: Response,
   ): Promise<LoginResponseDto> {
+    const env = this.configService.get<EnvOptions>('env')!;
+    const cookieConfig = getCookieConfig(env);
+
     const result = await this.loginUseCase.execute(dto);
 
     response.cookie('token', result.accessToken, {
       ...cookieConfig,
-      maxAge: envConfig.COOKIE_ACCESS_MAX_AGE,
+      maxAge: env.COOKIE_ACCESS_MAX_AGE,
     });
 
     response.cookie('refreshToken', result.refreshToken, {
       ...cookieConfig,
-      maxAge: envConfig.COOKIE_REFRESH_MAX_AGE,
+      maxAge: env.COOKIE_REFRESH_MAX_AGE,
     });
 
     return result;
@@ -74,16 +79,19 @@ export class AuthController {
     @CurrentUser() user: AuthUser,
     @Res({ passthrough: true }) response: Response,
   ): LoginResponseDto {
+    const env = this.configService.get<EnvOptions>('env')!;
+    const cookieConfig = getCookieConfig(env);
+
     const result = this.refreshUseCase.execute(user);
 
     response.cookie('token', result.accessToken, {
       ...cookieConfig,
-      maxAge: envConfig.COOKIE_ACCESS_MAX_AGE,
+      maxAge: env.COOKIE_ACCESS_MAX_AGE,
     });
 
     response.cookie('refreshToken', result.refreshToken, {
       ...cookieConfig,
-      maxAge: envConfig.COOKIE_REFRESH_MAX_AGE,
+      maxAge: env.COOKIE_REFRESH_MAX_AGE,
     });
 
     return result;
@@ -103,6 +111,9 @@ export class AuthController {
   })
   @HttpCode(200)
   logout(@Res({ passthrough: true }) response: Response) {
+    const env = this.configService.get<EnvOptions>('env')!;
+    const cookieConfig = getCookieConfig(env);
+
     response.clearCookie('token', cookieConfig);
     response.clearCookie('refreshToken', cookieConfig);
 
