@@ -12,6 +12,7 @@ export class UserEntity extends BaseEntity {
   private _email: UserEmail;
   private _password: UserPassword;
   private _role: RoleEntity;
+  private _hashedRefreshToken?: string | null;
 
   private constructor(props: {
     id: number;
@@ -24,6 +25,7 @@ export class UserEntity extends BaseEntity {
     email: UserEmail;
     password: UserPassword;
     role: RoleEntity;
+    hashedRefreshToken?: string | null;
   }) {
     super(props);
 
@@ -31,6 +33,7 @@ export class UserEntity extends BaseEntity {
     this._email = props.email;
     this._password = props.password;
     this._role = props.role;
+    this._hashedRefreshToken = props.hashedRefreshToken;
   }
 
   get fullName(): UserFullName {
@@ -49,6 +52,10 @@ export class UserEntity extends BaseEntity {
     return this._role;
   }
 
+  get hashedRefreshToken(): string | null | undefined {
+    return this._hashedRefreshToken;
+  }
+
   static create(props: {
     fullName: UserFullName;
     email: UserEmail;
@@ -63,6 +70,7 @@ export class UserEntity extends BaseEntity {
       updatedAt: new Date(),
       deletedAt: null,
       status: StatusEnum.ACTIVE,
+      hashedRefreshToken: null,
     });
   }
 
@@ -77,6 +85,7 @@ export class UserEntity extends BaseEntity {
     email: UserEmail;
     password: UserPassword;
     role: RoleEntity;
+    hashedRefreshToken?: string | null;
   }): UserEntity {
     return new UserEntity(props);
   }
@@ -99,6 +108,11 @@ export class UserEntity extends BaseEntity {
 
   changeRole(newRole: RoleEntity): void {
     this._role = newRole;
+  }
+
+  updateHashedRefreshToken(hash: string | null): void {
+    this._hashedRefreshToken = hash;
+    this.touch();
   }
 
   update(props: UpdateUserProps): void {

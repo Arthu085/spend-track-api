@@ -6,6 +6,7 @@ import { LoginResponseDto } from '../dtos/response/login.response.dto';
 import { IUserRepository } from 'src/modules/user/domain/repositories/user.repository.interface';
 import { UserEmail } from 'src/modules/user/domain/value-objects/user-email.vo';
 import { Inject, Injectable } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class LoginUseCase {
@@ -41,6 +42,10 @@ export class LoginUseCase {
 
     const accessToken = this.tokenService.generateAccessToken(payload);
     const refreshToken = this.tokenService.generateRefreshToken(payload);
+
+    const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
+    user.updateHashedRefreshToken(hashedRefreshToken);
+    await this.userRepo.save(user);
 
     return new LoginResponseDto(accessToken, refreshToken);
   }

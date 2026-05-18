@@ -6,13 +6,13 @@ import { EnvOptions } from 'src/core/config/env/types/env.types';
 import { LoginUseCase } from '../../application/use-cases/login.use-case';
 import { Endpoint } from 'src/core/api/builders/endpoint.builder';
 import { getCookieConfig } from 'src/core/config/auth/cookie.config';
-import { LoginResponseDto } from '../../application/dtos/response/login.response.dto';
 import { LoginRequestDto } from '../../application/dtos/request/login.request.dto';
 import { ProfileUseCase } from '../../application/use-cases/profile.use-case';
 import { ProfileResponseDto } from '../../application/dtos/response/profile.response.dto';
 import { CurrentUser } from 'src/core/decorators/current-user.decorator';
 import { AuthUser } from '../../domain/types/auth-user.type';
 import { RefreshUseCase } from '../../application/use-cases/refresh.use-case';
+import { LogoutUseCase } from '../../application/use-cases/logout.use-case';
 
 @Controller('auth')
 @ApiTags('Auth')
@@ -21,6 +21,7 @@ export class AuthController {
     private readonly loginUseCase: LoginUseCase,
     private readonly profileUseCase: ProfileUseCase,
     private readonly refreshUseCase: RefreshUseCase,
+    private readonly logoutUseCase: LogoutUseCase,
     private readonly configService: ConfigService,
   ) {}
 
@@ -33,7 +34,6 @@ export class AuthController {
       {
         status: 200,
         description: 'Login realizado com sucesso',
-        responseType: LoginResponseDto,
       },
     ],
     responseMessage: 'Login realizado com sucesso',
@@ -42,7 +42,7 @@ export class AuthController {
   async login(
     @Body() dto: LoginRequestDto,
     @Res({ passthrough: true }) response: Response,
-  ): Promise<LoginResponseDto> {
+  ): Promise<void> {
     const env = this.configService.get<EnvOptions>('env')!;
     const cookieConfig = getCookieConfig(env);
 
@@ -57,8 +57,6 @@ export class AuthController {
       ...cookieConfig,
       maxAge: env.COOKIE_REFRESH_MAX_AGE,
     });
-
-    return result;
   }
 
   @Endpoint.post({
@@ -69,20 +67,19 @@ export class AuthController {
       {
         status: 200,
         description: 'Sessão renovada com sucesso',
-        responseType: LoginResponseDto,
       },
     ],
     responseMessage: 'Sessão renovada com sucesso',
   })
   @HttpCode(200)
-  refresh(
+  async refresh(
     @CurrentUser() user: AuthUser,
     @Res({ passthrough: true }) response: Response,
-  ): LoginResponseDto {
+  ): Promise<void> {
     const env = this.configService.get<EnvOptions>('env')!;
     const cookieConfig = getCookieConfig(env);
 
-    const result = this.refreshUseCase.execute(user);
+    const result = await this.refreshUseCase.execute(user);
 
     response.cookie('token', result.accessToken, {
       ...cookieConfig,
@@ -93,8 +90,6 @@ export class AuthController {
       ...cookieConfig,
       maxAge: env.COOKIE_REFRESH_MAX_AGE,
     });
-
-    return result;
   }
 
   @Endpoint.post({
@@ -110,9 +105,14 @@ export class AuthController {
     responseMessage: 'Logout realizado com sucesso',
   })
   @HttpCode(200)
-  logout(@Res({ passthrough: true }) response: Response) {
+  async logout(
+    @CurrentUser() user: AuthUser,
+    @Res({ passthrough: true }) response: Response,
+  ) {
     const env = this.configService.get<EnvOptions>('env')!;
     const cookieConfig = getCookieConfig(env);
+
+    await this.logoutUseCase.execute(user);
 
     response.clearCookie('token', cookieConfig);
     response.clearCookie('refreshToken', cookieConfig);

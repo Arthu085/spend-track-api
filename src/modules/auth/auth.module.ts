@@ -13,6 +13,7 @@ import { ProfileUseCase } from './application/use-cases/profile.use-case';
 import { AccessControlModule } from '../access-control/access-control.module';
 import { JwtRefreshStrategy } from './infra/strategies/jwt-refresh.strategy';
 import { RefreshUseCase } from './application/use-cases/refresh.use-case';
+import { LogoutUseCase } from './application/use-cases/logout.use-case';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { RefreshUseCase } from './application/use-cases/refresh.use-case';
     LoginUseCase,
     ProfileUseCase,
     RefreshUseCase,
+    LogoutUseCase,
   ],
   exports: ['ITokenService'],
 })

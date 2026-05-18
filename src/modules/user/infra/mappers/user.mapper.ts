@@ -27,6 +27,7 @@ export class UserMapper {
       email: UserEmail.create(orm.email),
       password: UserPassword.fromHash(orm.password),
       role: RoleMapper.toDomain(orm.role),
+      hashedRefreshToken: orm.hashedRefreshToken,
     });
   }
 
@@ -52,6 +53,7 @@ export class UserMapper {
     orm.fullName = domain.fullName.getValue();
     orm.email = domain.email.getValue();
     orm.password = domain.password.getValue();
+    orm.hashedRefreshToken = domain.hashedRefreshToken ?? null;
 
     return orm;
   }

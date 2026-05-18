@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { Request } from 'express';
+import * as bcrypt from 'bcrypt';
 import { getJwtConfig } from 'src/core/config/auth/jwt.config';
 import { EnvOptions } from 'src/core/config/env/types/env.types';
 import { ConfigService } from '@nestjs/config';
@@ -30,10 +31,18 @@ export class JwtRefreshStrategy extends PassportStrategy(
       ]),
       secretOrKey: getJwtConfig(env).refresh.secret,
       ignoreExpiration: false,
+      passReqToCallback: true,
     });
   }
 
-  async validate(payload: JwtPayload): Promise<AuthUser> {
+  async validate(req: Request, payload: JwtPayload): Promise<AuthUser> {
+    const refreshToken = (req?.cookies?.refreshToken as string) || null;
+    if (!refreshToken) {
+      throw new AppUnauthorizedException({
+        message: 'Refresh token não fornecido',
+      });
+    }
+
     const user = await this.userRepo.findByUuid(Uuid.from(payload.sub));
 
     if (!user) {
@@ -42,6 +51,18 @@ export class JwtRefreshStrategy extends PassportStrategy(
 
     if (user.status !== StatusEnum.ACTIVE) {
       throw new AppUnauthorizedException({ message: 'Usuário inativo' });
+    }
+
+    if (!user.hashedRefreshToken) {
+      throw new AppUnauthorizedException({ message: 'Sessão inválida' });
+    }
+
+    const isMatch = await bcrypt.compare(refreshToken, user.hashedRefreshToken);
+
+    if (!isMatch) {
+      throw new AppUnauthorizedException({
+        message: 'Sessão inválida ou expirada',
+      });
     }
 
     return {

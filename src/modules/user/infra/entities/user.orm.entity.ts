@@ -38,4 +38,13 @@ export class UserOrmEntity extends BaseOrmEntity {
 
   @Column({ name: 'role_id' })
   roleId!: number;
+
+  @Column({
+    name: 'hashed_refresh_token',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+    comment: 'Token de refresh (armazenado com hash) para validação de sessões',
+  })
+  hashedRefreshToken?: string | null;
 }
