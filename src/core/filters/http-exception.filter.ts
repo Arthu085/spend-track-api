@@ -13,6 +13,33 @@ import { AppLogger } from '../logger/logger.service';
 export class HttpExceptionFilter implements ExceptionFilter {
   constructor(private readonly logger: AppLogger) {}
 
+  private sanitize(
+    obj: Record<string, unknown> | null | undefined,
+  ): Record<string, unknown> {
+    if (!obj || typeof obj !== 'object') return {};
+    const sanitized = { ...obj };
+    const sensitiveKeys = [
+      'password',
+      'authorization',
+      'token',
+      'accesstoken',
+      'refreshtoken',
+    ];
+    for (const key in sanitized) {
+      if (sensitiveKeys.includes(key.toLowerCase())) {
+        sanitized[key] = '[HIDDEN]';
+      } else if (
+        typeof sanitized[key] === 'object' &&
+        sanitized[key] !== null
+      ) {
+        sanitized[key] = this.sanitize(
+          sanitized[key] as Record<string, unknown>,
+        );
+      }
+    }
+    return sanitized;
+  }
+
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
 
@@ -70,8 +97,16 @@ export class HttpExceptionFilter implements ExceptionFilter {
       exception instanceof Error ? `[${exception.name}] ` : '';
 
     if (status >= 500) {
+      const requestDetails = {
+        body: this.sanitize(request.body as Record<string, unknown>),
+        query: request.query,
+        params: request.params,
+        headers: this.sanitize(request.headers as Record<string, unknown>),
+        ip: request.ip,
+      };
+
       this.logger.error(
-        `${status} - ${request.method} ${request.url} - ${exceptionName}${finalMessage}`,
+        `${status} - ${request.method} ${request.url} - ${exceptionName}${finalMessage} - Context: ${JSON.stringify(requestDetails)}`,
         exception instanceof Error ? exception.stack : undefined,
         'HttpExceptionFilter',
       );

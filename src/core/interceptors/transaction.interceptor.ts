@@ -7,13 +7,17 @@ import {
 import { Observable } from 'rxjs';
 import { catchError, concatMap } from 'rxjs/operators';
 import { Reflector } from '@nestjs/core';
-import AppDataSource from '../database/data-source';
+import { DataSource } from 'typeorm';
+import { InjectDataSource } from '@nestjs/typeorm';
 import { TRANSACTIONAL_KEY } from '../decorators/transactional.decorator';
 import { RequestWithUser } from '../api/types/request-with-user.type';
 
 @Injectable()
 export class TransactionInterceptor implements NestInterceptor {
-  constructor(private reflector: Reflector) {}
+  constructor(
+    private readonly reflector: Reflector,
+    @InjectDataSource() private readonly dataSource: DataSource,
+  ) {}
 
   async intercept(
     context: ExecutionContext,
@@ -30,7 +34,7 @@ export class TransactionInterceptor implements NestInterceptor {
 
     const request = context.switchToHttp().getRequest<RequestWithUser>();
 
-    const queryRunner = AppDataSource.createQueryRunner();
+    const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
@@ -38,25 +42,20 @@ export class TransactionInterceptor implements NestInterceptor {
 
     return next.handle().pipe(
       concatMap(async (data: unknown) => {
-        await queryRunner.commitTransaction();
-        try {
+        if (queryRunner.isTransactionActive) {
+          await queryRunner.commitTransaction();
+        }
+        if (!queryRunner.isReleased) {
           await queryRunner.release();
-        } catch (releaseError) {
-          void releaseError;
         }
         return data;
       }),
       catchError(async (error) => {
-        try {
+        if (queryRunner.isTransactionActive) {
           await queryRunner.rollbackTransaction();
-        } catch (rollbackError) {
-          void rollbackError;
-        } finally {
-          try {
-            await queryRunner.release();
-          } catch (releaseError) {
-            void releaseError;
-          }
+        }
+        if (!queryRunner.isReleased) {
+          await queryRunner.release();
         }
         throw error;
       }),
