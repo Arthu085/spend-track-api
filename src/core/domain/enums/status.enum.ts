@@ -3,7 +3,7 @@ export enum StatusEnum {
   INACTIVE = 'INACTIVE',
 }
 
-export enum StatusEnumTranslated {
+export enum StatusEnumTranslation {
   ACTIVE = 'Ativo',
   INACTIVE = 'Inativo',
 }

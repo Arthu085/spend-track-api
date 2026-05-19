@@ -17,11 +17,16 @@ export class CheckPermissionUseCase {
     const role = await this.roleRepo.findByUuid(Uuid.from(dto.roleUuid));
 
     if (!role) {
-      return new CheckPermissionResponseDto(false);
+      return new CheckPermissionResponseDto(false, dto.permissions);
     }
 
-    const allowed = role.hasPermission(dto.action, dto.subject);
+    const missingPermissions = dto.permissions.filter(
+      (permission) =>
+        !role.hasPermission(permission.action, permission.subject),
+    );
 
-    return new CheckPermissionResponseDto(allowed);
+    const allowed = missingPermissions.length === 0;
+
+    return new CheckPermissionResponseDto(allowed, missingPermissions);
   }
 }

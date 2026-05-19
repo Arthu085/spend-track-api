@@ -1,7 +1,24 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsUUID } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsEnum,
+  IsNotEmpty,
+  IsUUID,
+  ValidateNested,
+} from 'class-validator';
 import { ActionEnum } from 'src/core/domain/enums/action.enum';
 import { SubjectEnum } from 'src/core/domain/enums/subject.enum';
+
+export class PermissionCheckDto {
+  @ApiProperty({ enum: ActionEnum, example: ActionEnum.CREATE })
+  @IsEnum(ActionEnum)
+  action!: ActionEnum;
+
+  @ApiProperty({ enum: SubjectEnum, example: SubjectEnum.ROLE })
+  @IsEnum(SubjectEnum)
+  subject!: SubjectEnum;
+}
 
 export class CheckPermissionRequestDto {
   @ApiProperty({
@@ -13,22 +30,11 @@ export class CheckPermissionRequestDto {
   roleUuid!: string;
 
   @ApiProperty({
-    description: 'Ação a ser verificada',
-    enum: ActionEnum,
-    example: ActionEnum.CREATE,
+    description: 'Lista de permissões a serem checadas',
+    type: [PermissionCheckDto],
   })
-  @IsEnum(ActionEnum, {
-    message: 'A ação deve ser um enum',
-  })
-  action!: ActionEnum;
-
-  @ApiProperty({
-    description: 'Sujeito da permissão',
-    enum: SubjectEnum,
-    example: SubjectEnum.ROLE,
-  })
-  @IsEnum(SubjectEnum, {
-    message: 'O sujeito deve ser um enum',
-  })
-  subject!: SubjectEnum;
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PermissionCheckDto)
+  permissions!: PermissionCheckDto[];
 }

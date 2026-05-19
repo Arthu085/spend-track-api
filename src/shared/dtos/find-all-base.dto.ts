@@ -1,7 +1,7 @@
 import { BaseEntity } from 'src/core/domain/entities/base.entity';
 import {
   StatusEnum,
-  StatusEnumTranslated,
+  StatusEnumTranslation,
 } from 'src/core/domain/enums/status.enum';
 
 export class FindAllBaseDto {
@@ -14,7 +14,7 @@ export class FindAllBaseDto {
   constructor(entity: BaseEntity) {
     this.uuid = entity.uuid.toString();
     this.status = entity.status;
-    this.statusLabel = StatusEnumTranslated[entity.status] ?? entity.status;
+    this.statusLabel = StatusEnumTranslation[entity.status] ?? entity.status;
     this.createdAt = entity.createdAt;
     this.updatedAt = entity.updatedAt;
   }
