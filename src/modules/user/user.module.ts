@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { BcryptPasswordHasher } from 'src/core/infra/services/bcrypt-password-hasher.service';
 import { UserRepository } from './infra/repositories/user.repository';
 import { UserController } from './presentation/controllers/user.controller';
 import { CreateUserUseCase } from './application/use-cases/create-user.use-case';
@@ -19,6 +20,10 @@ import { DeactivateUserUseCase } from './application/use-cases/deactivate-user.u
       provide: 'IUserRepository',
       useClass: UserRepository,
     },
+    {
+      provide: 'IPasswordHasher',
+      useClass: BcryptPasswordHasher,
+    },
     UserApplicationService,
     FindAllUserUseCase,
     FindOneUserUseCase,
@@ -28,6 +33,6 @@ import { DeactivateUserUseCase } from './application/use-cases/deactivate-user.u
     ActivateUserUseCase,
     DeactivateUserUseCase,
   ],
-  exports: ['IUserRepository'],
+  exports: ['IUserRepository', 'IPasswordHasher'],
 })
 export class UserModule {}

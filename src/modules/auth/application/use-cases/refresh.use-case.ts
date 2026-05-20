@@ -5,8 +5,8 @@ import { LoginResponseDto } from '../dtos/response/login.response.dto';
 import { AuthUser } from '../../domain/types/auth-user.type';
 import { IUserRepository } from 'src/modules/user/domain/repositories/user.repository.interface';
 import { Uuid } from 'src/core/domain/value-objects/uuid.vo';
-import * as bcrypt from 'bcrypt';
 import { AppUnauthorizedException } from 'src/core/exceptions/app-unauthorized.exception';
+import { IPasswordHasher } from 'src/core/domain/services/password-hasher.interface';
 
 @Injectable()
 export class RefreshUseCase {
@@ -15,6 +15,8 @@ export class RefreshUseCase {
     private readonly tokenService: ITokenService,
     @Inject('IUserRepository')
     private readonly userRepo: IUserRepository,
+    @Inject('IPasswordHasher')
+    private readonly passwordHasher: IPasswordHasher,
   ) {}
 
   async execute(userOrDto: AuthUser): Promise<LoginResponseDto> {
@@ -31,7 +33,7 @@ export class RefreshUseCase {
 
     const accessToken = this.tokenService.generateAccessToken(payload);
     const refreshToken = this.tokenService.generateRefreshToken(payload);
-    const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
+    const hashedRefreshToken = await this.passwordHasher.hash(refreshToken, 10);
 
     user.updateHashedRefreshToken(hashedRefreshToken);
 

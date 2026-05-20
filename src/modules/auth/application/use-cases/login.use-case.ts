@@ -6,7 +6,7 @@ import { LoginResponseDto } from '../dtos/response/login.response.dto';
 import { IUserRepository } from 'src/modules/user/domain/repositories/user.repository.interface';
 import { UserEmail } from 'src/modules/user/domain/value-objects/user-email.vo';
 import { Inject, Injectable } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
+import { IPasswordHasher } from 'src/core/domain/services/password-hasher.interface';
 
 @Injectable()
 export class LoginUseCase {
@@ -15,6 +15,8 @@ export class LoginUseCase {
     private readonly tokenService: ITokenService,
     @Inject('IUserRepository')
     private readonly userRepo: IUserRepository,
+    @Inject('IPasswordHasher')
+    private readonly passwordHasher: IPasswordHasher,
   ) {}
 
   async execute(dto: LoginRequestDto): Promise<LoginResponseDto> {
@@ -29,7 +31,10 @@ export class LoginUseCase {
       throw new AppUnauthorizedException({ message: 'Credenciais inválidas' });
     }
 
-    const isPasswordValid = await user.comparePassword(params.password);
+    const isPasswordValid = await this.passwordHasher.compare(
+      params.password,
+      user.password.getValue(),
+    );
 
     if (!isPasswordValid) {
       throw new AppUnauthorizedException({ message: 'Credenciais inválidas' });
@@ -43,7 +48,7 @@ export class LoginUseCase {
     const accessToken = this.tokenService.generateAccessToken(payload);
     const refreshToken = this.tokenService.generateRefreshToken(payload);
 
-    const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
+    const hashedRefreshToken = await this.passwordHasher.hash(refreshToken, 10);
     user.updateHashedRefreshToken(hashedRefreshToken);
     await this.userRepo.save(user);
 

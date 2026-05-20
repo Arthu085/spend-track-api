@@ -1,8 +1,12 @@
-import * as bcrypt from 'bcrypt';
-
 export class InvalidUserPasswordError extends Error {
   constructor() {
     super('Senha inválida');
+  }
+}
+
+export class InvalidUserPasswordHashError extends Error {
+  constructor() {
+    super('Hash de senha inválido');
   }
 }
 
@@ -13,25 +17,27 @@ export class UserPassword {
     this.value = value;
   }
 
-  public static async create(plain: string): Promise<UserPassword> {
+  public static validatePlain(plain: string): void {
     if (!UserPassword.isValid(plain)) {
       throw new InvalidUserPasswordError();
     }
-
-    const hash = await bcrypt.hash(plain, 12);
-    return new UserPassword(hash);
   }
 
   public static fromHash(hash: string): UserPassword {
-    return new UserPassword(hash);
-  }
+    if (!UserPassword.isValidHash(hash)) {
+      throw new InvalidUserPasswordHashError();
+    }
 
-  public async compare(plain: string): Promise<boolean> {
-    return await bcrypt.compare(plain, this.value);
+    return new UserPassword(hash);
   }
 
   public getValue(): string {
     return this.value;
+  }
+
+  public equals(other?: UserPassword): boolean {
+    if (!other) return false;
+    return this.value === other.value;
   }
 
   private static isValid(value: string): boolean {
@@ -41,5 +47,9 @@ export class UserPassword {
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
 
     return strongPasswordRegex.test(value);
+  }
+
+  private static isValidHash(hash: string): boolean {
+    return typeof hash === 'string' && hash.startsWith('$2');
   }
 }

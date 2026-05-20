@@ -1,6 +1,6 @@
 import { DataSource, DataSourceOptions } from 'typeorm';
 import { getTypeOrmConfig } from './typeorm/typeorm.config';
-import { envConfig } from '../config/env/env.config';
+import { loadEnvOptions } from '../config/env/load-env-options';
 
 try {
   if (typeof process.loadEnvFile === 'function') {
@@ -10,7 +10,7 @@ try {
   // Ignora caso arquivo não exista ou erro ao carregar
 }
 
-const env = envConfig();
+const env = loadEnvOptions();
 
 const dataSourceOptions: DataSourceOptions = {
   ...(getTypeOrmConfig(env) as DataSourceOptions),

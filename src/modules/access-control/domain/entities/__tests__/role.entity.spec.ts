@@ -1,4 +1,4 @@
-import { AppConflictException } from 'src/core/exceptions/app-conflict.exception';
+import { DomainConflictException } from 'src/core/domain/exceptions/domain-conflict.exception';
 import { RoleEnum } from '../../enums/role.enum';
 import { RoleEntity } from '../role.entity';
 
@@ -13,7 +13,7 @@ describe('RoleEntity', () => {
       name: RoleEnum.ADMIN,
     });
 
-    expect(() => role.ensureIsNotAdmin()).toThrow(AppConflictException);
+    expect(() => role.ensureIsNotAdmin()).toThrow(DomainConflictException);
   });
 
   it('Não deve lançar erro para role comum', () => {

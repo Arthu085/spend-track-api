@@ -7,6 +7,7 @@ import { StatusEnum } from 'src/core/domain/enums/status.enum';
 import { UserFullName } from 'src/modules/user/domain/value-objects/user-full-name.vo';
 import { UserEmail } from 'src/modules/user/domain/value-objects/user-email.vo';
 import { UserPassword } from 'src/modules/user/domain/value-objects/user-password.vo';
+import { TEST_BCRYPT_HASH } from 'src/modules/user/domain/value-objects/test-password-hash';
 import { RoleEntity } from 'src/modules/access-control/domain/entities/role.entity';
 import { RoleEnum } from 'src/modules/access-control/domain/enums/role.enum';
 
@@ -37,7 +38,7 @@ describe('ActivateUserUseCase', () => {
       status,
       fullName: UserFullName.create('John Doe'),
       email: UserEmail.create('john@example.com'),
-      password: UserPassword.fromHash('hashed-password'),
+      password: UserPassword.fromHash(TEST_BCRYPT_HASH),
       role: RoleEntity.create({
         name: RoleEnum.USER,
       }),

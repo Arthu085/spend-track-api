@@ -2,12 +2,13 @@ import { FindOneUserUseCase } from '../find-one-user.use-case';
 import { IUserRepository } from 'src/modules/user/domain/repositories/user.repository.interface';
 import { UserEntity } from 'src/modules/user/domain/entities/user.entity';
 import { AppNotFoundException } from 'src/core/exceptions/app-not-found.exception';
-import { AppBadRequestException } from 'src/core/exceptions/app-bad-request.exception';
+import { DomainRuleViolationException } from 'src/core/domain/exceptions/domain-rule-violation.exception';
 import { Uuid } from 'src/core/domain/value-objects/uuid.vo';
 import { StatusEnum } from 'src/core/domain/enums/status.enum';
 import { UserFullName } from 'src/modules/user/domain/value-objects/user-full-name.vo';
 import { UserEmail } from 'src/modules/user/domain/value-objects/user-email.vo';
 import { UserPassword } from 'src/modules/user/domain/value-objects/user-password.vo';
+import { TEST_BCRYPT_HASH } from 'src/modules/user/domain/value-objects/test-password-hash';
 import { RoleEntity } from 'src/modules/access-control/domain/entities/role.entity';
 import { RoleEnum } from 'src/modules/access-control/domain/enums/role.enum';
 import { FindOneUserResponseDto } from '../../dtos/response/find-one-user.response.dto';
@@ -39,7 +40,7 @@ describe('FindOneUserUseCase', () => {
       status,
       fullName: UserFullName.create('John Doe'),
       email: UserEmail.create('john@example.com'),
-      password: UserPassword.fromHash('hashed-password'),
+      password: UserPassword.fromHash(TEST_BCRYPT_HASH),
       role: RoleEntity.create({ name: RoleEnum.USER }),
     });
   };
@@ -75,6 +76,6 @@ describe('FindOneUserUseCase', () => {
 
     await expect(
       useCase.execute('123e4567-e89b-12d3-a456-426614174000'),
-    ).rejects.toThrow(AppBadRequestException);
+    ).rejects.toThrow(DomainRuleViolationException);
   });
 });

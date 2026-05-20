@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule, ConfigService, registerAs } from '@nestjs/config';
 import { DatabaseModule } from './core/database/typeorm/typeorm.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { throttleConfig } from './core/config/throttle/throttle.config';
-import { envConfig } from './core/config/env/env.config';
+import { loadEnvOptions } from './core/config/env/load-env-options';
 import { envSchema } from './core/config/env/schemas/env.schemas';
 import { AppLogger } from './core/logger/logger.service';
 import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
@@ -18,7 +18,7 @@ import { AuthModule } from './modules/auth/auth.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [envConfig],
+      load: [registerAs('env', loadEnvOptions)],
       validationSchema: envSchema,
       validationOptions: {
         abortEarly: true,

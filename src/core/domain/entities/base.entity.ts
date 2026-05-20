@@ -1,6 +1,6 @@
 import { StatusEnum } from '../enums/status.enum';
 import { Uuid } from '../value-objects/uuid.vo';
-import { AppBadRequestException } from 'src/core/exceptions/app-bad-request.exception';
+import { DomainRuleViolationException } from '../exceptions/domain-rule-violation.exception';
 
 type Gender = 'M' | 'F';
 
@@ -54,23 +54,23 @@ export abstract class BaseEntity {
 
   ensureIsNotInactive(resource: string, gender: Gender): void {
     if (this._status === StatusEnum.INACTIVE) {
-      throw new AppBadRequestException({
-        message: `${resource} está ${gender === 'M' ? 'inativo' : 'inativa'}`,
-      });
+      throw new DomainRuleViolationException(
+        `${resource} está ${gender === 'M' ? 'inativo' : 'inativa'}`,
+      );
     }
   }
 
   activate(resource: string, gender: Gender): void {
     if (this._deletedAt) {
-      throw new AppBadRequestException({
-        message: `Não é possível ativar um dado excluído`,
-      });
+      throw new DomainRuleViolationException(
+        `Não é possível ativar um dado excluído`,
+      );
     }
 
     if (this._status === StatusEnum.ACTIVE) {
-      throw new AppBadRequestException({
-        message: `${resource} já está ${gender === 'M' ? 'ativo' : 'ativa'}`,
-      });
+      throw new DomainRuleViolationException(
+        `${resource} já está ${gender === 'M' ? 'ativo' : 'ativa'}`,
+      );
     }
 
     this._status = StatusEnum.ACTIVE;
@@ -79,15 +79,15 @@ export abstract class BaseEntity {
 
   deactivate(resource: string, gender: Gender): void {
     if (this._deletedAt) {
-      throw new AppBadRequestException({
-        message: `Não é possível desativar um dado excluído`,
-      });
+      throw new DomainRuleViolationException(
+        `Não é possível desativar um dado excluído`,
+      );
     }
 
     if (this._status === StatusEnum.INACTIVE) {
-      throw new AppBadRequestException({
-        message: `${resource} já está ${gender === 'M' ? 'inativo' : 'inativa'}`,
-      });
+      throw new DomainRuleViolationException(
+        `${resource} já está ${gender === 'M' ? 'inativo' : 'inativa'}`,
+      );
     }
 
     this._status = StatusEnum.INACTIVE;

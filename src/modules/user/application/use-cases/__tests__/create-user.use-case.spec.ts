@@ -5,10 +5,13 @@ import { CreateUserRequestDto } from '../../dtos/request/create-user.request.dto
 import { RoleEntity } from 'src/modules/access-control/domain/entities/role.entity';
 import { RoleEnum } from 'src/modules/access-control/domain/enums/role.enum';
 import { UserEntity } from 'src/modules/user/domain/entities/user.entity';
+import { IPasswordHasher } from 'src/core/domain/services/password-hasher.interface';
+import { TEST_BCRYPT_HASH } from 'src/modules/user/domain/value-objects/test-password-hash';
 
 describe('CreateUserUseCase', () => {
   let useCase: CreateUserUseCase;
   let userRepository: jest.Mocked<IUserRepository>;
+  let passwordHasher: jest.Mocked<IPasswordHasher>;
   let userAppService: jest.Mocked<UserApplicationService>;
 
   beforeEach(() => {
@@ -19,13 +22,22 @@ describe('CreateUserUseCase', () => {
       save: jest.fn(),
     } as unknown as jest.Mocked<IUserRepository>;
 
+    passwordHasher = {
+      hash: jest.fn().mockResolvedValue(TEST_BCRYPT_HASH),
+      compare: jest.fn(),
+    } as unknown as jest.Mocked<IPasswordHasher>;
+
     userAppService = {
       findActiveUser: jest.fn(),
       ensureEmailAvailable: jest.fn(),
       resolveRole: jest.fn(),
     } as unknown as jest.Mocked<UserApplicationService>;
 
-    useCase = new CreateUserUseCase(userRepository, userAppService);
+    useCase = new CreateUserUseCase(
+      userRepository,
+      passwordHasher,
+      userAppService,
+    );
   });
 
   it('Deve criar um usuário com sucesso', async () => {

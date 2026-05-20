@@ -1,11 +1,11 @@
 import { SelectQueryBuilder } from 'typeorm';
 import { UserOrmEntity } from '../entities/user.orm.entity';
-import { FindAllUserRequestDto } from '../../application/dtos/request/find-all-user.request.dto';
+import { UserFindAllCriteria } from '../../domain/types/user-find-all-criteria.type';
 
 export class UserQueryBuilderHelper {
   static applyFilters(
     qb: SelectQueryBuilder<UserOrmEntity>,
-    filters: FindAllUserRequestDto,
+    filters: UserFindAllCriteria,
   ): void {
     const { fullName, role } = filters;
 

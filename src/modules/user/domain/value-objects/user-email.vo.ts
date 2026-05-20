@@ -7,16 +7,22 @@ export class InvalidUserEmailError extends Error {
 export class UserEmail {
   private readonly value: string;
 
-  private constructor(value: string) {
-    if (!UserEmail.isValid(value)) {
+  private constructor(value: string, skipValidation = false) {
+    const normalized = value.trim().toLowerCase();
+
+    if (!skipValidation && !UserEmail.isValid(normalized)) {
       throw new InvalidUserEmailError();
     }
 
-    this.value = value.toLowerCase();
+    this.value = normalized;
   }
 
   public static create(value: string): UserEmail {
     return new UserEmail(value);
+  }
+
+  public static reconstitute(value: string): UserEmail {
+    return new UserEmail(value, true);
   }
 
   public getValue(): string {

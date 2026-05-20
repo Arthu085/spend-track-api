@@ -5,8 +5,8 @@ import { StatusEnum } from 'src/core/domain/enums/status.enum';
 import { AbilityEntity } from './ability.entity';
 import { ActionEnum } from '../../../../core/domain/enums/action.enum';
 import { SubjectEnum } from '../../../../core/domain/enums/subject.enum';
-import { AppConflictException } from 'src/core/exceptions/app-conflict.exception';
-import { AppBadRequestException } from 'src/core/exceptions/app-bad-request.exception';
+import { DomainConflictException } from 'src/core/domain/exceptions/domain-conflict.exception';
+import { DomainRuleViolationException } from 'src/core/domain/exceptions/domain-rule-violation.exception';
 
 export class RoleEntity extends BaseEntity {
   private _name: RoleEnum;
@@ -25,9 +25,7 @@ export class RoleEntity extends BaseEntity {
     super(props);
 
     if (!props.name) {
-      throw new AppBadRequestException({
-        message: 'Nome da função é obrigatório',
-      });
+      throw new DomainRuleViolationException('Nome da função é obrigatório');
     }
 
     this._name = props.name;
@@ -75,9 +73,9 @@ export class RoleEntity extends BaseEntity {
 
   ensureIsNotAdmin(): void {
     if (this._name === RoleEnum.ADMIN) {
-      throw new AppConflictException({
-        message: 'Não é permitido alterar as permissões da função ADMIN.',
-      });
+      throw new DomainConflictException(
+        'Não é permitido alterar as permissões da função ADMIN.',
+      );
     }
   }
 }

@@ -16,7 +16,15 @@ export class FindAllUserUseCase {
   ): Promise<PaginatedResponse<FindAllUserResponseDto>> {
     const { page = 1, limit = 10 } = query;
 
-    const [users, total] = await this.userRepo.findAll(query);
+    const [users, total] = await this.userRepo.findAll({
+      page: query.page,
+      limit: query.limit,
+      status: query.status,
+      createdAtFrom: query.createdAtFrom,
+      createdAtTo: query.createdAtTo,
+      fullName: query.fullName,
+      role: query.role,
+    });
 
     return {
       data: users.map((user) => new FindAllUserResponseDto(user)),

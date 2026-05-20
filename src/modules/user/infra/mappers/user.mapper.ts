@@ -4,16 +4,13 @@ import { UserOrmEntity } from '../entities/user.orm.entity';
 import { UserFullName } from '../../domain/value-objects/user-full-name.vo';
 import { UserEmail } from '../../domain/value-objects/user-email.vo';
 import { UserPassword } from '../../domain/value-objects/user-password.vo';
-import { AppBadRequestException } from 'src/core/exceptions/app-bad-request.exception';
-import { SaveUserRelations } from '../../application/types/save-user-relations.type';
+import { UserSaveRelations } from '../../domain/types/user-save-relations.type';
 import { RoleMapper } from 'src/modules/access-control/infra/mappers/role.mapper';
 
 export class UserMapper {
   static toDomain(orm: UserOrmEntity): UserEntity {
     if (!orm.role) {
-      throw new AppBadRequestException({
-        message: 'Função não carregada',
-      });
+      throw new Error('Função não carregada');
     }
 
     return UserEntity.rehydrate({
@@ -23,8 +20,8 @@ export class UserMapper {
       updatedAt: orm.updatedAt,
       deletedAt: orm.deletedAt,
       status: orm.status,
-      fullName: UserFullName.create(orm.fullName),
-      email: UserEmail.create(orm.email),
+      fullName: UserFullName.reconstitute(orm.fullName),
+      email: UserEmail.reconstitute(orm.email),
       password: UserPassword.fromHash(orm.password),
       role: RoleMapper.toDomain(orm.role),
       hashedRefreshToken: orm.hashedRefreshToken,
@@ -33,11 +30,11 @@ export class UserMapper {
 
   static toOrm(
     domain: UserEntity,
-    relations?: SaveUserRelations,
+    relations?: UserSaveRelations,
   ): UserOrmEntity {
     const orm = new UserOrmEntity();
 
-    if (domain.id !== undefined) {
+    if (domain.id !== undefined && domain.id > 0) {
       orm.id = domain.id;
     }
 

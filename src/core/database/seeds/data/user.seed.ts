@@ -3,8 +3,8 @@ import { DataSource } from 'typeorm';
 import { RoleEnum } from 'src/modules/access-control/domain/enums/role.enum';
 import { UserOrmEntity } from 'src/modules/user/infra/entities/user.orm.entity';
 import { RoleOrmEntity } from 'src/modules/access-control/infra/entities/role.orm.entity';
-import * as bcrypt from 'bcrypt';
 import { AppNotFoundException } from 'src/core/exceptions/app-not-found.exception';
+import { BcryptPasswordHasher } from 'src/core/infra/services/bcrypt-password-hasher.service';
 
 export class UserSeed implements ISeed {
   name = 'UserSeed';
@@ -25,7 +25,8 @@ export class UserSeed implements ISeed {
       });
     }
 
-    const hashedPassword = await bcrypt.hash('admin123', 12);
+    const passwordHasher = new BcryptPasswordHasher();
+    const hashedPassword = await passwordHasher.hash('admin123', 12);
 
     const users = [
       {

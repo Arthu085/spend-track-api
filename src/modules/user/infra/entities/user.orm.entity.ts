@@ -3,6 +3,10 @@ import { RoleOrmEntity } from 'src/modules/access-control/infra/entities/role.or
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 
 @Entity('users', { comment: 'Tabela de usuários do sistema' })
+@Index('IDX_user_email_unique_when_not_deleted', ['email'], {
+  unique: true,
+  where: '"deleted_at" IS NULL',
+})
 export class UserOrmEntity extends BaseOrmEntity {
   @Column({
     name: 'full_name',
@@ -17,7 +21,6 @@ export class UserOrmEntity extends BaseOrmEntity {
     name: 'email',
     length: 255,
     nullable: false,
-    unique: true,
     comment: 'Endereço de email do usuário',
   })
   @Index()
@@ -33,7 +36,6 @@ export class UserOrmEntity extends BaseOrmEntity {
 
   @ManyToOne(() => RoleOrmEntity, (role) => role.users, { nullable: false })
   @JoinColumn({ name: 'role_id' })
-  @Index()
   role!: RoleOrmEntity;
 
   @Column({ name: 'role_id' })

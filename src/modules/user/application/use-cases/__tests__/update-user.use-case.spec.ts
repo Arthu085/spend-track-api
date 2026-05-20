@@ -10,10 +10,13 @@ import { UserEmail } from 'src/modules/user/domain/value-objects/user-email.vo';
 import { UserPassword } from 'src/modules/user/domain/value-objects/user-password.vo';
 import { RoleEntity } from 'src/modules/access-control/domain/entities/role.entity';
 import { RoleEnum } from 'src/modules/access-control/domain/enums/role.enum';
+import { IPasswordHasher } from 'src/core/domain/services/password-hasher.interface';
+import { TEST_BCRYPT_HASH } from 'src/modules/user/domain/value-objects/test-password-hash';
 
 describe('UpdateUserUseCase', () => {
   let useCase: UpdateUserUseCase;
   let userRepository: jest.Mocked<IUserRepository>;
+  let passwordHasher: jest.Mocked<IPasswordHasher>;
   let userAppService: jest.Mocked<UserApplicationService>;
 
   beforeEach(() => {
@@ -24,13 +27,22 @@ describe('UpdateUserUseCase', () => {
       save: jest.fn(),
     } as unknown as jest.Mocked<IUserRepository>;
 
+    passwordHasher = {
+      hash: jest.fn().mockResolvedValue(TEST_BCRYPT_HASH),
+      compare: jest.fn(),
+    } as unknown as jest.Mocked<IPasswordHasher>;
+
     userAppService = {
       findActiveUser: jest.fn(),
       ensureEmailAvailable: jest.fn(),
       resolveRole: jest.fn(),
     } as unknown as jest.Mocked<UserApplicationService>;
 
-    useCase = new UpdateUserUseCase(userRepository, userAppService);
+    useCase = new UpdateUserUseCase(
+      userRepository,
+      passwordHasher,
+      userAppService,
+    );
   });
 
   const createMockUser = (): UserEntity => {
@@ -43,7 +55,7 @@ describe('UpdateUserUseCase', () => {
       status: StatusEnum.ACTIVE,
       fullName: UserFullName.create('John Doe'),
       email: UserEmail.create('john@example.com'),
-      password: UserPassword.fromHash('hashed-password'),
+      password: UserPassword.fromHash(TEST_BCRYPT_HASH),
       role: RoleEntity.create({ name: RoleEnum.USER }),
     });
   };

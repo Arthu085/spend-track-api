@@ -8,6 +8,8 @@ import {
 import { STATUS_CODES } from 'http';
 import { Request, Response } from 'express';
 import { AppLogger } from '../logger/logger.service';
+import { DomainRuleViolationException } from '../domain/exceptions/domain-rule-violation.exception';
+import { DomainConflictException } from '../domain/exceptions/domain-conflict.exception';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -45,6 +47,32 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
+
+    if (exception instanceof DomainRuleViolationException) {
+      this.logger.warn(
+        `${HttpStatus.BAD_REQUEST} - ${request.method} ${request.url} - [${exception.name}] ${exception.message}`,
+        'HttpExceptionFilter',
+      );
+      return this.sendResponse(
+        host,
+        HttpStatus.BAD_REQUEST,
+        'Bad Request',
+        exception.message,
+      );
+    }
+
+    if (exception instanceof DomainConflictException) {
+      this.logger.warn(
+        `${HttpStatus.CONFLICT} - ${request.method} ${request.url} - [${exception.name}] ${exception.message}`,
+        'HttpExceptionFilter',
+      );
+      return this.sendResponse(
+        host,
+        HttpStatus.CONFLICT,
+        'Conflict',
+        exception.message,
+      );
+    }
 
     const isHttpException = exception instanceof HttpException;
 
@@ -136,14 +164,28 @@ export class HttpExceptionFilter implements ExceptionFilter {
       ...(messages && { messages }),
     };
 
+    this.sendResponse(host, status, error, finalMessage, meta);
+  }
+
+  private sendResponse(
+    host: ArgumentsHost,
+    status: number,
+    error: string,
+    message: string,
+    meta?: Record<string, unknown>,
+  ): void {
+    const ctx = host.switchToHttp();
+    const response = ctx.getResponse<Response>();
+    const request = ctx.getRequest<Request>();
+
     response.status(status).json({
       success: false,
       statusCode: status,
       error,
-      message: finalMessage,
+      message,
       path: request.url,
       timestamp: new Date().toISOString(),
-      ...(Object.keys(meta).length > 0 && { meta }),
+      ...(meta && Object.keys(meta).length > 0 && { meta }),
     });
   }
 }

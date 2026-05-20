@@ -26,8 +26,12 @@ describe('CheckPermissionUseCase', () => {
 
     const result = await useCase.execute({
       roleUuid: validUuid,
-      action: ActionEnum.CREATE,
-      subject: SubjectEnum.ROLE,
+      permissions: [
+        {
+          action: ActionEnum.CREATE,
+          subject: SubjectEnum.ROLE,
+        },
+      ],
     });
 
     expect(result).toBeInstanceOf(CheckPermissionResponseDto);
@@ -45,8 +49,12 @@ describe('CheckPermissionUseCase', () => {
 
     const result = await useCase.execute({
       roleUuid: validUuid,
-      action: ActionEnum.CREATE,
-      subject: SubjectEnum.ROLE,
+      permissions: [
+        {
+          action: ActionEnum.CREATE,
+          subject: SubjectEnum.ROLE,
+        },
+      ],
     });
 
     expect(result.allowed).toBe(true);
@@ -63,8 +71,12 @@ describe('CheckPermissionUseCase', () => {
 
     const result = await useCase.execute({
       roleUuid: validUuid,
-      action: ActionEnum.CREATE,
-      subject: SubjectEnum.ROLE,
+      permissions: [
+        {
+          action: ActionEnum.CREATE,
+          subject: SubjectEnum.ROLE,
+        },
+      ],
     });
 
     expect(result.allowed).toBe(false);

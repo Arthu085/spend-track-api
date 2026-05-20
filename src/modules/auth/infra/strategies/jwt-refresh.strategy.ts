@@ -2,10 +2,9 @@ import { Inject, Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { Request } from 'express';
-import * as bcrypt from 'bcrypt';
 import { getJwtConfig } from 'src/core/config/auth/jwt.config';
-import { EnvOptions } from 'src/core/config/env/types/env.types';
-import { ConfigService } from '@nestjs/config';
+import { IPasswordHasher } from 'src/core/domain/services/password-hasher.interface';
+import { loadEnvOptions } from 'src/core/config/env/load-env-options';
 import { JwtPayload } from '../../domain/types/jwt-payload.type';
 import { AuthUser } from '../../domain/types/auth-user.type';
 import { Uuid } from 'src/core/domain/value-objects/uuid.vo';
@@ -21,9 +20,10 @@ export class JwtRefreshStrategy extends PassportStrategy(
   constructor(
     @Inject('IUserRepository')
     private readonly userRepo: IUserRepository,
-    private readonly configService: ConfigService,
+    @Inject('IPasswordHasher')
+    private readonly passwordHasher: IPasswordHasher,
   ) {
-    const env = configService.get<EnvOptions>('env')!;
+    const env = loadEnvOptions();
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         (req: Request): string | null =>
@@ -57,7 +57,10 @@ export class JwtRefreshStrategy extends PassportStrategy(
       throw new AppUnauthorizedException({ message: 'Sessão inválida' });
     }
 
-    const isMatch = await bcrypt.compare(refreshToken, user.hashedRefreshToken);
+    const isMatch = await this.passwordHasher.compare(
+      refreshToken,
+      user.hashedRefreshToken,
+    );
 
     if (!isMatch) {
       throw new AppUnauthorizedException({

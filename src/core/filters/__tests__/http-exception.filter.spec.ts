@@ -1,4 +1,4 @@
-jest.mock('../config/env/helpers/env.helpers', () => ({
+jest.mock('../../config/env/helpers/env.helpers', () => ({
   isProduction: false,
   isDevelopment: false,
   isTest: true,
@@ -9,9 +9,11 @@ jest.mock('../config/env/helpers/env.helpers', () => ({
 import { describe, expect, it, beforeEach, jest } from '@jest/globals';
 import { HttpExceptionFilter } from '../http-exception.filter';
 import { ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common';
+import { DomainRuleViolationException } from '../../domain/exceptions/domain-rule-violation.exception';
+import { DomainConflictException } from '../../domain/exceptions/domain-conflict.exception';
 import { Request, Response } from 'express';
 
-jest.mock('../logger/logger.service');
+jest.mock('../../logger/logger.service');
 import { AppLogger } from '../../logger/logger.service';
 
 describe('HttpExceptionFilter', () => {
@@ -117,6 +119,60 @@ describe('HttpExceptionFilter', () => {
       expect.any(String),
       'HttpExceptionFilter',
     );
+  });
+
+  it('should map DomainRuleViolationException to 400', () => {
+    const mockJson = jest.fn();
+    const mockStatus = jest
+      .fn()
+      .mockReturnValue({ json: mockJson }) as unknown as (
+      code: number,
+    ) => Response;
+    const host = createMockHost(
+      { status: mockStatus },
+      { url: '/test', method: 'PATCH' },
+    );
+
+    const exception = new DomainRuleViolationException('Usuário está inativo');
+
+    filter.catch(exception, host);
+
+    expect(mockStatus).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
+    expect(mockJson).toHaveBeenCalledWith({
+      success: false,
+      statusCode: HttpStatus.BAD_REQUEST,
+      error: 'Bad Request',
+      message: 'Usuário está inativo',
+      path: '/test',
+      timestamp: expect.any(String),
+    });
+  });
+
+  it('should map DomainConflictException to 409', () => {
+    const mockJson = jest.fn();
+    const mockStatus = jest
+      .fn()
+      .mockReturnValue({ json: mockJson }) as unknown as (
+      code: number,
+    ) => Response;
+    const host = createMockHost(
+      { status: mockStatus },
+      { url: '/test', method: 'PATCH' },
+    );
+
+    const exception = new DomainConflictException('Conflito de domínio');
+
+    filter.catch(exception, host);
+
+    expect(mockStatus).toHaveBeenCalledWith(HttpStatus.CONFLICT);
+    expect(mockJson).toHaveBeenCalledWith({
+      success: false,
+      statusCode: HttpStatus.CONFLICT,
+      error: 'Conflict',
+      message: 'Conflito de domínio',
+      path: '/test',
+      timestamp: expect.any(String),
+    });
   });
 
   it('should extract generic arrays of strings to meta.messages', () => {

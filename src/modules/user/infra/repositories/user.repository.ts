@@ -6,8 +6,8 @@ import { UserEmail } from '../../domain/value-objects/user-email.vo';
 import { UserOrmEntity } from '../entities/user.orm.entity';
 import { UserMapper } from '../mappers/user.mapper';
 import { Uuid } from 'src/core/domain/value-objects/uuid.vo';
-import { SaveUserRelations } from '../../application/types/save-user-relations.type';
-import { FindAllUserRequestDto } from '../../application/dtos/request/find-all-user.request.dto';
+import { UserSaveRelations } from '../../domain/types/user-save-relations.type';
+import { UserFindAllCriteria } from '../../domain/types/user-find-all-criteria.type';
 import { QueryBuilderHelper } from 'src/core/database/helpers/query-builder.helper';
 import { UserQueryBuilderHelper } from '../helpers/user-query-builder.helper';
 
@@ -19,15 +19,17 @@ export class UserRepository implements IUserRepository {
     this.repo = this.dataSource.getRepository(UserOrmEntity);
   }
 
-  async findAll(query: FindAllUserRequestDto): Promise<[UserEntity[], number]> {
-    const { page = 1, limit = 10 } = query;
+  async findAll(
+    criteria: UserFindAllCriteria,
+  ): Promise<[UserEntity[], number]> {
+    const { page = 1, limit = 10 } = criteria;
 
     const qb = this.repo
       .createQueryBuilder('user')
       .leftJoinAndSelect('user.role', 'role');
 
-    QueryBuilderHelper.applyBaseFilters(qb, 'user', query);
-    UserQueryBuilderHelper.applyFilters(qb, query);
+    QueryBuilderHelper.applyBaseFilters(qb, 'user', criteria);
+    UserQueryBuilderHelper.applyFilters(qb, criteria);
     QueryBuilderHelper.applyDefaultOrder(qb, 'user');
     QueryBuilderHelper.applyPagination(qb, page, limit);
 
@@ -56,7 +58,7 @@ export class UserRepository implements IUserRepository {
     return user ? UserMapper.toDomain(user) : null;
   }
 
-  async save(user: UserEntity, relations?: SaveUserRelations): Promise<void> {
+  async save(user: UserEntity, relations?: UserSaveRelations): Promise<void> {
     const ormUser = UserMapper.toOrm(user, relations);
 
     await this.repo.save(ormUser);

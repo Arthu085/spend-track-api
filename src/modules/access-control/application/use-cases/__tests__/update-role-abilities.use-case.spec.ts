@@ -5,7 +5,7 @@ import { IRoleRepository } from 'src/modules/access-control/domain/repositories/
 import { IRoleAbilityRepository } from 'src/modules/access-control/domain/repositories/role-ability.repository.interface';
 import { IAbilityRepository } from 'src/modules/access-control/domain/repositories/ability.repository.interface';
 import { AppNotFoundException } from 'src/core/exceptions/app-not-found.exception';
-import { AppConflictException } from 'src/core/exceptions/app-conflict.exception';
+import { DomainConflictException } from 'src/core/domain/exceptions/domain-conflict.exception';
 import { ActionEnum } from 'src/core/domain/enums/action.enum';
 import { SubjectEnum } from 'src/core/domain/enums/subject.enum';
 import { AbilityEntity } from 'src/modules/access-control/domain/entities/ability.entity';
@@ -51,7 +51,7 @@ describe('UpdateRoleAbilitiesUseCase', () => {
       useCase.execute(validUuid, {
         abilities: [],
       }),
-    ).rejects.toThrow(AppConflictException);
+    ).rejects.toThrow(DomainConflictException);
   });
 
   it('Deve lançar erro se role não existir', async () => {

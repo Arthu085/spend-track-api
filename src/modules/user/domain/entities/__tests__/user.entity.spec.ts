@@ -5,6 +5,7 @@ import { Uuid } from 'src/core/domain/value-objects/uuid.vo';
 import { UserEmail } from '../../value-objects/user-email.vo';
 import { UserFullName } from '../../value-objects/user-full-name.vo';
 import { UserPassword } from '../../value-objects/user-password.vo';
+import { TEST_BCRYPT_HASH } from '../../value-objects/test-password-hash';
 import { UserEntity } from '../user.entity';
 
 describe('UserEntity', () => {
@@ -17,10 +18,10 @@ describe('UserEntity', () => {
   });
 
   describe('create', () => {
-    it('Deve criar um usuário com dados válidos', async () => {
+    it('Deve criar um usuário com dados válidos', () => {
       const fullName = UserFullName.create('John Doe');
       const email = UserEmail.create('john@test.com');
-      const password = await UserPassword.create('StrongPass123!');
+      const password = UserPassword.fromHash(TEST_BCRYPT_HASH);
 
       const user = UserEntity.create({
         fullName,
@@ -39,12 +40,12 @@ describe('UserEntity', () => {
   });
 
   describe('rehydrate', () => {
-    it('Deve reidratar a entidade corretamente', async () => {
+    it('Deve reidratar a entidade corretamente', () => {
       const uuid = Uuid.create();
       const date = new Date();
       const fullName = UserFullName.create('Alice Smith');
       const email = UserEmail.create('alice@test.com');
-      const password = await UserPassword.create('StrongPass123!');
+      const password = UserPassword.fromHash(TEST_BCRYPT_HASH);
 
       const user = UserEntity.rehydrate({
         id: 1,
@@ -71,7 +72,7 @@ describe('UserEntity', () => {
       const user = UserEntity.create({
         fullName: UserFullName.create('Old Name'),
         email: UserEmail.create('old@test.com'),
-        password: await UserPassword.create('OldPass123!'),
+        password: UserPassword.fromHash(TEST_BCRYPT_HASH),
         role: roleUser,
       });
 
@@ -81,7 +82,7 @@ describe('UserEntity', () => {
 
       const newFullName = UserFullName.create('New Name');
       const newEmail = UserEmail.create('new@test.com');
-      const newPassword = await UserPassword.create('NewPass123!');
+      const newPassword = UserPassword.fromHash(TEST_BCRYPT_HASH);
 
       user.update({
         fullName: newFullName,
@@ -102,7 +103,7 @@ describe('UserEntity', () => {
       const user = UserEntity.create({
         fullName: UserFullName.create('Test Name'),
         email: UserEmail.create('test@test.com'),
-        password: await UserPassword.create('TestPass123!'),
+        password: UserPassword.fromHash(TEST_BCRYPT_HASH),
         role: roleUser,
       });
 
@@ -113,34 +114,6 @@ describe('UserEntity', () => {
       user.update({});
 
       expect(user.updatedAt.getTime()).toBe(previousUpdatedAt.getTime());
-    });
-  });
-
-  describe('comparePassword', () => {
-    it('Deve retornar true se a senha correta for fornecida', async () => {
-      const password = await UserPassword.create('RightPass123!');
-      const user = UserEntity.create({
-        fullName: UserFullName.create('John Doe'),
-        email: UserEmail.create('john@test.com'),
-        password,
-        role: roleUser,
-      });
-
-      const isMatch = await user.comparePassword('RightPass123!');
-      expect(isMatch).toBe(true);
-    });
-
-    it('Deve retornar false se a senha errada for fornecida', async () => {
-      const password = await UserPassword.create('RightPass123!');
-      const user = UserEntity.create({
-        fullName: UserFullName.create('John Doe'),
-        email: UserEmail.create('john@test.com'),
-        password,
-        role: roleUser,
-      });
-
-      const isMatch = await user.comparePassword('WrongPass123!');
-      expect(isMatch).toBe(false);
     });
   });
 });
