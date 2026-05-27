@@ -18,4 +18,8 @@ export const getTypeOrmConfig = (env: EnvOptions): TypeOrmModuleOptions => ({
     __dirname + '/../entities/**/*.entity{.ts,.js}',
     __dirname + '/../../../modules/**/infra/entities/**/*.entity{.ts,.js}',
   ],
+  extra: {
+    max: 20,
+    connectionTimeoutMillis: 5000,
+  },
 });

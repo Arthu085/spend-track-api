@@ -19,7 +19,6 @@ export abstract class BaseOrmEntity {
     default: () => 'uuid_generate_v4()',
     comment: 'Identificador único da entidade no formato UUID',
   })
-  @Index()
   uuid!: string;
 
   @CreateDateColumn({
@@ -36,6 +35,7 @@ export abstract class BaseOrmEntity {
   })
   updatedAt!: Date;
 
+  @Index()
   @DeleteDateColumn({
     name: 'deleted_at',
     type: 'timestamptz',
