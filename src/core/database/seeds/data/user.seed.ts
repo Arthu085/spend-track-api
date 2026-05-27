@@ -37,10 +37,19 @@ export class UserSeed implements ISeed {
       },
     ];
 
-    await userRepo.upsert(users, {
-      conflictPaths: ['email'],
-      skipUpdateIfNoValuesChanged: true,
-    });
+    for (const userData of users) {
+      const existingUser = await userRepo.findOne({
+        where: { email: userData.email },
+      });
+
+      if (existingUser) {
+        Object.assign(existingUser, userData);
+        await userRepo.save(existingUser);
+      } else {
+        const newUser = userRepo.create(userData);
+        await userRepo.save(newUser);
+      }
+    }
 
     console.log(`${users.length} users processadas`);
   }
