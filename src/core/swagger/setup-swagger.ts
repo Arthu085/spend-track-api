@@ -68,7 +68,7 @@ export function setupSwagger(app: INestApplication): void {
   const { version, description } = readPackageMetadata();
 
   const documentConfig = new DocumentBuilder()
-    .setTitle('API')
+    .setTitle('Spend Track API')
     .setDescription(description)
     .setVersion(version)
     .addCookieAuth(

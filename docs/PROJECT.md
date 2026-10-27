@@ -6,9 +6,10 @@ What this API does, which modules it has, and the data it seeds. Engineering rul
 
 ## Purpose
 
-A REST API for a web frontend that provides authentication with cookie-based sessions, user and
-role management with administrator safeguards, ability-based authorization, request auditing, and
-transactional email delivery (email confirmation, password reset, and account notifications).
+The REST API of Spend Track, a personal financial organization system, consumed by the
+[spend-track-client](https://github.com/Arthu085/spend-track-client) web application. It provides
+authentication with cookie-based sessions, user and role management with administrator safeguards,
+ability-based authorization, request auditing, and transactional email delivery (email confirmation, password reset, and account notifications).
 
 ## Stack
 

@@ -1,4 +1,6 @@
-# API
+# Spend Track API
+
+The REST API for **Spend Track**, a personal financial organization system.
 
 A **NestJS 11** REST API with a DDD-modular architecture, TypeORM and PostgreSQL, cookie-based JWT authentication with CSRF protection, Roles + Abilities authorization,
 i18n (`pt-BR` and `en`), structured logging, auditing, and a durable email outbox.
@@ -9,9 +11,9 @@ presentation layers; cross-cutting wiring lives in `src/core/`. The architecture
 
 ## Related repository
 
-The related web client project is [frontend-template](https://github.com/Arthu085/frontend-template).
+The related web client project is [spend-track-client](https://github.com/Arthu085/spend-track-client).
 The frontend consumes the authentication, users, roles, and abilities endpoints. Its optional
-[API integration suite](https://github.com/Arthu085/frontend-template#api-integration-tests) validates
+[API integration suite](https://github.com/Arthu085/spend-track-client#api-integration-tests) validates
 real requests and response schemas against this checkout using disposable PostgreSQL. The
 repositories retain separate setup and validation, and this API can be developed, run, and validated
 on its own.
