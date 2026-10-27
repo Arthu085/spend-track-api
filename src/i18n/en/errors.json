@@ -1,0 +1,13 @@
+{
+  "internal_server_error": "Internal server error",
+  "internal_server_error_with_reference": "An internal error occurred. Please share the reference code with the team responsible for fixing it.",
+  "not_found": "Resource not found",
+  "route_not_found": "Route not found",
+  "conflict": "Conflict with the current resource state",
+  "unprocessable_entity": "The request could not be processed",
+  "unauthorized": "Unauthorized",
+  "forbidden": "Forbidden",
+  "inactive": "Resource is inactive",
+  "too_many_requests": "Too many requests. Please try again later.",
+  "service_unavailable": "The service is not ready to handle requests"
+}

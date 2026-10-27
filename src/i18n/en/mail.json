@@ -1,0 +1,32 @@
+{
+  "common": {
+    "greeting": "Hi {name},",
+    "fallback_link": "If the button doesn't work, copy and paste this link into your browser:",
+    "ignore": "If you didn't request this, you can safely ignore this email.",
+    "footer": "This is an automated message — please do not reply."
+  },
+  "email_confirmation": {
+    "subject": "Confirm your email",
+    "intro": "Confirm your email address to activate your access.",
+    "cta": "Confirm email",
+    "expires": "This link expires in {hours} hour(s)."
+  },
+  "password_reset": {
+    "subject": "Reset your password",
+    "intro": "We received a request to reset your account password.",
+    "cta": "Reset password",
+    "expires": "This link expires in {minutes} minute(s)."
+  },
+  "user_change_request": {
+    "subject": "Review a change to your account",
+    "intro": "Another administrator requested changes to your account details. Nothing changes until you approve the request.",
+    "cta": "Review request",
+    "expires": "This request expires in {hours} hour(s).",
+    "ignore": "If you don't recognize this request, reject it or let it expire, and tell your security team."
+  },
+  "email_change_notice": {
+    "subject": "Your account email was changed",
+    "intro": "The email address used to sign in to your account was just changed, and every session was signed out.",
+    "warning": "If you did not make this change, contact your administrator immediately."
+  }
+}

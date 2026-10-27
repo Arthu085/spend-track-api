@@ -1,0 +1,12 @@
+{
+  "record_status": {
+    "active": "Active",
+    "inactive": "Inactive"
+  },
+  "action": {
+    "create": "Create",
+    "read": "Read",
+    "update": "Update",
+    "delete": "Delete"
+  }
+}

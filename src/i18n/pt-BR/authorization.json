@@ -1,0 +1,19 @@
+{
+  "errors": {
+    "role_not_found": "Papel não encontrado",
+    "unknown_ability": "Uma ou mais permissões informadas não existem",
+    "missing_ability": "Você não possui permissão para executar esta ação",
+    "role_inactive": "Papel inativo",
+    "ability_inactive": "Uma ou mais permissões informadas estão inativas",
+    "admin_role_abilities_immutable": "As permissões do papel Administrador não podem ser alteradas"
+  },
+  "role_label": {
+    "admin": "Administrador",
+    "user": "Usuário"
+  },
+  "subject_label": {
+    "user": "Usuário",
+    "role": "Papel",
+    "ability": "Permissão"
+  }
+}

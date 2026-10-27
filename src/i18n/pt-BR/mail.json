@@ -1,0 +1,32 @@
+{
+  "common": {
+    "greeting": "Olá, {name},",
+    "fallback_link": "Se o botão não funcionar, copie e cole este link no seu navegador:",
+    "ignore": "Se você não solicitou isso, ignore este email.",
+    "footer": "Este é um email automático — não responda."
+  },
+  "email_confirmation": {
+    "subject": "Confirme seu email",
+    "intro": "Confirme seu endereço de email para ativar seu acesso.",
+    "cta": "Confirmar email",
+    "expires": "Este link expira em {hours} hora(s)."
+  },
+  "password_reset": {
+    "subject": "Redefina sua senha",
+    "intro": "Recebemos um pedido para redefinir a senha da sua conta.",
+    "cta": "Redefinir senha",
+    "expires": "Este link expira em {minutes} minuto(s)."
+  },
+  "user_change_request": {
+    "subject": "Revise uma alteração na sua conta",
+    "intro": "Outro administrador solicitou alterações nos dados da sua conta. Nada muda até você aprovar a solicitação.",
+    "cta": "Revisar solicitação",
+    "expires": "Esta solicitação expira em {hours} hora(s).",
+    "ignore": "Se você não reconhece esta solicitação, rejeite-a ou deixe-a expirar e avise sua equipe de segurança."
+  },
+  "email_change_notice": {
+    "subject": "O email da sua conta foi alterado",
+    "intro": "O endereço de email usado para acessar sua conta acabou de ser alterado, e todas as sessões foram encerradas.",
+    "warning": "Se você não fez essa alteração, entre em contato com o administrador imediatamente."
+  }
+}

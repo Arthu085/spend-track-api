@@ -1,0 +1,34 @@
+{
+  "errors": {
+    "not_found": "User not found",
+    "email_already_in_use": "This email is already in use",
+    "inactive": "User is inactive",
+    "invalid_confirmation_token": "Invalid or expired confirmation token",
+    "admin_role_grant_forbidden": "Only an active admin can grant the ADMIN role",
+    "self_deactivation_forbidden": "You cannot deactivate yourself",
+    "self_deletion_forbidden": "You cannot delete yourself",
+    "last_active_admin": "At least one active admin must remain",
+    "admin_target_forbidden": "Only an active admin can modify an admin",
+    "admin_role_removal_forbidden": "The ADMIN role cannot be removed",
+    "admin_change_approval_required": "Changes to another admin require their approval; submit a change request instead",
+    "change_request_not_applicable": "Change requests apply only to another admin; update this user directly",
+    "change_request_not_found": "Change request not found",
+    "change_request_not_pending": "This change request is no longer pending",
+    "change_request_stale": "Your profile changed after this request was made; ask for a new request",
+    "change_request_recipient_forbidden": "Only admins receive change requests",
+    "current_password_required": "Enter your current password to change the email",
+    "invalid_current_password": "The current password is incorrect"
+  },
+  "success": {
+    "email_confirmed": "Email confirmed successfully",
+    "confirmation_sent": "If the email is registered, a confirmation link will be sent",
+    "change_request_rejected": "Change request rejected",
+    "password_changed": "Password changed successfully"
+  },
+  "change_request_status": {
+    "pending": "Pending",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "superseded": "Superseded"
+  }
+}

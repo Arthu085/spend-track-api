@@ -1,0 +1,19 @@
+{
+  "REQUIRED": "O campo {property} é obrigatório",
+  "NOT_EMPTY": "O campo {property} não pode estar vazio",
+  "IS_STRING": "O campo {property} deve ser um texto",
+  "IS_EMAIL": "O campo {property} deve ser um e-mail válido",
+  "IS_INT": "O campo {property} deve ser um número inteiro",
+  "IS_NUMBER": "O campo {property} deve ser um número",
+  "IS_BOOLEAN": "O campo {property} deve ser um valor booleano",
+  "IS_UUID": "O campo {property} deve ser um UUID válido",
+  "IS_ENUM": "O campo {property} possui um valor inválido",
+  "MIN_LENGTH": "O campo {property} deve ter no mínimo {constraints.0} caracteres",
+  "MAX_LENGTH": "O campo {property} deve ter no máximo {constraints.0} caracteres",
+  "STRONG_PASSWORD": "O campo {property} deve conter uma letra maiúscula, uma letra minúscula, um número e um símbolo",
+  "MIN": "O campo {property} deve ser no mínimo {constraints.0}",
+  "MAX": "O campo {property} deve ser no máximo {constraints.0}",
+  "IS_ARRAY": "O campo {property} deve ser uma lista",
+  "ARRAY_NOT_EMPTY": "O campo {property} não pode estar vazio",
+  "ARRAY_UNIQUE": "O campo {property} não pode conter itens duplicados"
+}

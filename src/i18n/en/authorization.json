@@ -1,0 +1,19 @@
+{
+  "errors": {
+    "role_not_found": "Role not found",
+    "unknown_ability": "One or more provided abilities do not exist",
+    "missing_ability": "You do not have permission to perform this action",
+    "role_inactive": "Role is inactive",
+    "ability_inactive": "One or more provided abilities are inactive",
+    "admin_role_abilities_immutable": "The Administrator role's abilities cannot be changed"
+  },
+  "role_label": {
+    "admin": "Administrator",
+    "user": "User"
+  },
+  "subject_label": {
+    "user": "User",
+    "role": "Role",
+    "ability": "Ability"
+  }
+}

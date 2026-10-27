@@ -1,0 +1,34 @@
+{
+  "errors": {
+    "not_found": "Usuário não encontrado",
+    "email_already_in_use": "Este e-mail já está em uso",
+    "inactive": "Usuário inativo",
+    "invalid_confirmation_token": "Token de confirmação inválido ou expirado",
+    "admin_role_grant_forbidden": "Somente um administrador ativo pode conceder o papel ADMIN",
+    "self_deactivation_forbidden": "Você não pode desativar a própria conta",
+    "self_deletion_forbidden": "Você não pode excluir a própria conta",
+    "last_active_admin": "Pelo menos um administrador ativo deve permanecer",
+    "admin_target_forbidden": "Somente um administrador ativo pode alterar um administrador",
+    "admin_role_removal_forbidden": "O papel ADMIN não pode ser removido",
+    "admin_change_approval_required": "Alterações em outro administrador exigem a aprovação dele; envie uma solicitação de alteração",
+    "change_request_not_applicable": "Solicitações de alteração se aplicam apenas a outro administrador; atualize este usuário diretamente",
+    "change_request_not_found": "Solicitação de alteração não encontrada",
+    "change_request_not_pending": "Esta solicitação de alteração não está mais pendente",
+    "change_request_stale": "Seu perfil mudou depois que esta solicitação foi feita; peça uma nova solicitação",
+    "change_request_recipient_forbidden": "Apenas administradores recebem solicitações de alteração",
+    "current_password_required": "Informe sua senha atual para alterar o e-mail",
+    "invalid_current_password": "A senha atual está incorreta"
+  },
+  "success": {
+    "email_confirmed": "E-mail confirmado com sucesso",
+    "confirmation_sent": "Se o e-mail estiver cadastrado, um link de confirmação será enviado",
+    "change_request_rejected": "Solicitação de alteração rejeitada",
+    "password_changed": "Senha alterada com sucesso"
+  },
+  "change_request_status": {
+    "pending": "Pendente",
+    "approved": "Aprovada",
+    "rejected": "Rejeitada",
+    "superseded": "Substituída"
+  }
+}

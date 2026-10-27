@@ -1,0 +1,19 @@
+{
+  "REQUIRED": "The {property} field is required",
+  "NOT_EMPTY": "The {property} field must not be empty",
+  "IS_STRING": "The {property} field must be a string",
+  "IS_EMAIL": "The {property} field must be a valid email",
+  "IS_INT": "The {property} field must be an integer",
+  "IS_NUMBER": "The {property} field must be a number",
+  "IS_BOOLEAN": "The {property} field must be a boolean",
+  "IS_UUID": "The {property} field must be a valid UUID",
+  "IS_ENUM": "The {property} field has an invalid value",
+  "MIN_LENGTH": "The {property} field must be at least {constraints.0} characters long",
+  "MAX_LENGTH": "The {property} field must be at most {constraints.0} characters long",
+  "STRONG_PASSWORD": "The {property} field must contain an uppercase letter, a lowercase letter, a number, and a symbol",
+  "MIN": "The {property} field must not be less than {constraints.0}",
+  "MAX": "The {property} field must not be greater than {constraints.0}",
+  "IS_ARRAY": "The {property} field must be an array",
+  "ARRAY_NOT_EMPTY": "The {property} field must not be empty",
+  "ARRAY_UNIQUE": "The {property} field must not contain duplicate items"
+}
