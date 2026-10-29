@@ -6,7 +6,7 @@ import { RecordStatus } from '@shared/domain/enums/record-status.enum';
 export class UpdateCategoryStatusDto {
   @ApiProperty({
     enum: RecordStatus,
-    description: 'INACTIVE archives the category; ACTIVE restores it.',
+    description: 'INACTIVE deactivates the category; ACTIVE reactivates it.',
   })
   @IsEnum(RecordStatus, {
     message: i18nValidationMessage('validation.IS_ENUM'),

@@ -19,7 +19,7 @@ in Swagger; this document covers the rules behind them.
 ## Figures
 
 - Every figure comes from the caller's own records; nothing is cached or stored.
-- `balances.actual` sums the actual balances of the caller's **active** accounts; archived accounts
+- `balances.actual` sums the actual balances of the caller's **active** accounts; inactive accounts
   are excluded. `balances.projected` is the expected balance at the end of the period, which equals
   the actual balance until planned operations exist.
 - Sums use integer cents (`sumMoney`) and are returned as decimal strings, so totals always equal the

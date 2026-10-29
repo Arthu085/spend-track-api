@@ -65,7 +65,7 @@ export class CategoriesController {
     .summary('Get a global or personal category by uuid')
     .description(VISIBILITY_NOTE)
     .errorResponse(HttpStatus.NOT_FOUND, 'Category not found.')
-    .errorResponse(HttpStatus.CONFLICT, 'Category is archived.')
+    .errorResponse(HttpStatus.CONFLICT, 'Category is inactive.')
     .response(CategoryResponseDto)
     .build())
   async findOne(
@@ -114,7 +114,7 @@ export class CategoriesController {
     )
     .errorResponse(HttpStatus.FORBIDDEN, 'Global categories are read-only.')
     .errorResponse(HttpStatus.NOT_FOUND, 'Category not found.')
-    .errorResponse(HttpStatus.CONFLICT, 'Category is archived.')
+    .errorResponse(HttpStatus.CONFLICT, 'Category is inactive.')
     .body(UpdateCategoryDto)
     .response(CategoryResponseDto)
     .build())
@@ -139,9 +139,9 @@ export class CategoriesController {
     .audit('Category.update_status')
     .successMessage('success.updated')
     .tags('categories')
-    .summary('Archive or restore one of your personal categories')
+    .summary('Deactivate or reactivate one of your personal categories')
     .description(
-      `Archived categories leave selection lists, but records that use them keep them. Global categories are read-only. ${VISIBILITY_NOTE}`,
+      `Inactive categories leave selection lists, but records that use them keep them. Global categories are read-only. ${VISIBILITY_NOTE}`,
     )
     .errorResponse(HttpStatus.FORBIDDEN, 'Global categories are read-only.')
     .errorResponse(HttpStatus.NOT_FOUND, 'Category not found.')

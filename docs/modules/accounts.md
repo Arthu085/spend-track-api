@@ -35,14 +35,15 @@ everyone, including admins.
 - Every account write for a user runs in one transaction under a per-user advisory lock
   (`lockOwnerAccounts`): update, status change, and delete take it before reading the account, and
   creating a default account takes it before clearing the previous default. Concurrent requests
-  therefore never keep two defaults or save a stale copy of an account another request just changed. `isDefault: false` simply leaves the user without
-  one.
-- Archiving or deleting an account clears its flag; restoring it does not make it the default again.
+  therefore never keep two defaults or save a stale copy of an account another request just changed.
+  `isDefault: false` simply leaves the user without one.
+- Deactivating or deleting an account clears its flag; reactivating it does not make it the default
+  again.
 
-## Archiving and deletion
+## Deactivation and deletion
 
-`status` follows the shared convention: `PUT /accounts/:uuid/status` archives (`INACTIVE`) or
-restores an account, and `DELETE` soft-deletes it. Archived accounts stay listable with
+`status` follows the shared convention: `PUT /accounts/:uuid/status` deactivates (`INACTIVE`) or
+reactivates an account, and `DELETE` soft-deletes it. Inactive accounts stay listable with
 `?status=INACTIVE` and keep their history; `GET /accounts/:uuid` and `PATCH` reject them with
 `InactiveAccountError` (`409`). The list defaults to `ACTIVE`, puts the default account first, and
 is not paginated, since a user has few accounts.

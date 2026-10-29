@@ -1,7 +1,7 @@
 {
   "errors": {
     "not_found": "Categoria não encontrada",
-    "inactive": "Categoria arquivada",
+    "inactive": "Categoria inativa",
     "global_read_only": "Categorias globais não podem ser alteradas"
   },
   "kind": {

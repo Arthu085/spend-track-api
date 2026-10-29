@@ -1,7 +1,7 @@
 {
   "errors": {
     "not_found": "Account not found",
-    "inactive": "Account is archived"
+    "inactive": "Account is inactive"
   },
   "type": {
     "checking": "Checking account",

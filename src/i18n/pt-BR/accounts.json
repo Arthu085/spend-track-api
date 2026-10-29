@@ -1,7 +1,7 @@
 {
   "errors": {
     "not_found": "Conta não encontrada",
-    "inactive": "Conta arquivada"
+    "inactive": "Conta inativa"
   },
   "type": {
     "checking": "Conta corrente",

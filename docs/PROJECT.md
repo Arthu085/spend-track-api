@@ -35,7 +35,7 @@ included ([financial data ownership](conventions.md#financial-data-ownership)).
 | [`email-quota`](modules/email-quota.md) | Per-recipient, per-type, per-UTC-day send cap; fails closed | No |
 | [`email-outbox`](modules/email-outbox.md) | Durable PostgreSQL outbox and in-process worker that delivers transactional emails with retries | No |
 | [`preferences`](modules/preferences.md) | Per-user financial preferences: spending perspective and dashboard default month | Yes |
-| [`accounts`](modules/accounts.md) | Per-user financial accounts with opening balances, archiving, and one default account | Yes |
+| [`accounts`](modules/accounts.md) | Per-user financial accounts with opening balances, active/inactive status, and one default account | Yes |
 | [`categories`](modules/categories.md) | Read-only global category catalog plus per-user personal categories | Yes |
 | [`dashboard`](modules/dashboard.md) | Monthly financial summary computed from the caller's own records | Yes |
 

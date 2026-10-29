@@ -1,7 +1,7 @@
 {
   "errors": {
     "not_found": "Category not found",
-    "inactive": "Category is archived",
+    "inactive": "Category is inactive",
     "global_read_only": "Global categories cannot be changed"
   },
   "kind": {

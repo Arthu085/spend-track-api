@@ -68,7 +68,7 @@ export class AccountsController {
     .summary('Get one of your accounts by uuid')
     .description(OWNERSHIP_NOTE)
     .errorResponse(HttpStatus.NOT_FOUND, 'Account not found.')
-    .errorResponse(HttpStatus.CONFLICT, 'Account is archived.')
+    .errorResponse(HttpStatus.CONFLICT, 'Account is inactive.')
     .response(AccountResponseDto)
     .build())
   async findOne(
@@ -121,7 +121,7 @@ export class AccountsController {
       `Partial update: omitted fields keep their current values. isDefault true clears the flag on the previous default account. ${OWNERSHIP_NOTE}`,
     )
     .errorResponse(HttpStatus.NOT_FOUND, 'Account not found.')
-    .errorResponse(HttpStatus.CONFLICT, 'Account is archived.')
+    .errorResponse(HttpStatus.CONFLICT, 'Account is inactive.')
     .body(UpdateAccountDto)
     .response(AccountResponseDto)
     .build())
@@ -152,9 +152,9 @@ export class AccountsController {
     .audit('Account.update_status')
     .successMessage('success.updated')
     .tags('accounts')
-    .summary('Archive or restore one of your accounts')
+    .summary('Deactivate or reactivate one of your accounts')
     .description(
-      `Archiving (INACTIVE) keeps the account and its history and clears its default flag; restoring does not make it the default again. ${OWNERSHIP_NOTE}`,
+      `Deactivating (INACTIVE) keeps the account and its history and clears its default flag; reactivating does not make it the default again. ${OWNERSHIP_NOTE}`,
     )
     .errorResponse(HttpStatus.NOT_FOUND, 'Account not found.')
     .body(UpdateAccountStatusDto)
@@ -182,7 +182,7 @@ export class AccountsController {
     .tags('accounts')
     .summary('Soft-delete one of your accounts')
     .description(
-      `Removes the account from every list. Archive an account instead to keep it visible with its history. ${OWNERSHIP_NOTE}`,
+      `Removes the account from every list. Deactivate an account instead to keep it visible with its history. ${OWNERSHIP_NOTE}`,
     )
     .errorResponse(HttpStatus.NOT_FOUND, 'Account not found.')
     .build())
