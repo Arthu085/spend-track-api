@@ -29,13 +29,40 @@ interface TransactionShape {
   notes: string | null;
 }
 
+interface AmountsShape {
+  total: string;
+  completed: string;
+  pending: string;
+}
+
+interface DashboardShape {
+  balances: { actual: string; projected: string };
+  accounts: Array<{
+    uuid: string;
+    actualBalance: string;
+    projectedBalance: string;
+  }>;
+  income: AmountsShape;
+  expenses: AmountsShape;
+  expensesByCategory: Array<AmountsShape & { category: { uuid: string } }>;
+  upcoming: Array<{ uuid: string; overdue: boolean }>;
+  upcomingCount: number;
+}
+
 function dataOf<T>(body: unknown): T {
   return (body as EnvelopeBody<T>).data;
 }
 
+function cents(amount: string): number {
+  const [whole, fraction = '0'] = amount.replace('-', '').split('.');
+  const value = Number(whole) * 100 + Number(fraction.padEnd(2, '0'));
+
+  return amount.startsWith('-') ? -value : value;
+}
+
 // Every scenario works on accounts and categories of its own. Login is
 // throttled, so scenarios share one isolated user, except those that read
-// user-wide totals, which sign in as a user of their own.
+// user-wide dashboard totals, which sign in as a user of their own.
 describe('Transactions (e2e)', () => {
   let app: INestApplication<App>;
   let shared: AuthAgent;
@@ -125,6 +152,14 @@ describe('Transactions (e2e)', () => {
     return dataOf<AccountShape>(response.body).currentBalance;
   }
 
+  async function dashboard(ledger: Ledger): Promise<DashboardShape> {
+    const response = await ledger.agent
+      .get('/api/dashboard?year=2026&month=10')
+      .expect(200);
+
+    return dataOf<DashboardShape>(response.body);
+  }
+
   it('leaves the actual balance unchanged by a planned expense until it is completed, exactly once', async () => {
     const ledger = await newLedger();
     const planned = await record(ledger, {});
@@ -192,6 +227,13 @@ describe('Transactions (e2e)', () => {
     });
     await expect(balanceOf(ledger, ledger.bank)).resolves.toBe('749.50');
     await expect(balanceOf(ledger, ledger.wallet)).resolves.toBe('300.50');
+
+    const summary = await dashboard(ledger);
+
+    expect(summary.balances.actual).toBe('1050.00');
+    expect(summary.income.total).toBe('0.00');
+    expect(summary.expenses.total).toBe('0.00');
+    expect(summary.expensesByCategory).toEqual([]);
   });
 
   it('rejects a transfer to the same account and a category of the wrong kind', async () => {
@@ -356,5 +398,75 @@ describe('Transactions (e2e)', () => {
       uuid: ledger.groceries,
       name: 'Groceries',
     });
+  });
+
+  it('builds dashboard totals that agree with the records', async () => {
+    const ledger = await newLedger(await newAgent());
+    await record(ledger, {
+      type: 'INCOME',
+      amount: '3000.00',
+      state: 'COMPLETED',
+      categoryUuid: ledger.salary,
+    });
+    await record(ledger, {
+      type: 'INCOME',
+      amount: '2000.00',
+      date: '2026-10-25',
+      categoryUuid: ledger.salary,
+    });
+    await record(ledger, { amount: '300.00', state: 'COMPLETED' });
+    await record(ledger, { amount: '200.00', date: '2026-10-28' });
+    await record(ledger, {
+      amount: '45.25',
+      date: '2026-09-20',
+      accountUuid: ledger.wallet,
+    });
+    await record(ledger, { amount: '999.00', date: '2026-11-03' });
+    await record(ledger, {
+      type: 'TRANSFER',
+      amount: '100.00',
+      categoryUuid: undefined,
+      destinationAccountUuid: ledger.wallet,
+    });
+
+    const summary = await dashboard(ledger);
+
+    expect(summary.income).toEqual({
+      total: '5000.00',
+      completed: '3000.00',
+      pending: '2000.00',
+    });
+    expect(summary.expenses).toEqual({
+      total: '500.00',
+      completed: '300.00',
+      pending: '200.00',
+    });
+    expect(
+      summary.expensesByCategory.reduce(
+        (total, entry) => total + cents(entry.total),
+        0,
+      ),
+    ).toBe(cents(summary.expenses.total));
+
+    const bank = summary.accounts.find((entry) => entry.uuid === ledger.bank);
+
+    const wallet = summary.accounts.find(
+      (entry) => entry.uuid === ledger.wallet,
+    );
+
+    expect(bank).toMatchObject({
+      actualBalance: '3700.00',
+      projectedBalance: '5400.00',
+    });
+    expect(wallet).toMatchObject({
+      actualBalance: '50.00',
+      projectedBalance: '104.75',
+    });
+    expect(summary.balances).toEqual({
+      actual: '3750.00',
+      projected: '5504.75',
+    });
+    expect(summary.upcomingCount).toBe(4);
+    expect(summary.upcoming[0]).toMatchObject({ overdue: true });
   });
 });
