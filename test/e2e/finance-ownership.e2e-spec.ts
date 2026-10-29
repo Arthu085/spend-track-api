@@ -21,7 +21,7 @@ interface AccountShape {
   status: string;
 }
 
-interface CategoryShape {
+interface TransactionCategoryShape {
   uuid: string;
   name: string;
   scope: string;
@@ -234,25 +234,27 @@ describe('Financial data ownership (e2e)', () => {
     });
   });
 
-  describe('categories', () => {
-    let ownerCategory: CategoryShape;
+  describe('transaction categories', () => {
+    let ownerTransactionCategory: TransactionCategoryShape;
 
     beforeAll(async () => {
       const response = await owner
-        .post('/api/categories')
+        .post('/api/transaction-categories')
         .send({ name: 'Owner pets', kind: 'EXPENSE', color: '#123456' })
         .expect(201);
 
-      ownerCategory = dataOf<CategoryShape>(response.body);
+      ownerTransactionCategory = dataOf<TransactionCategoryShape>(
+        response.body,
+      );
     });
 
     it('pages the category list with the shared pagination meta', async () => {
       const response = await owner
-        .get('/api/categories?kind=EXPENSE&page=2&limit=5')
+        .get('/api/transaction-categories?kind=EXPENSE&page=2&limit=5')
         .expect(200);
 
       const body = response.body as {
-        data: CategoryShape[];
+        data: TransactionCategoryShape[];
         meta: { total: number; page: number; limit: number };
       };
 
@@ -262,14 +264,14 @@ describe('Financial data ownership (e2e)', () => {
 
     it('lists the global catalog and the own categories to the owner', async () => {
       const response = await owner
-        .get('/api/categories?kind=EXPENSE')
+        .get('/api/transaction-categories?kind=EXPENSE')
         .set('Accept-Language', 'en')
         .expect(200);
 
-      const categories = dataOf<CategoryShape[]>(response.body);
+      const categories = dataOf<TransactionCategoryShape[]>(response.body);
 
       expect(categories.map((category) => category.uuid)).toContain(
-        ownerCategory.uuid,
+        ownerTransactionCategory.uuid,
       );
       expect(categories).toEqual(
         expect.arrayContaining([
@@ -279,58 +281,70 @@ describe('Financial data ownership (e2e)', () => {
     });
 
     it("hides the owner's personal category from an admin", async () => {
-      const list = dataOf<CategoryShape[]>(
-        (await admin.get('/api/categories').expect(200)).body,
+      const list = dataOf<TransactionCategoryShape[]>(
+        (await admin.get('/api/transaction-categories').expect(200)).body,
       );
 
       expect(list.map((category) => category.uuid)).not.toContain(
-        ownerCategory.uuid,
+        ownerTransactionCategory.uuid,
       );
-      await admin.get(`/api/categories/${ownerCategory.uuid}`).expect(404);
       await admin
-        .patch(`/api/categories/${ownerCategory.uuid}`)
+        .get(`/api/transaction-categories/${ownerTransactionCategory.uuid}`)
+        .expect(404);
+      await admin
+        .patch(`/api/transaction-categories/${ownerTransactionCategory.uuid}`)
         .send({ name: 'Taken' })
         .expect(404);
       await admin
-        .put(`/api/categories/${ownerCategory.uuid}/status`)
+        .put(
+          `/api/transaction-categories/${ownerTransactionCategory.uuid}/status`,
+        )
         .send({ status: 'INACTIVE' })
         .expect(404);
-      await admin.delete(`/api/categories/${ownerCategory.uuid}`).expect(404);
+      await admin
+        .delete(`/api/transaction-categories/${ownerTransactionCategory.uuid}`)
+        .expect(404);
     });
 
     it('keeps global categories read-only, even for an admin', async () => {
-      const [food] = dataOf<CategoryShape[]>(
+      const [food] = dataOf<TransactionCategoryShape[]>(
         (
           await admin
-            .get('/api/categories?scope=GLOBAL&kind=EXPENSE')
+            .get('/api/transaction-categories?scope=GLOBAL&kind=EXPENSE')
             .set('Accept-Language', 'en')
             .expect(200)
         ).body,
       ).filter((category) => category.name === 'Food');
 
       await admin
-        .patch(`/api/categories/${food.uuid}`)
+        .patch(`/api/transaction-categories/${food.uuid}`)
         .send({ name: 'Mine' })
         .expect(403);
       await admin
-        .put(`/api/categories/${food.uuid}/status`)
+        .put(`/api/transaction-categories/${food.uuid}/status`)
         .send({ status: 'INACTIVE' })
         .expect(403);
-      await admin.delete(`/api/categories/${food.uuid}`).expect(403);
+      await admin
+        .delete(`/api/transaction-categories/${food.uuid}`)
+        .expect(403);
     });
 
     it('lets the owner delete a personal category', async () => {
-      const created = dataOf<CategoryShape>(
+      const created = dataOf<TransactionCategoryShape>(
         (
           await owner
-            .post('/api/categories')
+            .post('/api/transaction-categories')
             .send({ name: 'Short-lived', kind: 'INCOME' })
             .expect(201)
         ).body,
       );
 
-      await owner.delete(`/api/categories/${created.uuid}`).expect(200);
-      await owner.get(`/api/categories/${created.uuid}`).expect(404);
+      await owner
+        .delete(`/api/transaction-categories/${created.uuid}`)
+        .expect(200);
+      await owner
+        .get(`/api/transaction-categories/${created.uuid}`)
+        .expect(404);
     });
   });
 
