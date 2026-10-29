@@ -284,11 +284,15 @@ export class DashboardResponseDto {
   @ApiProperty({
     type: [DashboardUpcomingResponseDto],
     description:
-      'Up to 10 planned transactions dated up to the end of the period, oldest first, overdue ones included.',
+      'Up to 10 pending planned transactions of any type dated up to the end of the period, overdue ones included, oldest first, whatever the status of their accounts. Not a breakdown of projected minus actual balances: transfers and items on inactive accounts are listed too.',
   })
   upcoming!: DashboardUpcomingResponseDto[];
 
-  @ApiProperty({ example: 7, description: 'Total number of upcoming items.' })
+  @ApiProperty({
+    example: 7,
+    description:
+      'Number of pending planned transactions dated up to the end of the period.',
+  })
   upcomingCount!: number;
 
   static fromDomain(

@@ -72,7 +72,7 @@ export class TransactionCategoryRefResponseDto {
   @ApiProperty({
     enum: RecordStatus,
     description:
-      'Inactive or deleted categories stay on the transactions that use them.',
+      "The category's record status (ACTIVE or INACTIVE). Categories stay on the transactions that use them after being deactivated or deleted; a deleted category keeps the status it had, so deletion is not distinguishable here.",
   })
   status!: RecordStatus;
 

@@ -32,9 +32,11 @@ in Swagger; this document covers the rules behind them.
   count; accounts of any status do.
 - `expensesByCategory` groups the same expenses by category, largest total first, then by stored
   name; inactive and soft-deleted categories still appear. The totals add up to `expenses.total`.
-- `upcoming` lists at most 10 planned transactions of any type dated up to the end of the period,
-  oldest first; `upcomingCount` is how many match, and `overdue` marks dates before today. These are
-  exactly the items behind the difference between projected and actual balances.
+- `upcoming` lists at most 10 of the caller's pending planned transactions of any type dated up to
+  the end of the period, overdue ones included, oldest first, whatever the status of their accounts;
+  `upcomingCount` is how many match, and `overdue` marks dates before today. The list is not a
+  breakdown of projected minus actual: it also holds transfers between active accounts, which leave
+  the total unchanged, and items on inactive accounts, which the totals exclude.
 - Until credit cards exist both perspectives give the same numbers: account transactions are
   grouped by `date` in both.
 - Sums use integer cents (`sumMoney`) and are returned as decimal strings, so totals always equal the
