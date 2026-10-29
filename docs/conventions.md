@@ -145,7 +145,7 @@ including a `docs/modules/<name>.md` and a row in [`PROJECT.md`](PROJECT.md#modu
 
 ## Financial data ownership
 
-Every financial record (accounts, personal transaction categories, preferences, and the records later phases
+Every financial record (accounts, personal transaction categories, preferences, transactions, and the records later phases
 add) belongs to exactly one user through a `user_id` FK, and only that user can read or change it.
 
 - **Ownership is enforced by the API, never by the client.** Financial routes need authentication
@@ -163,7 +163,7 @@ add) belongs to exactly one user through a `user_id` FK, and only that user can 
   `sumMoney` in `src/shared/domain/money/`), `numeric(14,2)` in PostgreSQL, and decimal strings with
   up to two decimal places (`MoneyField`) over HTTP, never JSON numbers. Calendar dates without a
   time are `YYYY-MM-DD` strings (`DateOnlyField`, `date` columns). The MVP assumes BRL and the
-  `America/Sao_Paulo` calendar.
+  `America/Sao_Paulo` calendar (`financeToday` in `src/shared/domain/calendar/`).
 
 ## Persistence
 

@@ -348,6 +348,157 @@ describe('Financial data ownership (e2e)', () => {
     });
   });
 
+  describe('transactions', () => {
+    let holder: AuthAgent;
+    let holderAccount: AccountShape;
+    let holderTransaction: { uuid: string };
+    let expenseCategoryUuid: string;
+
+    beforeAll(async () => {
+      holder = await createAuthAgent(app, await createIsolatedUser(app));
+      holderAccount = await createAccount(holder, {
+        name: 'Holder bank',
+        openingBalance: '100.00',
+      });
+
+      const category = await holder
+        .post('/api/transaction-categories')
+        .send({ name: 'Holder pets', kind: 'EXPENSE' })
+        .expect(201);
+
+      expenseCategoryUuid = dataOf<TransactionCategoryShape>(
+        category.body,
+      ).uuid;
+
+      const created = await holder
+        .post('/api/transactions')
+        .send({
+          type: 'EXPENSE',
+          description: 'Vet',
+          amount: '40.00',
+          date: '2026-10-10',
+          state: 'PLANNED',
+          accountUuid: holderAccount.uuid,
+          categoryUuid: expenseCategoryUuid,
+        })
+        .expect(201);
+
+      holderTransaction = dataOf<{ uuid: string }>(created.body);
+    });
+
+    it.each([
+      [
+        'GET',
+        (agent: AuthAgent, uuid: string) =>
+          agent.get(`/api/transactions/${uuid}`),
+      ],
+      [
+        'PATCH',
+        (agent: AuthAgent, uuid: string) =>
+          agent
+            .patch(`/api/transactions/${uuid}`)
+            .send({ description: 'Taken' }),
+      ],
+      [
+        'PUT state',
+        (agent: AuthAgent, uuid: string) =>
+          agent
+            .put(`/api/transactions/${uuid}/state`)
+            .send({ state: 'COMPLETED' }),
+      ],
+      [
+        'DELETE',
+        (agent: AuthAgent, uuid: string) =>
+          agent.delete(`/api/transactions/${uuid}`),
+      ],
+    ])('answers 404 to an admin who tries %s on it', async (_, send) => {
+      await send(admin, holderTransaction.uuid).expect(404);
+    });
+
+    it("keeps the holder's transaction untouched and out of the admin's list", async () => {
+      const adminList = dataOf<Array<{ uuid: string }>>(
+        (await admin.get('/api/transactions').expect(200)).body,
+      );
+
+      expect(adminList.map((item) => item.uuid)).not.toContain(
+        holderTransaction.uuid,
+      );
+
+      const holderView = await holder
+        .get(`/api/transactions/${holderTransaction.uuid}`)
+        .expect(200);
+
+      expect(
+        dataOf<{ description: string; state: string }>(holderView.body),
+      ).toMatchObject({ description: 'Vet', state: 'PLANNED' });
+    });
+
+    it("refuses to let an admin reference the holder's account or category", async () => {
+      const adminAccount = await createAccount(admin, {
+        name: `Admin bank ${Date.now()}`,
+        openingBalance: '0',
+      });
+
+      const base = {
+        type: 'EXPENSE',
+        description: 'Sneaky',
+        amount: '1.00',
+        date: '2026-10-10',
+        state: 'COMPLETED',
+      };
+
+      await admin
+        .post('/api/transactions')
+        .send({
+          ...base,
+          accountUuid: holderAccount.uuid,
+          categoryUuid: expenseCategoryUuid,
+        })
+        .expect(404);
+
+      const food = dataOf<TransactionCategoryShape[]>(
+        (
+          await admin
+            .get('/api/transaction-categories?scope=GLOBAL&kind=EXPENSE')
+            .expect(200)
+        ).body,
+      )[0];
+
+      await admin
+        .post('/api/transactions')
+        .send({
+          ...base,
+          accountUuid: holderAccount.uuid,
+          categoryUuid: food.uuid,
+        })
+        .expect(404);
+      await admin
+        .post('/api/transactions')
+        .send({
+          ...base,
+          accountUuid: adminAccount.uuid,
+          categoryUuid: expenseCategoryUuid,
+        })
+        .expect(404);
+      await admin
+        .post('/api/transactions')
+        .send({
+          ...base,
+          type: 'TRANSFER',
+          accountUuid: adminAccount.uuid,
+          destinationAccountUuid: holderAccount.uuid,
+        })
+        .expect(404);
+
+      const balance = await holder
+        .get(`/api/accounts/${holderAccount.uuid}`)
+        .expect(200);
+
+      expect(dataOf<AccountShape>(balance.body).currentBalance).toBe('100.00');
+      await admin.delete(`/api/accounts/${adminAccount.uuid}`).expect(200);
+    });
+  });
+
   describe('preferences and dashboard', () => {
     it('saves preferences per user', async () => {
       await owner
