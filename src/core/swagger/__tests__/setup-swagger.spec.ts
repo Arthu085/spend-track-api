@@ -178,7 +178,7 @@ describe('setupSwagger', () => {
 
     const [, documentConfig] = swagger.createDocument.mock.calls[0];
 
-    expect(documentConfig.info.title).toBe('API');
+    expect(documentConfig.info.title).toBe('Spend Track API');
     expect(
       documentConfig.components?.securitySchemes?.[
         ACCESS_TOKEN_SECURITY_SCHEME

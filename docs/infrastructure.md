@@ -138,7 +138,7 @@ In every environment, `COOKIE_SAMESITE=none` requires `COOKIE_SECURE=true`. With
   inject them as environment variables. Never bake them into the image or commit a production `.env`.
 - Generate each secret independently, for example with `openssl rand -base64 48`.
 - On a single host, an env file outside the repository with `chmod 600`, passed with `--env-file`,
-  is enough. Docker reads it literally, so write `MAIL_FROM=App <no-reply@example.com>` without the
+  is enough. Docker reads it literally, so write `MAIL_FROM=Spend Track <no-reply@spendtrack.com>` without the
   quotes `.env.example` uses for `dotenv`.
 - Every instance and every one-off container needs the same values.
 - **Rotating a secret signs every user out.** A new JWT secret invalidates every session, and a new

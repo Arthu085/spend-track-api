@@ -1,6 +1,8 @@
-# API
+# Spend Track API
 
-NestJS 11 REST API: TypeScript, TypeORM, PostgreSQL, JWT cookies, nestjs-i18n, Jest, npm.
+REST API for Spend Track, a personal financial organization system.
+
+NestJS 11: TypeScript, TypeORM, PostgreSQL, JWT cookies, nestjs-i18n, Jest, npm.
 
 ## Read before changing code
 

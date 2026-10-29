@@ -1,7 +1,7 @@
 {
-  "name": "api",
+  "name": "spend-track-api",
   "version": "0.0.1",
-  "description": "REST API built on NestJS 11 with a DDD-modular architecture.",
+  "description": "REST API for Spend Track, a personal financial organization system.",
   "author": "",
   "private": true,
   "license": "UNLICENSED",
