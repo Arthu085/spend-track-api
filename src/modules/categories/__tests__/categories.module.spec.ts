@@ -20,6 +20,7 @@ describe('CategoriesModule routes', () => {
       ['CategoriesController', 'POST /categories', false],
       ['CategoriesController', 'PATCH /categories/:uuid', false],
       ['CategoriesController', 'PUT /categories/:uuid/status', false],
+      ['CategoriesController', 'DELETE /categories/:uuid', false],
     ]);
   });
 

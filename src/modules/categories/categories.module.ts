@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CreateCategoryUseCase } from './application/use-cases/create-category.use-case';
+import { DeleteCategoryUseCase } from './application/use-cases/delete-category.use-case';
 import { GetCategoryUseCase } from './application/use-cases/get-category.use-case';
 import { ListCategoriesUseCase } from './application/use-cases/list-categories.use-case';
 import { UpdateCategoryStatusUseCase } from './application/use-cases/update-category-status.use-case';
@@ -20,6 +21,7 @@ import { CategoriesController } from './presentation/controllers/categories.cont
     CreateCategoryUseCase,
     UpdateCategoryUseCase,
     UpdateCategoryStatusUseCase,
+    DeleteCategoryUseCase,
   ],
 })
 export class CategoriesModule {}

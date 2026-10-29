@@ -295,6 +295,7 @@ describe('Financial data ownership (e2e)', () => {
         .put(`/api/categories/${ownerCategory.uuid}/status`)
         .send({ status: 'INACTIVE' })
         .expect(404);
+      await admin.delete(`/api/categories/${ownerCategory.uuid}`).expect(404);
     });
 
     it('keeps global categories read-only, even for an admin', async () => {
@@ -315,6 +316,21 @@ describe('Financial data ownership (e2e)', () => {
         .put(`/api/categories/${food.uuid}/status`)
         .send({ status: 'INACTIVE' })
         .expect(403);
+      await admin.delete(`/api/categories/${food.uuid}`).expect(403);
+    });
+
+    it('lets the owner delete a personal category', async () => {
+      const created = dataOf<CategoryShape>(
+        (
+          await owner
+            .post('/api/categories')
+            .send({ name: 'Short-lived', kind: 'INCOME' })
+            .expect(201)
+        ).body,
+      );
+
+      await owner.delete(`/api/categories/${created.uuid}`).expect(200);
+      await owner.get(`/api/categories/${created.uuid}`).expect(404);
     });
   });
 

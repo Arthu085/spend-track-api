@@ -29,4 +29,5 @@ export interface CategoryRepository {
   ): Promise<CategoryEntity | null>;
   create(category: CategoryEntity): Promise<CategoryEntity>;
   update(category: CategoryEntity): Promise<CategoryEntity>;
+  softDelete(category: CategoryEntity): Promise<void>;
 }

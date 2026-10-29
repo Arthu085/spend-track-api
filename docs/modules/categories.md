@@ -26,13 +26,14 @@ covers the rules behind them.
 
 ## Editing rules
 
-- Users create, rename, recolor, deactivate, and reactivate only their personal categories.
-- **Global categories are read-only for everyone**, admins included: `PATCH` and the status toggle
-  answer `GlobalCategoryReadOnlyError` (`403`). There is no API to manage the catalog.
+- Users create, rename, recolor, deactivate, reactivate, and delete only their personal categories.
+- **Global categories are read-only for everyone**, admins included: `PATCH`, the status toggle, and
+  `DELETE` answer `GlobalCategoryReadOnlyError` (`403`). There is no API to manage the catalog.
 - `kind` (`INCOME`/`EXPENSE`) is fixed at creation, so records that use a category always match its
   type.
-- There is no delete. Deactivating (`PUT /categories/:uuid/status`) removes a category from the
-  default `ACTIVE` list while records that use it keep it. `GET` and `PATCH` reject an inactive
+- Deactivating (`PUT /categories/:uuid/status`) removes a category from the default `ACTIVE` list
+  while records that use it keep it. `DELETE /categories/:uuid` soft-deletes a personal category,
+  removing it from every list; until transactions exist there is no history to check first. `GET` and `PATCH` reject an inactive
   category with `InactiveCategoryError` (`409`).
 - Names are not unique; `color` is an optional `#RRGGBB` value.
 

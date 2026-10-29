@@ -5,6 +5,7 @@ import type { AuthenticatedUser } from '@shared/presentation/http';
 import { buildCategory } from '@test/support/builders/category.builder';
 import { mockOf } from '@test/support/mocks/mock-of';
 import type { CreateCategoryUseCase } from '../../../application/use-cases/create-category.use-case';
+import type { DeleteCategoryUseCase } from '../../../application/use-cases/delete-category.use-case';
 import type { GetCategoryUseCase } from '../../../application/use-cases/get-category.use-case';
 import type { ListCategoriesUseCase } from '../../../application/use-cases/list-categories.use-case';
 import type { UpdateCategoryStatusUseCase } from '../../../application/use-cases/update-category-status.use-case';
@@ -36,6 +37,7 @@ function buildController(
     create: CreateCategoryUseCase;
     update: UpdateCategoryUseCase;
     status: UpdateCategoryStatusUseCase;
+    remove: DeleteCategoryUseCase;
   }> = {},
 ) {
   return new CategoriesController(
@@ -44,6 +46,7 @@ function buildController(
     overrides.create ?? mockOf<CreateCategoryUseCase>(),
     overrides.update ?? mockOf<UpdateCategoryUseCase>(),
     overrides.status ?? mockOf<UpdateCategoryStatusUseCase>(),
+    overrides.remove ?? mockOf<DeleteCategoryUseCase>(),
   );
 }
 
@@ -166,6 +169,21 @@ describe('CategoriesController', () => {
       uuid: 'category-uuid',
       ownerId: 31,
       status: RecordStatus.INACTIVE,
+    });
+  });
+
+  it('deletes a category within the caller visibility', async () => {
+    const execute = jest.fn().mockResolvedValue(undefined);
+
+    const controller = buildController({
+      remove: mockOf<DeleteCategoryUseCase>({ execute }),
+    });
+
+    await controller.remove('category-uuid', actor);
+
+    expect(execute).toHaveBeenCalledWith({
+      uuid: 'category-uuid',
+      ownerId: 31,
     });
   });
 });

@@ -9,6 +9,7 @@ import {
 import type { AuthenticatedUser } from '@shared/presentation/http';
 import { ParseUuidParamPipe } from '@shared/presentation/pipes';
 import { CreateCategoryUseCase } from '../../application/use-cases/create-category.use-case';
+import { DeleteCategoryUseCase } from '../../application/use-cases/delete-category.use-case';
 import { GetCategoryUseCase } from '../../application/use-cases/get-category.use-case';
 import { ListCategoriesUseCase } from '../../application/use-cases/list-categories.use-case';
 import { UpdateCategoryStatusUseCase } from '../../application/use-cases/update-category-status.use-case';
@@ -30,6 +31,7 @@ export class CategoriesController {
     private readonly createCategory: CreateCategoryUseCase,
     private readonly updateCategory: UpdateCategoryUseCase,
     private readonly updateCategoryStatus: UpdateCategoryStatusUseCase,
+    private readonly deleteCategory: DeleteCategoryUseCase,
   ) {}
 
   @(endpoint()
@@ -164,5 +166,24 @@ export class CategoriesController {
     });
 
     return CategoryResponseDto.fromDomain(category, translate);
+  }
+
+  @(endpoint()
+    .delete(':uuid')
+    .audit('Category.delete')
+    .successMessage('success.deleted')
+    .tags('categories')
+    .summary('Soft-delete one of your personal categories')
+    .description(
+      `Removes the personal category from every list. Global categories are read-only. ${VISIBILITY_NOTE}`,
+    )
+    .errorResponse(HttpStatus.FORBIDDEN, 'Global categories are read-only.')
+    .errorResponse(HttpStatus.NOT_FOUND, 'Category not found.')
+    .build())
+  async remove(
+    @Param('uuid', ParseUuidParamPipe) uuid: string,
+    @CurrentActor() actor: AuthenticatedUser,
+  ): Promise<void> {
+    await this.deleteCategory.execute({ uuid, ownerId: actor.id });
   }
 }

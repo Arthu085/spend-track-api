@@ -147,6 +147,29 @@ describe('TypeOrmCategoryRepository (integration)', () => {
     expect(lastPage.total).toBe(11);
   });
 
+  it('soft-deletes a personal category so it is no longer found or listed', async () => {
+    const owner = await insertUser();
+    const category = await repository.create(personal(owner, 'Temporary'));
+
+    await repository.softDelete(category);
+
+    await expect(
+      repository.findVisibleByUuid(category.uuid, owner),
+    ).resolves.toBeNull();
+
+    const { items } = await repository.findAllPaginatedVisibleTo(owner, 0, 50, {
+      scope: CategoryScope.PERSONAL,
+    });
+
+    expect(items.map(({ uuid }) => uuid)).not.toContain(category.uuid);
+
+    const row = await dataSource
+      .getRepository(CategoryOrmEntity)
+      .findOneOrFail({ where: { uuid: category.uuid }, withDeleted: true });
+
+    expect(row.deletedAt).not.toBeNull();
+  });
+
   it('rejects a personal category that carries a catalog code', async () => {
     const owner = await insertUser();
     const rows = dataSource.getRepository(CategoryOrmEntity);

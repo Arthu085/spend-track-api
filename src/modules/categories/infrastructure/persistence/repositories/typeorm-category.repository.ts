@@ -90,6 +90,10 @@ export class TypeOrmCategoryRepository
     return this.saveAndReload(category);
   }
 
+  async softDelete(category: CategoryEntity): Promise<void> {
+    await this.repository.softDelete({ id: category.id });
+  }
+
   private async saveAndReload(
     category: CategoryEntity,
   ): Promise<CategoryEntity> {

@@ -9,6 +9,7 @@ import { GlobalCategoryReadOnlyError } from '../../../domain/errors/global-categ
 import { InactiveCategoryError } from '../../../domain/errors/inactive-category.error';
 import type { CategoryRepository } from '../../../domain/repositories/category.repository';
 import { CreateCategoryUseCase } from '../create-category.use-case';
+import { DeleteCategoryUseCase } from '../delete-category.use-case';
 import { GetCategoryUseCase } from '../get-category.use-case';
 import { ListCategoriesUseCase } from '../list-categories.use-case';
 import { UpdateCategoryStatusUseCase } from '../update-category-status.use-case';
@@ -28,6 +29,7 @@ function buildRepository(found: CategoryEntity | null = buildCategory()) {
     findVisibleByUuid: jest.fn().mockResolvedValue(found),
     create: jest.fn((category: CategoryEntity) => Promise.resolve(category)),
     update: jest.fn((category: CategoryEntity) => Promise.resolve(category)),
+    softDelete: jest.fn().mockResolvedValue(undefined),
   };
 
   return { repository, port: mockOf<CategoryRepository>(repository) };
@@ -178,5 +180,45 @@ describe('categories use-cases', () => {
         status: RecordStatus.INACTIVE,
       }),
     ).rejects.toBeInstanceOf(CategoryNotFoundError);
+  });
+
+  it('soft-deletes an own category', async () => {
+    const category = buildCategory();
+    const { repository, port } = buildRepository(category);
+
+    await new DeleteCategoryUseCase(port).execute({
+      uuid: 'category-uuid',
+      ownerId: 1,
+    });
+
+    expect(repository.findVisibleByUuid).toHaveBeenCalledWith(
+      'category-uuid',
+      1,
+    );
+    expect(repository.softDelete).toHaveBeenCalledWith(category);
+  });
+
+  it('refuses to delete a global category', async () => {
+    const { repository, port } = buildRepository(globalCategory);
+
+    await expect(
+      new DeleteCategoryUseCase(port).execute({
+        uuid: 'category-uuid',
+        ownerId: 1,
+      }),
+    ).rejects.toBeInstanceOf(GlobalCategoryReadOnlyError);
+    expect(repository.softDelete).not.toHaveBeenCalled();
+  });
+
+  it('reports a category the caller cannot see as not found on delete', async () => {
+    const { repository, port } = buildRepository(null);
+
+    await expect(
+      new DeleteCategoryUseCase(port).execute({
+        uuid: 'category-uuid',
+        ownerId: 2,
+      }),
+    ).rejects.toBeInstanceOf(CategoryNotFoundError);
+    expect(repository.softDelete).not.toHaveBeenCalled();
   });
 });
