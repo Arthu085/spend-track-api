@@ -5,7 +5,7 @@ import {
   TransactionCategoryMapper,
   TransactionCategoryOrmEntity,
 } from '@modules/transaction-categories/persistence';
-import { parseMoney } from '@shared/domain/money';
+import { parseMoneyTotal } from '@shared/domain/money';
 import {
   BaseTransactionalRepository,
   applyExactFilter,
@@ -183,7 +183,7 @@ export class TypeOrmTransactionRepository
 
       changes.set(
         accountId,
-        (changes.get(accountId) ?? 0) + parseMoney(row.total),
+        (changes.get(accountId) ?? 0) + parseMoneyTotal(row.total),
       );
     }
 
@@ -223,7 +223,7 @@ export class TypeOrmTransactionRepository
     return rows.map((row) => ({
       type: row.type,
       state: row.state,
-      total: parseMoney(row.total),
+      total: parseMoneyTotal(row.total),
     }));
   }
 
@@ -264,7 +264,7 @@ export class TypeOrmTransactionRepository
       const category = byId.get(Number(row.categoryId));
 
       return category
-        ? [{ category, state: row.state, total: parseMoney(row.total) }]
+        ? [{ category, state: row.state, total: parseMoneyTotal(row.total) }]
         : [];
     });
   }

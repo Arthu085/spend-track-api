@@ -81,7 +81,7 @@ is being written.
 
 `TransactionAccountLedger` registers into the accounts ledger registry (`ACCOUNT_LEDGERS`, see
 [`accounts.md`](accounts.md#balances)) in `onModuleInit`. It sums completed, non-deleted
-transactions per account in SQL (`numeric` sums parsed with `parseMoney`): `+amount` for income into
+transactions per account in SQL (`numeric` sums parsed with `parseMoneyTotal`): `+amount` for income into
 the account, `-amount` for expenses and transfers out of it, and `+amount` for transfers into it. A
 transfer therefore never changes the total across the user's accounts and never counts as income or
 spending. The same query with `PLANNED` and an end date gives the dashboard projection.

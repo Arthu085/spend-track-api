@@ -1,4 +1,4 @@
-import { formatMoney, parseMoney, sumMoney } from '../money';
+import { formatMoney, parseMoney, parseMoneyTotal, sumMoney } from '../money';
 
 describe('money', () => {
   it.each([
@@ -16,6 +16,24 @@ describe('money', () => {
     'rejects %p',
     (decimal) => {
       expect(() => parseMoney(decimal)).toThrow(RangeError);
+    },
+  );
+
+  it.each([
+    ['1200000000000.00', 120000000000000],
+    ['-1200000000000.5', -120000000000050],
+    ['42', 4200],
+  ])(
+    'parses the aggregate total %s into %i cents beyond 12 digits',
+    (decimal, cents) => {
+      expect(parseMoneyTotal(decimal)).toBe(cents);
+    },
+  );
+
+  it.each(['', '1.234', '1e3', 'abc', '90071992547409.92'])(
+    'rejects the aggregate total %p',
+    (decimal) => {
+      expect(() => parseMoneyTotal(decimal)).toThrow(RangeError);
     },
   );
 

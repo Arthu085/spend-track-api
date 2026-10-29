@@ -255,6 +255,30 @@ describe('TypeOrmTransactionRepository (integration)', () => {
     ).resolves.toEqual(new Map());
   });
 
+  it('sums balance changes and totals beyond 12 integer digits exactly', async () => {
+    const f = await fixture();
+    await income(f, { amount: 60000000000000 });
+    await income(f, { amount: 60000000000001 });
+
+    await expect(
+      repository.sumBalanceChanges(f.ownerId, [f.bank.id], {
+        state: TransactionState.COMPLETED,
+      }),
+    ).resolves.toEqual(new Map([[f.bank.id, 120000000000001]]));
+    await expect(
+      repository.sumByTypeAndState(f.ownerId, {
+        from: '2026-10-01',
+        to: '2026-10-31',
+      }),
+    ).resolves.toEqual([
+      {
+        type: TransactionType.INCOME,
+        state: TransactionState.COMPLETED,
+        total: 120000000000001,
+      },
+    ]);
+  });
+
   it('limits planned balance changes to the given date', async () => {
     const f = await fixture();
     await record(f, { state: TransactionState.PLANNED, date: '2026-12-01' });
