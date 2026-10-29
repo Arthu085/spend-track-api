@@ -1,0 +1,10 @@
+{
+  "spending_perspective": {
+    "purchase_date": "Purchase date",
+    "invoice_month": "Invoice month"
+  },
+  "default_month": {
+    "current": "Current month",
+    "next": "Next month"
+  }
+}

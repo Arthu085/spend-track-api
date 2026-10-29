@@ -1,0 +1,33 @@
+{
+  "errors": {
+    "not_found": "Categoria não encontrada",
+    "inactive": "Categoria arquivada",
+    "global_read_only": "Categorias globais não podem ser alteradas"
+  },
+  "kind": {
+    "income": "Receita",
+    "expense": "Despesa"
+  },
+  "scope": {
+    "global": "Global",
+    "personal": "Pessoal"
+  },
+  "global": {
+    "food": "Alimentação",
+    "groceries": "Mercado",
+    "housing": "Moradia",
+    "transport": "Transporte",
+    "health": "Saúde",
+    "education": "Educação",
+    "entertainment": "Lazer",
+    "gifts": "Presentes",
+    "shopping": "Compras",
+    "subscriptions": "Assinaturas",
+    "other_expense": "Outras despesas",
+    "salary": "Salário",
+    "freelance": "Trabalho autônomo",
+    "investment_income": "Rendimentos",
+    "gifts_received": "Presentes recebidos",
+    "other_income": "Outras receitas"
+  }
+}

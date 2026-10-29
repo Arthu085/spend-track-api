@@ -10,6 +10,9 @@ The REST API of Spend Track, a personal financial organization system, consumed 
 [spend-track-client](https://github.com/Arthu085/spend-track-client) web application. It provides
 authentication with cookie-based sessions, user and role management with administrator safeguards,
 ability-based authorization, request auditing, and transactional email delivery (email confirmation, password reset, and account notifications).
+On top of it, each user manages their own finances: accounts, global and personal categories,
+financial preferences, and a monthly dashboard. Financial data is private to its owner, administrators
+included ([financial data ownership](conventions.md#financial-data-ownership)).
 
 ## Stack
 
@@ -31,6 +34,10 @@ ability-based authorization, request auditing, and transactional email delivery 
 | [`audit`](modules/audit.md) | Append-only trail of HTTP requests on opted-in routes | No |
 | [`email-quota`](modules/email-quota.md) | Per-recipient, per-type, per-UTC-day send cap; fails closed | No |
 | [`email-outbox`](modules/email-outbox.md) | Durable PostgreSQL outbox and in-process worker that delivers transactional emails with retries | No |
+| [`preferences`](modules/preferences.md) | Per-user financial preferences: spending perspective and dashboard default month | Yes |
+| [`accounts`](modules/accounts.md) | Per-user financial accounts with opening balances, archiving, and one default account | Yes |
+| [`categories`](modules/categories.md) | Read-only global category catalog plus per-user personal categories | Yes |
+| [`dashboard`](modules/dashboard.md) | Monthly financial summary computed from the caller's own records | Yes |
 
 There is no self-registration: users are created by an administrator or by the seed.
 
@@ -41,7 +48,9 @@ There is no self-registration: users are created by an administrator or by the s
 - the roles `ADMIN` and `USER`;
 - the full ability catalog, with `ADMIN` granted every ability and `USER` only `(READ, USER)`;
 - one confirmed administrator from `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`, skipped in production
-  unless `SEED_ADMIN_ENABLED=true`.
+  unless `SEED_ADMIN_ENABLED=true`;
+- the global category catalog (11 expense and 5 income categories), see
+  [`modules/categories.md`](modules/categories.md#global-catalog).
 
 Seeds are idempotent and never reset data changed at runtime. Catalog and grant rules are in
 [`modules/authorization.md`](modules/authorization.md#seeds); the seed user in

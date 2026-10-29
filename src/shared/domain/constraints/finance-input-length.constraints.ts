@@ -1,0 +1,2 @@
+export const FINANCE_NAME_MIN_LENGTH = 1;
+export const FINANCE_NAME_MAX_LENGTH = 100;
