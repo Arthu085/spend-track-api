@@ -1,5 +1,3 @@
-export const FINANCE_TIME_ZONE = 'America/Sao_Paulo';
-
 export enum PeriodTiming {
   PAST = 'PAST',
   CURRENT = 'CURRENT',
@@ -22,20 +20,6 @@ export interface MonthPeriod extends MonthRef {
 
 function pad(value: number): string {
   return String(value).padStart(2, '0');
-}
-
-export function calendarDateIn(now: Date, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(now);
-
-  const part = (type: Intl.DateTimeFormatPartTypes): string =>
-    parts.find((candidate) => candidate.type === type)?.value ?? '';
-
-  return `${part('year')}-${part('month')}-${part('day')}`;
 }
 
 export function monthOf(date: string): MonthRef {

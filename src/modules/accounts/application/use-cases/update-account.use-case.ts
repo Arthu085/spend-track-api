@@ -13,7 +13,12 @@ import {
   ACCOUNT_REPOSITORY,
   type AccountRepository,
 } from '../../domain/repositories/account.repository';
+import {
+  ACCOUNT_LEDGERS,
+  type AccountLedger,
+} from '../ports/account-ledger.port';
 import { findOwnedAccount } from '../services/find-owned-account';
+import { withCurrentBalance } from '../services/with-current-balances';
 
 export interface UpdateAccountInput extends Partial<AccountDetails> {
   uuid: string;
@@ -28,6 +33,8 @@ export class UpdateAccountUseCase {
     private readonly accountRepository: AccountRepository,
     @Inject(TRANSACTION_MANAGER)
     private readonly transactionManager: TransactionManagerPort,
+    @Inject(ACCOUNT_LEDGERS)
+    private readonly accountLedger: AccountLedger,
   ) {}
 
   async execute(input: UpdateAccountInput): Promise<AccountEntity> {
@@ -48,7 +55,7 @@ export class UpdateAccountUseCase {
         await this.accountRepository.clearDefault(input.ownerId);
       }
 
-      return this.accountRepository.update(
+      const updated = await this.accountRepository.update(
         account
           .withDetails({
             name: input.name ?? account.name,
@@ -59,6 +66,8 @@ export class UpdateAccountUseCase {
           })
           .withDefault(isDefault),
       );
+
+      return withCurrentBalance(this.accountLedger, updated);
     });
   }
 }

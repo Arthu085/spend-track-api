@@ -8,6 +8,11 @@ import {
   ACCOUNT_REPOSITORY,
   type AccountRepository,
 } from '../../domain/repositories/account.repository';
+import {
+  ACCOUNT_LEDGERS,
+  type AccountLedger,
+} from '../ports/account-ledger.port';
+import { withCurrentBalances } from '../services/with-current-balances';
 
 export interface ListAccountsInput {
   ownerId: number;
@@ -23,6 +28,8 @@ export class ListAccountsUseCase {
   constructor(
     @Inject(ACCOUNT_REPOSITORY)
     private readonly accountRepository: AccountRepository,
+    @Inject(ACCOUNT_LEDGERS)
+    private readonly accountLedger: AccountLedger,
   ) {}
 
   async execute(
@@ -40,6 +47,11 @@ export class ListAccountsUseCase {
         },
       );
 
-    return PaginatedResult.of(items, total, input.page, input.limit);
+    return PaginatedResult.of(
+      await withCurrentBalances(this.accountLedger, input.ownerId, items),
+      total,
+      input.page,
+      input.limit,
+    );
   }
 }

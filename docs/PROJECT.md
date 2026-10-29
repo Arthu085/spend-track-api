@@ -37,6 +37,7 @@ included ([financial data ownership](conventions.md#financial-data-ownership)).
 | [`preferences`](modules/preferences.md)                       | Per-user financial preferences: spending perspective and dashboard default month                                                      | Yes         |
 | [`accounts`](modules/accounts.md)                             | Per-user financial accounts with opening balances, active/inactive status, and one default account                                    | Yes         |
 | [`transaction-categories`](modules/transaction-categories.md) | Read-only global transaction category catalog plus per-user personal ones                                                             | Yes         |
+| [`transactions`](modules/transactions.md)                     | Per-user planned and completed income, expenses, and transfers between own accounts; feeds account balances                           | Yes         |
 | [`dashboard`](modules/dashboard.md)                           | Monthly financial summary computed from the caller's own records                                                                      | Yes         |
 
 There is no self-registration: users are created by an administrator or by the seed.

@@ -6,13 +6,20 @@ import {
   ACCOUNT_REPOSITORY,
   type AccountRepository,
 } from '../../domain/repositories/account.repository';
+import {
+  ACCOUNT_LEDGERS,
+  type AccountLedger,
+} from '../ports/account-ledger.port';
 import { findOwnedAccount } from '../services/find-owned-account';
+import { withCurrentBalance } from '../services/with-current-balances';
 
 @Injectable()
 export class GetAccountUseCase {
   constructor(
     @Inject(ACCOUNT_REPOSITORY)
     private readonly accountRepository: AccountRepository,
+    @Inject(ACCOUNT_LEDGERS)
+    private readonly accountLedger: AccountLedger,
   ) {}
 
   async execute(uuid: string, ownerId: number): Promise<AccountEntity> {
@@ -24,6 +31,6 @@ export class GetAccountUseCase {
 
     assertRecordActive(account, new InactiveAccountError());
 
-    return account;
+    return withCurrentBalance(this.accountLedger, account);
   }
 }

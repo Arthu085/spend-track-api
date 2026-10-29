@@ -5,6 +5,19 @@ import { TransactionCategoryEntity } from '../../../domain/entities/transaction-
 import { TransactionCategoryKind } from '../../../domain/enums/transaction-category-kind.enum';
 import { TransactionCategoryScope } from '../../../domain/enums/transaction-category-scope.enum';
 
+export function transactionCategoryName(
+  category: Pick<TransactionCategoryEntity, 'code' | 'name'>,
+  translate: (key: string) => string,
+): string {
+  return category.code === null
+    ? category.name
+    : translateOrFallback(
+        translate,
+        `transaction_categories.global.${category.code.toLowerCase()}`,
+        category.name,
+      );
+}
+
 export class TransactionCategoryResponseDto {
   @ApiProperty()
   uuid!: string;
@@ -53,14 +66,7 @@ export class TransactionCategoryResponseDto {
     const dto = new TransactionCategoryResponseDto();
 
     dto.uuid = category.uuid;
-    dto.name =
-      category.code === null
-        ? category.name
-        : translateOrFallback(
-            translate,
-            `transaction_categories.global.${category.code.toLowerCase()}`,
-            category.name,
-          );
+    dto.name = transactionCategoryName(category, translate);
     dto.kind = category.kind;
     dto.kindLabel = translateOrFallback(
       translate,

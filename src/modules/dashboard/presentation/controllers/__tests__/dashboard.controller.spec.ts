@@ -3,7 +3,10 @@ import { validate } from 'class-validator';
 import { SpendingPerspective } from '@modules/preferences';
 import type { Translate } from '@shared/presentation/decorators';
 import type { AuthenticatedUser } from '@shared/presentation/http';
+import { TransactionType } from '@modules/transactions';
 import { buildAccount } from '@test/support/builders/account.builder';
+import { buildTransactionCategory } from '@test/support/builders/transaction-category.builder';
+import { buildTransaction } from '@test/support/builders/transaction.builder';
 import { mockOf } from '@test/support/mocks/mock-of';
 import type { GetDashboardUseCase } from '../../../application/use-cases/get-dashboard.use-case';
 import {
@@ -36,6 +39,36 @@ describe('DashboardController', () => {
           projectedBalance: 100000,
         },
       ],
+      income: { total: 500000, completed: 300000, pending: 200000 },
+      expenses: { total: 120000, completed: 80000, pending: 40000 },
+      expensesByCategory: [
+        {
+          category: buildTransactionCategory({
+            ownerId: null,
+            code: 'GROCERIES',
+            name: 'Groceries',
+          }),
+          total: 120000,
+          completed: 80000,
+          pending: 40000,
+        },
+      ],
+      upcoming: [
+        {
+          transaction: buildTransaction({ amount: 150000, date: '2026-11-05' }),
+          overdue: false,
+        },
+        {
+          transaction: buildTransaction({
+            uuid: 'transfer',
+            type: TransactionType.TRANSFER,
+            category: null,
+            destinationAccount: buildAccount({ uuid: 'savings' }),
+          }),
+          overdue: true,
+        },
+      ],
+      upcomingCount: 7,
     });
 
     const controller = new DashboardController(
@@ -68,6 +101,39 @@ describe('DashboardController', () => {
       actualBalance: '-0.05',
       projectedBalance: '1000.00',
     });
+    expect(result.income).toEqual({
+      total: '5000.00',
+      completed: '3000.00',
+      pending: '2000.00',
+    });
+    expect(result.expenses).toMatchObject({ total: '1200.00' });
+    expect(result.expensesByCategory).toEqual([
+      expect.objectContaining({
+        category: {
+          uuid: 'category-uuid',
+          name: 't:transaction_categories.global.groceries',
+          color: '#123456',
+        },
+        total: '1200.00',
+        completed: '800.00',
+        pending: '400.00',
+      }),
+    ]);
+    expect(result.upcoming[0]).toMatchObject({
+      typeLabel: 't:transactions.type.expense',
+      amount: '1500.00',
+      date: '2026-11-05',
+      overdue: false,
+      account: { uuid: 'account-uuid', name: 'Checking', status: 'ACTIVE' },
+      destinationAccount: null,
+      category: { uuid: 'category-uuid', name: 'Pets', color: '#123456' },
+    });
+    expect(result.upcoming[1]).toMatchObject({
+      overdue: true,
+      category: null,
+      destinationAccount: { uuid: 'savings' },
+    });
+    expect(result.upcomingCount).toBe(7);
   });
 });
 
