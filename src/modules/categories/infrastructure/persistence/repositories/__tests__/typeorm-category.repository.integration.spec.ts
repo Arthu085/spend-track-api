@@ -76,8 +76,12 @@ describe('TypeOrmCategoryRepository (integration)', () => {
     const mine = await repository.create(personal(owner, 'Pets'));
     const theirs = await repository.create(personal(stranger, 'Secret'));
 
-    const visible = await repository.findAllVisibleTo(owner);
+    const { items: visible, total } =
+      await repository.findAllPaginatedVisibleTo(owner, 0, 50);
+
     const uuids = visible.map((category) => category.uuid);
+
+    expect(total).toBe(17);
 
     expect(uuids).toContain(mine.uuid);
     expect(uuids).not.toContain(theirs.uuid);
@@ -107,19 +111,40 @@ describe('TypeOrmCategoryRepository (integration)', () => {
     await repository.update(archived.withStatus(RecordStatus.INACTIVE));
     await repository.create(personal(owner, 'Pets'));
 
-    const personalActive = await repository.findAllVisibleTo(owner, {
-      scope: CategoryScope.PERSONAL,
-      status: RecordStatus.ACTIVE,
-    });
+    const { items: personalActive } =
+      await repository.findAllPaginatedVisibleTo(owner, 0, 50, {
+        scope: CategoryScope.PERSONAL,
+        status: RecordStatus.ACTIVE,
+      });
 
-    const income = await repository.findAllVisibleTo(owner, {
-      kind: CategoryKind.INCOME,
-    });
+    const { items: income } = await repository.findAllPaginatedVisibleTo(
+      owner,
+      0,
+      50,
+      { kind: CategoryKind.INCOME },
+    );
 
     expect(personalActive.map((category) => category.name)).toEqual(['Pets']);
     expect(
       income.every((category) => category.kind === CategoryKind.INCOME),
     ).toBe(true);
+  });
+
+  it('pages the visible categories and counts every match', async () => {
+    const owner = await insertUser();
+
+    const firstPage = await repository.findAllPaginatedVisibleTo(owner, 0, 5, {
+      kind: CategoryKind.EXPENSE,
+    });
+
+    const lastPage = await repository.findAllPaginatedVisibleTo(owner, 10, 5, {
+      kind: CategoryKind.EXPENSE,
+    });
+
+    expect(firstPage.items).toHaveLength(5);
+    expect(firstPage.total).toBe(11);
+    expect(lastPage.items).toHaveLength(1);
+    expect(lastPage.total).toBe(11);
   });
 
   it('rejects a personal category that carries a catalog code', async () => {

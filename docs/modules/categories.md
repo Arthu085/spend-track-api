@@ -21,6 +21,8 @@ covers the rules behind them.
   category is a `404` (`CategoryNotFoundError`), including for admins, because lookups apply the
   visibility rule in the query.
 - Routes need authentication but no ability.
+- `GET /categories` is paginated like every list (`page`, `limit`), defaults to `ACTIVE`, and orders
+  by kind, then stored name.
 
 ## Editing rules
 

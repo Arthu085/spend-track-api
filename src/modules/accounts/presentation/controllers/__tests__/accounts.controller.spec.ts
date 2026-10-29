@@ -1,3 +1,4 @@
+import { PaginatedResult } from '@shared/application/dto';
 import type { Translate } from '@shared/presentation/decorators';
 import type { AuthenticatedUser } from '@shared/presentation/http';
 import { RecordStatus } from '@shared/domain/enums/record-status.enum';
@@ -11,6 +12,7 @@ import type { UpdateAccountStatusUseCase } from '../../../application/use-cases/
 import type { UpdateAccountUseCase } from '../../../application/use-cases/update-account.use-case';
 import { AccountType } from '../../../domain/enums/account-type.enum';
 import { AccountsController } from '../accounts.controller';
+import { ListAccountsQueryDto } from '../../dto/input/list-accounts-query.dto';
 
 const translate: Translate = (key) => `t:${key}`;
 
@@ -66,25 +68,35 @@ describe('AccountsController', () => {
   });
 
   it('lists the accounts of the caller with the sent filters', async () => {
-    const execute = jest.fn().mockResolvedValue([buildAccount()]);
+    const execute = jest
+      .fn()
+      .mockResolvedValue(PaginatedResult.of([buildAccount()], 1, 2, 10));
 
     const controller = buildController({
       list: mockOf<ListAccountsUseCase>({ execute }),
     });
 
     const result = await controller.findAll(
-      { status: RecordStatus.INACTIVE, type: AccountType.CASH },
+      Object.assign(new ListAccountsQueryDto(), {
+        page: 2,
+        limit: 10,
+        status: RecordStatus.INACTIVE,
+        type: AccountType.CASH,
+      }),
       actor,
       translate,
     );
 
     expect(execute).toHaveBeenCalledWith({
       ownerId: 21,
+      page: 2,
+      limit: 10,
       name: undefined,
       type: AccountType.CASH,
       status: RecordStatus.INACTIVE,
     });
-    expect(result).toHaveLength(1);
+    expect(result).toMatchObject({ total: 1, page: 2, limit: 10 });
+    expect(result.items).toHaveLength(1);
   });
 
   it('creates an account owned by the caller with the balance in cents', async () => {

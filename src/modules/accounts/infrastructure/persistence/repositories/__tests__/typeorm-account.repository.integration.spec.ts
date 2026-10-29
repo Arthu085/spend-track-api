@@ -116,6 +116,20 @@ describe('TypeOrmAccountRepository (integration)', () => {
     ).resolves.toHaveLength(1);
   });
 
+  it('pages accounts in list order and counts every match', async () => {
+    const ownerId = await insertUser();
+    await repository.create(newAccount(ownerId, 'Wallet'));
+    await repository.create(newAccount(ownerId, 'Bank'));
+    await repository.create(newAccount(ownerId, 'Savings', true));
+
+    const secondPage = await repository.findAllPaginatedByOwner(ownerId, 2, 2, {
+      status: RecordStatus.ACTIVE,
+    });
+
+    expect(secondPage.items.map((account) => account.name)).toEqual(['Wallet']);
+    expect(secondPage.total).toBe(3);
+  });
+
   it('allows at most one live default account per user', async () => {
     const ownerId = await insertUser();
     await repository.create(newAccount(ownerId, 'First', true));

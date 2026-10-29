@@ -1,4 +1,5 @@
 import { Body, Controller, HttpStatus, Param, Query } from '@nestjs/common';
+import { PaginatedResult } from '@shared/application/dto';
 import { endpoint } from '@shared/presentation/builders';
 import {
   CurrentActor,
@@ -37,17 +38,19 @@ export class CategoriesController {
     .tags('categories')
     .summary('List the global categories and your personal ones')
     .description(
-      `Not paginated. Defaults to ACTIVE categories, ordered by kind and stored name. ${VISIBILITY_NOTE}`,
+      `Defaults to ACTIVE categories, ordered by kind and stored name. ${VISIBILITY_NOTE}`,
     )
-    .response(CategoryResponseDto, undefined, { isArray: true })
+    .paginatedResponse(CategoryResponseDto)
     .build())
   async findAll(
     @Query() query: ListCategoriesQueryDto,
     @CurrentActor() actor: AuthenticatedUser,
     @Translator() translate: Translate,
-  ): Promise<CategoryResponseDto[]> {
+  ): Promise<PaginatedResult<CategoryResponseDto>> {
     const categories = await this.listCategories.execute({
       ownerId: actor.id,
+      page: query.page,
+      limit: query.limit,
       kind: query.kind,
       scope: query.scope,
       status: query.status,

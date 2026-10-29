@@ -31,6 +31,9 @@ function buildRepository(found: AccountEntity | null = buildAccount()) {
 
   const repository = {
     findAllByOwner: jest.fn().mockResolvedValue([]),
+    findAllPaginatedByOwner: jest
+      .fn()
+      .mockResolvedValue({ items: [buildAccount()], total: 41 }),
     findByUuidForOwner: jest.fn().mockResolvedValue(found),
     lockOwnerAccounts: jest.fn(() => {
       calls.push('lock');
@@ -50,19 +53,24 @@ function buildRepository(found: AccountEntity | null = buildAccount()) {
 
 describe('accounts use-cases', () => {
   describe('ListAccountsUseCase', () => {
-    it("lists only the caller's active accounts by default", async () => {
+    it("pages only the caller's active accounts by default", async () => {
       const { repository, port } = buildRepository();
 
-      await new ListAccountsUseCase(port).execute({
+      const result = await new ListAccountsUseCase(port).execute({
         ownerId: 4,
+        page: 3,
+        limit: 20,
         name: '  bank ',
       });
 
-      expect(repository.findAllByOwner).toHaveBeenCalledWith(4, {
-        name: 'bank',
-        type: undefined,
-        status: RecordStatus.ACTIVE,
-      });
+      expect(repository.findAllPaginatedByOwner).toHaveBeenCalledWith(
+        4,
+        40,
+        20,
+        { name: 'bank', type: undefined, status: RecordStatus.ACTIVE },
+      );
+      expect(result).toMatchObject({ total: 41, page: 3, limit: 20 });
+      expect(result.items).toHaveLength(1);
     });
   });
 

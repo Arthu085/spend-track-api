@@ -10,6 +10,7 @@ import { AccountEntity } from '../../../domain/entities/account.entity';
 import type {
   AccountListFilters,
   AccountRepository,
+  PaginatedAccounts,
 } from '../../../domain/repositories/account.repository';
 import { AccountOrmEntity } from '../entities/account.orm-entity';
 import { AccountMapper } from '../mappers/account.mapper';
@@ -32,6 +33,26 @@ export class TypeOrmAccountRepository
     ownerId: number,
     filters: AccountListFilters = {},
   ): Promise<AccountEntity[]> {
+    const rows = await this.ownerListQuery(ownerId, filters).getMany();
+
+    return rows.map((row) => AccountMapper.toDomain(row));
+  }
+
+  async findAllPaginatedByOwner(
+    ownerId: number,
+    offset: number,
+    limit: number,
+    filters: AccountListFilters = {},
+  ): Promise<PaginatedAccounts> {
+    const [rows, total] = await this.ownerListQuery(ownerId, filters)
+      .skip(offset)
+      .take(limit)
+      .getManyAndCount();
+
+    return { items: rows.map((row) => AccountMapper.toDomain(row)), total };
+  }
+
+  private ownerListQuery(ownerId: number, filters: AccountListFilters) {
     const qb = this.repository
       .createQueryBuilder('account')
       .where('account.userId = :ownerId', { ownerId })
@@ -43,9 +64,7 @@ export class TypeOrmAccountRepository
     applyExactFilter(qb, 'account.type', 'type', filters.type);
     applyExactFilter(qb, 'account.status', 'status', filters.status);
 
-    const rows = await qb.getMany();
-
-    return rows.map((row) => AccountMapper.toDomain(row));
+    return qb;
   }
 
   async findByUuidForOwner(

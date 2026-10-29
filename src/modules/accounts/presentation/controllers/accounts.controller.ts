@@ -1,5 +1,6 @@
 import { Body, Controller, HttpStatus, Param, Query } from '@nestjs/common';
 import { parseMoney } from '@shared/domain/money';
+import { PaginatedResult } from '@shared/application/dto';
 import { endpoint } from '@shared/presentation/builders';
 import {
   CurrentActor,
@@ -40,17 +41,19 @@ export class AccountsController {
     .tags('accounts')
     .summary("List the authenticated user's accounts")
     .description(
-      `Not paginated. Defaults to ACTIVE accounts; the default account comes first, then by name. ${OWNERSHIP_NOTE}`,
+      `Defaults to ACTIVE accounts; the default account comes first, then by name. ${OWNERSHIP_NOTE}`,
     )
-    .response(AccountResponseDto, undefined, { isArray: true })
+    .paginatedResponse(AccountResponseDto)
     .build())
   async findAll(
     @Query() query: ListAccountsQueryDto,
     @CurrentActor() actor: AuthenticatedUser,
     @Translator() translate: Translate,
-  ): Promise<AccountResponseDto[]> {
+  ): Promise<PaginatedResult<AccountResponseDto>> {
     const accounts = await this.listAccounts.execute({
       ownerId: actor.id,
+      page: query.page,
+      limit: query.limit,
       name: query.name,
       type: query.type,
       status: query.status,

@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { PaginatedResult } from '@shared/application/dto';
 import { RecordStatus } from '@shared/domain/enums/record-status.enum';
 import { CategoryEntity } from '../../domain/entities/category.entity';
 import { CategoryKind } from '../../domain/enums/category-kind.enum';
@@ -10,6 +11,8 @@ import {
 
 export interface ListCategoriesInput {
   ownerId: number;
+  page: number;
+  limit: number;
   kind?: CategoryKind;
   scope?: CategoryScope;
   status?: RecordStatus;
@@ -22,11 +25,21 @@ export class ListCategoriesUseCase {
     private readonly categoryRepository: CategoryRepository,
   ) {}
 
-  async execute(input: ListCategoriesInput): Promise<CategoryEntity[]> {
-    return this.categoryRepository.findAllVisibleTo(input.ownerId, {
-      kind: input.kind,
-      scope: input.scope,
-      status: input.status ?? RecordStatus.ACTIVE,
-    });
+  async execute(
+    input: ListCategoriesInput,
+  ): Promise<PaginatedResult<CategoryEntity>> {
+    const { items, total } =
+      await this.categoryRepository.findAllPaginatedVisibleTo(
+        input.ownerId,
+        (input.page - 1) * input.limit,
+        input.limit,
+        {
+          kind: input.kind,
+          scope: input.scope,
+          status: input.status ?? RecordStatus.ACTIVE,
+        },
+      );
+
+    return PaginatedResult.of(items, total, input.page, input.limit);
   }
 }

@@ -10,6 +10,7 @@ import { CategoryScope } from '../../../domain/enums/category-scope.enum';
 import type {
   CategoryListFilters,
   CategoryRepository,
+  PaginatedCategories,
 } from '../../../domain/repositories/category.repository';
 import { CategoryOrmEntity } from '../entities/category.orm-entity';
 import { CategoryMapper } from '../mappers/category.mapper';
@@ -26,15 +27,19 @@ export class TypeOrmCategoryRepository
     super(repository);
   }
 
-  async findAllVisibleTo(
+  async findAllPaginatedVisibleTo(
     ownerId: number,
+    offset: number,
+    limit: number,
     filters: CategoryListFilters = {},
-  ): Promise<CategoryEntity[]> {
+  ): Promise<PaginatedCategories> {
     const qb = this.repository
       .createQueryBuilder('category')
       .orderBy('category.kind', 'ASC')
       .addOrderBy('category.name', 'ASC')
-      .addOrderBy('category.id', 'ASC');
+      .addOrderBy('category.id', 'ASC')
+      .skip(offset)
+      .take(limit);
 
     if (filters.scope === CategoryScope.GLOBAL) {
       qb.where('category.userId IS NULL');
@@ -53,9 +58,9 @@ export class TypeOrmCategoryRepository
     applyExactFilter(qb, 'category.kind', 'kind', filters.kind);
     applyExactFilter(qb, 'category.status', 'status', filters.status);
 
-    const rows = await qb.getMany();
+    const [rows, total] = await qb.getManyAndCount();
 
-    return rows.map((row) => CategoryMapper.toDomain(row));
+    return { items: rows.map((row) => CategoryMapper.toDomain(row)), total };
   }
 
   async findVisibleByUuid(

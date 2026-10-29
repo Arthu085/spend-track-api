@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { PaginatedResult } from '@shared/application/dto';
 import { normalizeTextFilter } from '@shared/application/filters';
 import { RecordStatus } from '@shared/domain/enums/record-status.enum';
 import { AccountEntity } from '../../domain/entities/account.entity';
@@ -10,6 +11,8 @@ import {
 
 export interface ListAccountsInput {
   ownerId: number;
+  page: number;
+  limit: number;
   name?: string;
   type?: AccountType;
   status?: RecordStatus;
@@ -22,11 +25,21 @@ export class ListAccountsUseCase {
     private readonly accountRepository: AccountRepository,
   ) {}
 
-  async execute(input: ListAccountsInput): Promise<AccountEntity[]> {
-    return this.accountRepository.findAllByOwner(input.ownerId, {
-      name: normalizeTextFilter(input.name),
-      type: input.type,
-      status: input.status ?? RecordStatus.ACTIVE,
-    });
+  async execute(
+    input: ListAccountsInput,
+  ): Promise<PaginatedResult<AccountEntity>> {
+    const { items, total } =
+      await this.accountRepository.findAllPaginatedByOwner(
+        input.ownerId,
+        (input.page - 1) * input.limit,
+        input.limit,
+        {
+          name: normalizeTextFilter(input.name),
+          type: input.type,
+          status: input.status ?? RecordStatus.ACTIVE,
+        },
+      );
+
+    return PaginatedResult.of(items, total, input.page, input.limit);
   }
 }

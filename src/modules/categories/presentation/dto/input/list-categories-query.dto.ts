@@ -2,11 +2,14 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsOptional } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
 import { RecordStatus } from '@shared/domain/enums/record-status.enum';
-import { StatusFilterField } from '@shared/presentation/dto';
+import {
+  PaginationQueryDto,
+  StatusFilterField,
+} from '@shared/presentation/dto';
 import { CategoryKind } from '../../../domain/enums/category-kind.enum';
 import { CategoryScope } from '../../../domain/enums/category-scope.enum';
 
-export class ListCategoriesQueryDto {
+export class ListCategoriesQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional({
     enum: CategoryKind,
     description: 'Filter by transaction type (exact match).',

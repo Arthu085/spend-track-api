@@ -22,7 +22,9 @@ const globalCategory = buildCategory({
 
 function buildRepository(found: CategoryEntity | null = buildCategory()) {
   const repository = {
-    findAllVisibleTo: jest.fn().mockResolvedValue([]),
+    findAllPaginatedVisibleTo: jest
+      .fn()
+      .mockResolvedValue({ items: [], total: 0 }),
     findVisibleByUuid: jest.fn().mockResolvedValue(found),
     create: jest.fn((category: CategoryEntity) => Promise.resolve(category)),
     update: jest.fn((category: CategoryEntity) => Promise.resolve(category)),
@@ -35,16 +37,24 @@ describe('categories use-cases', () => {
   it('lists the global and own active categories by default', async () => {
     const { repository, port } = buildRepository();
 
-    await new ListCategoriesUseCase(port).execute({
+    const result = await new ListCategoriesUseCase(port).execute({
       ownerId: 3,
+      page: 2,
+      limit: 10,
       kind: CategoryKind.INCOME,
     });
 
-    expect(repository.findAllVisibleTo).toHaveBeenCalledWith(3, {
-      kind: CategoryKind.INCOME,
-      scope: undefined,
-      status: RecordStatus.ACTIVE,
-    });
+    expect(repository.findAllPaginatedVisibleTo).toHaveBeenCalledWith(
+      3,
+      10,
+      10,
+      {
+        kind: CategoryKind.INCOME,
+        scope: undefined,
+        status: RecordStatus.ACTIVE,
+      },
+    );
+    expect(result).toMatchObject({ items: [], total: 0, page: 2, limit: 10 });
   });
 
   it('reads a category visible to the caller', async () => {

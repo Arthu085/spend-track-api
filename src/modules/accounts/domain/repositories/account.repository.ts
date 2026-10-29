@@ -4,6 +4,11 @@ import { AccountType } from '../enums/account-type.enum';
 
 export const ACCOUNT_REPOSITORY = Symbol('ACCOUNT_REPOSITORY');
 
+export interface PaginatedAccounts {
+  items: AccountEntity[];
+  total: number;
+}
+
 export interface AccountListFilters {
   name?: string;
   type?: AccountType;
@@ -15,6 +20,12 @@ export interface AccountRepository {
     ownerId: number,
     filters?: AccountListFilters,
   ): Promise<AccountEntity[]>;
+  findAllPaginatedByOwner(
+    ownerId: number,
+    offset: number,
+    limit: number,
+    filters?: AccountListFilters,
+  ): Promise<PaginatedAccounts>;
   findByUuidForOwner(
     uuid: string,
     ownerId: number,

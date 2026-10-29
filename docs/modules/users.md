@@ -218,11 +218,11 @@ a failing revoker rolls the user change back. A module that adds another session
 token registers its own revoker; nothing checks that at compile time, so cover it with an integration
 test.
 
-| Registry | Runs when | `auth` revoker |
-| --- | --- | --- |
-| `USER_SESSION_REVOKERS` | A user is deactivated or soft-deleted, or a user changes their own profile or password | Revokes every refresh token |
-| `EMAIL_CHANGE_TOKEN_REVOKERS` | An email actually changes | Consumes every password-reset token |
-| `PASSWORD_CHANGE_TOKEN_REVOKERS` | A user changes their own password | Consumes every password-reset token |
+| Registry                         | Runs when                                                                              | `auth` revoker                      |
+| -------------------------------- | -------------------------------------------------------------------------------------- | ----------------------------------- |
+| `USER_SESSION_REVOKERS`          | A user is deactivated or soft-deleted, or a user changes their own profile or password | Revokes every refresh token         |
+| `EMAIL_CHANGE_TOKEN_REVOKERS`    | An email actually changes                                                              | Consumes every password-reset token |
+| `PASSWORD_CHANGE_TOKEN_REVOKERS` | A user changes their own password                                                      | Consumes every password-reset token |
 
 - **Deactivation and deletion end every session.** Otherwise a refresh cookie issued before
   deactivation would work again after reactivation. Reactivation revokes nothing; the user signs in

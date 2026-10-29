@@ -3,10 +3,14 @@ import { IsEnum, IsOptional } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
 import { FINANCE_NAME_MAX_LENGTH } from '@shared/domain/constraints';
 import { RecordStatus } from '@shared/domain/enums/record-status.enum';
-import { StatusFilterField, TextFilterField } from '@shared/presentation/dto';
+import {
+  PaginationQueryDto,
+  StatusFilterField,
+  TextFilterField,
+} from '@shared/presentation/dto';
 import { AccountType } from '../../../domain/enums/account-type.enum';
 
-export class ListAccountsQueryDto {
+export class ListAccountsQueryDto extends PaginationQueryDto {
   @TextFilterField({ maxLength: FINANCE_NAME_MAX_LENGTH })
   name?: string;
 

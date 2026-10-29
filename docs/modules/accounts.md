@@ -45,8 +45,9 @@ everyone, including admins.
 `status` follows the shared convention: `PUT /accounts/:uuid/status` deactivates (`INACTIVE`) or
 reactivates an account, and `DELETE` soft-deletes it. Inactive accounts stay listable with
 `?status=INACTIVE` and keep their history; `GET /accounts/:uuid` and `PATCH` reject them with
-`InactiveAccountError` (`409`). The list defaults to `ACTIVE`, puts the default account first, and
-is not paginated, since a user has few accounts.
+`InactiveAccountError` (`409`). `GET /accounts` is paginated like every list (`page`, `limit`),
+defaults to `ACTIVE`, and puts the default account first, then orders by name. The dashboard reads
+every active account through `findAllByOwner`, which is not paginated.
 
 ## Configuration
 

@@ -1,3 +1,4 @@
+import { PaginatedResult } from '@shared/application/dto';
 import { RecordStatus } from '@shared/domain/enums/record-status.enum';
 import type { Translate } from '@shared/presentation/decorators';
 import type { AuthenticatedUser } from '@shared/presentation/http';
@@ -11,6 +12,7 @@ import type { UpdateCategoryUseCase } from '../../../application/use-cases/updat
 import { CategoryKind } from '../../../domain/enums/category-kind.enum';
 import { CategoryScope } from '../../../domain/enums/category-scope.enum';
 import { CategoriesController } from '../categories.controller';
+import { ListCategoriesQueryDto } from '../../dto/input/list-categories-query.dto';
 
 const translations: Record<string, string> = {
   'categories.global.food': 'Alimentação',
@@ -49,23 +51,36 @@ describe('CategoriesController', () => {
   it('names global categories in the request language and personal ones as stored', async () => {
     const execute = jest
       .fn()
-      .mockResolvedValue([
-        buildCategory({ ownerId: null, code: 'FOOD', name: 'Food' }),
-        buildCategory({ uuid: 'own-uuid', name: 'Pets' }),
-      ]);
+      .mockResolvedValue(
+        PaginatedResult.of(
+          [
+            buildCategory({ ownerId: null, code: 'FOOD', name: 'Food' }),
+            buildCategory({ uuid: 'own-uuid', name: 'Pets' }),
+          ],
+          2,
+          1,
+          20,
+        ),
+      );
 
     const controller = buildController({
       list: mockOf<ListCategoriesUseCase>({ execute }),
     });
 
-    const [global, personal] = await controller.findAll(
-      { kind: CategoryKind.EXPENSE },
+    const {
+      items: [global, personal],
+    } = await controller.findAll(
+      Object.assign(new ListCategoriesQueryDto(), {
+        kind: CategoryKind.EXPENSE,
+      }),
       actor,
       translate,
     );
 
     expect(execute).toHaveBeenCalledWith({
       ownerId: 31,
+      page: 1,
+      limit: 20,
       kind: CategoryKind.EXPENSE,
       scope: undefined,
       status: undefined,

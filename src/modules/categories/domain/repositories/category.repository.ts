@@ -5,6 +5,11 @@ import { CategoryScope } from '../enums/category-scope.enum';
 
 export const CATEGORY_REPOSITORY = Symbol('CATEGORY_REPOSITORY');
 
+export interface PaginatedCategories {
+  items: CategoryEntity[];
+  total: number;
+}
+
 export interface CategoryListFilters {
   kind?: CategoryKind;
   scope?: CategoryScope;
@@ -12,10 +17,12 @@ export interface CategoryListFilters {
 }
 
 export interface CategoryRepository {
-  findAllVisibleTo(
+  findAllPaginatedVisibleTo(
     ownerId: number,
+    offset: number,
+    limit: number,
     filters?: CategoryListFilters,
-  ): Promise<CategoryEntity[]>;
+  ): Promise<PaginatedCategories>;
   findVisibleByUuid(
     uuid: string,
     ownerId: number,

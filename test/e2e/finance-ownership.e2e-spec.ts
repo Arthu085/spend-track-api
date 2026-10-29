@@ -246,6 +246,20 @@ describe('Financial data ownership (e2e)', () => {
       ownerCategory = dataOf<CategoryShape>(response.body);
     });
 
+    it('pages the category list with the shared pagination meta', async () => {
+      const response = await owner
+        .get('/api/categories?kind=EXPENSE&page=2&limit=5')
+        .expect(200);
+
+      const body = response.body as {
+        data: CategoryShape[];
+        meta: { total: number; page: number; limit: number };
+      };
+
+      expect(body.data).toHaveLength(5);
+      expect(body.meta).toMatchObject({ total: 12, page: 2, limit: 5 });
+    });
+
     it('lists the global catalog and the own categories to the owner', async () => {
       const response = await owner
         .get('/api/categories?kind=EXPENSE')
