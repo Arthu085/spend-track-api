@@ -15,5 +15,8 @@
   "MAX": "The {property} field must not be greater than {constraints.0}",
   "IS_ARRAY": "The {property} field must be an array",
   "ARRAY_NOT_EMPTY": "The {property} field must not be empty",
-  "ARRAY_UNIQUE": "The {property} field must not contain duplicate items"
+  "ARRAY_UNIQUE": "The {property} field must not contain duplicate items",
+  "IS_MONEY": "The {property} field must be an amount with up to 2 decimal places",
+  "IS_DATE": "The {property} field must be a valid date in the YYYY-MM-DD format",
+  "IS_HEX_COLOR": "The {property} field must be a hexadecimal color such as #1A2B3C"
 }

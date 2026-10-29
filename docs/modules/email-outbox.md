@@ -47,12 +47,12 @@ token or a link.**
 The worker claims up to 20 jobs per run, one at a time, and calls the handler registered for each
 type:
 
-| Email type | Handler | Module |
-| --- | --- | --- |
-| `PASSWORD_RESET` | `DeliverPasswordResetEmailUseCase` | `auth` |
-| `EMAIL_CONFIRMATION` | `DeliverEmailConfirmationUseCase` | `users` |
+| Email type            | Handler                                | Module  |
+| --------------------- | -------------------------------------- | ------- |
+| `PASSWORD_RESET`      | `DeliverPasswordResetEmailUseCase`     | `auth`  |
+| `EMAIL_CONFIRMATION`  | `DeliverEmailConfirmationUseCase`      | `users` |
 | `USER_CHANGE_REQUEST` | `DeliverUserChangeRequestEmailUseCase` | `users` |
-| `EMAIL_CHANGE_NOTICE` | `DeliverEmailChangeNoticeUseCase` | `users` |
+| `EMAIL_CHANGE_NOTICE` | `DeliverEmailChangeNoticeUseCase`      | `users` |
 
 Token handlers resolve the account by recipient, then lock and revalidate it in a transaction, mint a
 fresh token that supersedes earlier ones, and send after the commit; they complete without sending

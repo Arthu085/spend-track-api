@@ -1,0 +1,12 @@
+{
+  "errors": {
+    "not_found": "Conta não encontrada",
+    "inactive": "Conta inativa"
+  },
+  "type": {
+    "checking": "Conta corrente",
+    "savings": "Poupança",
+    "cash": "Dinheiro / carteira",
+    "other": "Outra"
+  }
+}

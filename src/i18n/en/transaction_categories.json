@@ -1,0 +1,33 @@
+{
+  "errors": {
+    "not_found": "Transaction category not found",
+    "inactive": "Transaction category is inactive",
+    "global_read_only": "Global transaction categories cannot be changed"
+  },
+  "kind": {
+    "income": "Income",
+    "expense": "Expense"
+  },
+  "scope": {
+    "global": "Global",
+    "personal": "Personal"
+  },
+  "global": {
+    "food": "Food",
+    "groceries": "Groceries",
+    "housing": "Housing",
+    "transport": "Transport",
+    "health": "Health",
+    "education": "Education",
+    "entertainment": "Entertainment",
+    "gifts": "Gifts",
+    "shopping": "Shopping",
+    "subscriptions": "Subscriptions",
+    "other_expense": "Other expenses",
+    "salary": "Salary",
+    "freelance": "Freelance",
+    "investment_income": "Investment income",
+    "gifts_received": "Gifts received",
+    "other_income": "Other income"
+  }
+}

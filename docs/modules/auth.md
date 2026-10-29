@@ -11,12 +11,12 @@ them.
 
 ## Cookies and tokens
 
-| Cookie | Content | Path | Attributes |
-| --- | --- | --- | --- |
-| `access_token` | Access JWT (`JWT_ACCESS_TTL`, default 15m) | `/api` | httpOnly, signed |
-| `refresh_token` | Refresh JWT (`JWT_REFRESH_TTL`, default 7d) | `/api/auth/refresh` | httpOnly, signed |
-| `csrf_session` | Session id for CSRF binding, with the refresh TTL | `/api` | httpOnly, signed |
-| `csrf_token` | CSRF token, sent back in `X-CSRF-Token` | `/api` | readable by scripts, unsigned |
+| Cookie          | Content                                           | Path                | Attributes                    |
+| --------------- | ------------------------------------------------- | ------------------- | ----------------------------- |
+| `access_token`  | Access JWT (`JWT_ACCESS_TTL`, default 15m)        | `/api`              | httpOnly, signed              |
+| `refresh_token` | Refresh JWT (`JWT_REFRESH_TTL`, default 7d)       | `/api/auth/refresh` | httpOnly, signed              |
+| `csrf_session`  | Session id for CSRF binding, with the refresh TTL | `/api`              | httpOnly, signed              |
+| `csrf_token`    | CSRF token, sent back in `X-CSRF-Token`           | `/api`              | readable by scripts, unsigned |
 
 All cookies use `COOKIE_SECURE`, `COOKIE_SAMESITE`, and `COOKIE_DOMAIN`, and are signed with
 `COOKIE_SECRET` where marked. Tokens are never returned in a body or read from an `Authorization`
@@ -170,14 +170,14 @@ valid credential: before login (`GET /auth/csrf` starts an anonymous pre-session
 without an access token, and on a protected request with an expired access token, where CSRF passes
 and `JwtAuthGuard` answers the `401` that tells the client to refresh.
 
-| Event | Session the token is bound to | Token |
-| --- | --- | --- |
-| `GET /auth/csrf`, anonymous | `csrf_session`, or a new pre-session | Kept if already bound, otherwise minted |
-| `GET /auth/csrf`, signed in | The access token's `sid`, else `csrf_session` | Kept if already bound, otherwise minted |
-| `login` (also when already signed in) | A new session | Replaced; the old token stops working |
-| `refresh` | Unchanged | Kept |
-| `logout` | None; all auth and CSRF cookies are cleared | Bootstrap again |
-| `COOKIE_SECRET` rotated | Every `csrf_session` and token stops verifying | Bootstrap again |
+| Event                                 | Session the token is bound to                  | Token                                   |
+| ------------------------------------- | ---------------------------------------------- | --------------------------------------- |
+| `GET /auth/csrf`, anonymous           | `csrf_session`, or a new pre-session           | Kept if already bound, otherwise minted |
+| `GET /auth/csrf`, signed in           | The access token's `sid`, else `csrf_session`  | Kept if already bound, otherwise minted |
+| `login` (also when already signed in) | A new session                                  | Replaced; the old token stops working   |
+| `refresh`                             | Unchanged                                      | Kept                                    |
+| `logout`                              | None; all auth and CSRF cookies are cleared    | Bootstrap again                         |
+| `COOKIE_SECRET` rotated               | Every `csrf_session` and token stops verifying | Bootstrap again                         |
 
 `GET /auth/csrf`, `login`, and `refresh` set `csrf_session` and `csrf_token` and return the token in
 the `X-CSRF-Token` response header (exposed by CORS). `GET /auth/csrf` also returns it as
@@ -236,7 +236,10 @@ async function loadCsrfToken(): Promise<string> {
   return csrfToken;
 }
 
-export async function api(path: string, init: RequestInit = {}): Promise<Response> {
+export async function api(
+  path: string,
+  init: RequestInit = {},
+): Promise<Response> {
   const method = (init.method ?? 'GET').toUpperCase();
   const headers = new Headers(init.headers);
 
@@ -244,7 +247,12 @@ export async function api(path: string, init: RequestInit = {}): Promise<Respons
     headers.set('X-CSRF-Token', csrfToken ?? (await loadCsrfToken()));
   }
 
-  const response = await fetch(`${API}${path}`, { ...init, method, headers, credentials: 'include' });
+  const response = await fetch(`${API}${path}`, {
+    ...init,
+    method,
+    headers,
+    credentials: 'include',
+  });
 
   csrfToken = response.headers.get('X-CSRF-Token') ?? csrfToken;
 
@@ -262,11 +270,11 @@ see the cookie.
 
 ### Deployment shapes
 
-| Frontend vs. API | Example | Settings |
-| --- | --- | --- |
-| Same origin (reverse proxy or dev-server proxy for `/api`) | `https://app.example.com` → `https://app.example.com/api` | Defaults; no CORS needed |
-| Same site, different origin | `http://localhost:5173` → `http://localhost:3000`; `https://app.example.com` → `https://api.example.com` | `CORS_ORIGINS=<frontend origin>`, `COOKIE_SAMESITE=lax` (or `strict`) |
-| Different sites | `https://app.example.com` → `https://api.other.net` | `CORS_ORIGINS=<frontend origin>`, `COOKIE_SAMESITE=none`, `COOKIE_SECURE=true`. Browsers that block third-party cookies still drop them; prefer the shapes above |
+| Frontend vs. API                                           | Example                                                                                                  | Settings                                                                                                                                                         |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Same origin (reverse proxy or dev-server proxy for `/api`) | `https://app.example.com` → `https://app.example.com/api`                                                | Defaults; no CORS needed                                                                                                                                         |
+| Same site, different origin                                | `http://localhost:5173` → `http://localhost:3000`; `https://app.example.com` → `https://api.example.com` | `CORS_ORIGINS=<frontend origin>`, `COOKIE_SAMESITE=lax` (or `strict`)                                                                                            |
+| Different sites                                            | `https://app.example.com` → `https://api.other.net`                                                      | `CORS_ORIGINS=<frontend origin>`, `COOKIE_SAMESITE=none`, `COOKIE_SECURE=true`. Browsers that block third-party cookies still drop them; prefer the shapes above |
 
 Leave `COOKIE_DOMAIN` empty: host-only cookies work for all three shapes, and a parent domain would
 expose the auth cookies to every sibling subdomain. With `COOKIE_SECURE=true` (required in

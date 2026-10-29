@@ -35,6 +35,7 @@ modules/<name>/
   - `<name>.module.ts`.
 
   Export only what another module uses.
+
 - ESLint (`no-restricted-imports`) rejects imports of another module's `infrastructure/` or
   `presentation/` folders and any `presentation` import from a `domain/` or `application/` layer.
   Deep imports of another module's `domain/` or `application/` are not linted but are still
@@ -141,6 +142,28 @@ including a `docs/modules/<name>.md` and a row in [`PROJECT.md`](PROJECT.md#modu
   on the same subject; CREATE does not.
 - Abilities and the access token's user and session are re-checked against the database on every
   request, so revocations apply immediately.
+
+## Financial data ownership
+
+Every financial record (accounts, personal transaction categories, preferences, and the records later phases
+add) belongs to exactly one user through a `user_id` FK, and only that user can read or change it.
+
+- **Ownership is enforced by the API, never by the client.** Financial routes need authentication
+  but no ability, take the owner from `@CurrentActor()` (`actor.id`), and never accept an owner from
+  the request. Repositories filter by owner in the query itself (`findByUuidForOwner`,
+  `findAllByOwner`, `findVisibleByUuid`), so a record outside the caller's scope is never loaded.
+- **Abilities and roles never widen it.** `ADMIN` and every other ability apply to administrative
+  features only; an admin reaches another user's finances exactly like any other user: not at all.
+- **Foreign records are not found.** A record owned by someone else answers `404` with the module's
+  not-found error, the same as a missing one, so its existence never leaks. Reserve `403` for rules
+  about the target itself, such as read-only global transaction categories.
+- **References are checked too.** A record that points at another financial record (a transaction
+  and its account or category) resolves that reference through the same owner-scoped lookup.
+- **Money is exact.** Amounts are integer cents in the domain (`parseMoney`, `formatMoney`,
+  `sumMoney` in `src/shared/domain/money/`), `numeric(14,2)` in PostgreSQL, and decimal strings with
+  up to two decimal places (`MoneyField`) over HTTP, never JSON numbers. Calendar dates without a
+  time are `YYYY-MM-DD` strings (`DateOnlyField`, `date` columns). The MVP assumes BRL and the
+  `America/Sao_Paulo` calendar.
 
 ## Persistence
 

@@ -1,0 +1,12 @@
+{
+  "errors": {
+    "not_found": "Account not found",
+    "inactive": "Account is inactive"
+  },
+  "type": {
+    "checking": "Checking account",
+    "savings": "Savings account",
+    "cash": "Cash / wallet",
+    "other": "Other"
+  }
+}
