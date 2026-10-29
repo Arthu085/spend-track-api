@@ -5,8 +5,10 @@ import { mockOf } from '@test/support/mocks/mock-of';
 import type { AccountEntity } from '../../../domain/entities/account.entity';
 import { AccountType } from '../../../domain/enums/account-type.enum';
 import { AccountNotFoundError } from '../../../domain/errors/account-not-found.error';
+import { AccountHasHistoryError } from '../../../domain/errors/account-has-history.error';
 import { InactiveAccountError } from '../../../domain/errors/inactive-account.error';
 import type { AccountRepository } from '../../../domain/repositories/account.repository';
+import type { AccountLedger } from '../../ports/account-ledger.port';
 import { CreateAccountUseCase } from '../create-account.use-case';
 import { DeleteAccountUseCase } from '../delete-account.use-case';
 import { GetAccountUseCase } from '../get-account.use-case';
@@ -18,6 +20,17 @@ const transactionManager: TransactionManagerPort = {
   runInTransaction: <T>(work: () => Promise<T>): Promise<T> => work(),
   runInSavepoint: <T>(work: () => Promise<T>): Promise<T> => work(),
 };
+
+function buildLedger(changes = new Map<number, number>(), hasEntries = false) {
+  const ledger = {
+    balanceChanges: jest.fn().mockResolvedValue(changes),
+    hasEntries: jest.fn().mockResolvedValue(hasEntries),
+  };
+
+  return { ledger, port: mockOf<AccountLedger>(ledger) };
+}
+
+const emptyLedger = buildLedger().port;
 
 function buildRepository(found: AccountEntity | null = buildAccount()) {
   const calls: string[] = [];
@@ -56,7 +69,7 @@ describe('accounts use-cases', () => {
     it("pages only the caller's active accounts by default", async () => {
       const { repository, port } = buildRepository();
 
-      const result = await new ListAccountsUseCase(port).execute({
+      const result = await new ListAccountsUseCase(port, emptyLedger).execute({
         ownerId: 4,
         page: 3,
         limit: 20,
@@ -72,13 +85,45 @@ describe('accounts use-cases', () => {
       expect(result).toMatchObject({ total: 41, page: 3, limit: 20 });
       expect(result.items).toHaveLength(1);
     });
+
+    it('reports each account with its completed ledger movements', async () => {
+      const { port } = buildRepository();
+      const { ledger, port: ledgerPort } = buildLedger(new Map([[1, -2500]]));
+
+      const result = await new ListAccountsUseCase(port, ledgerPort).execute({
+        ownerId: 4,
+        page: 1,
+        limit: 20,
+      });
+
+      expect(ledger.balanceChanges).toHaveBeenCalledWith(4, [1]);
+      expect(result.items[0].currentBalance).toBe(97500);
+    });
+
+    it('skips the ledger when the page is empty', async () => {
+      const { repository, port } = buildRepository();
+      const { ledger, port: ledgerPort } = buildLedger();
+
+      repository.findAllPaginatedByOwner.mockResolvedValue({
+        items: [],
+        total: 0,
+      });
+
+      await new ListAccountsUseCase(port, ledgerPort).execute({
+        ownerId: 4,
+        page: 1,
+        limit: 20,
+      });
+
+      expect(ledger.balanceChanges).not.toHaveBeenCalled();
+    });
   });
 
   describe('GetAccountUseCase', () => {
     it('looks the account up within the caller ownership', async () => {
       const { repository, port } = buildRepository();
 
-      await new GetAccountUseCase(port).execute('account-uuid', 4);
+      await new GetAccountUseCase(port, emptyLedger).execute('account-uuid', 4);
 
       expect(repository.findByUuidForOwner).toHaveBeenCalledWith(
         'account-uuid',
@@ -92,8 +137,20 @@ describe('accounts use-cases', () => {
       const { port } = buildRepository(null);
 
       await expect(
-        new GetAccountUseCase(port).execute('account-uuid', 4),
+        new GetAccountUseCase(port, emptyLedger).execute('account-uuid', 4),
       ).rejects.toBeInstanceOf(AccountNotFoundError);
+    });
+
+    it('returns the actual balance including completed movements', async () => {
+      const { port } = buildRepository();
+      const { port: ledgerPort } = buildLedger(new Map([[1, 150]]));
+
+      const account = await new GetAccountUseCase(port, ledgerPort).execute(
+        'account-uuid',
+        1,
+      );
+
+      expect(account.currentBalance).toBe(100150);
     });
 
     it('rejects an archived account', async () => {
@@ -102,7 +159,7 @@ describe('accounts use-cases', () => {
       );
 
       await expect(
-        new GetAccountUseCase(port).execute('account-uuid', 4),
+        new GetAccountUseCase(port, emptyLedger).execute('account-uuid', 4),
       ).rejects.toBeInstanceOf(InactiveAccountError);
     });
   });
@@ -149,6 +206,7 @@ describe('accounts use-cases', () => {
       const updated = await new UpdateAccountUseCase(
         port,
         transactionManager,
+        emptyLedger,
       ).execute({ uuid: 'account-uuid', ownerId: 1, name: 'Renamed' });
 
       expect(updated).toMatchObject({
@@ -166,6 +224,7 @@ describe('accounts use-cases', () => {
       const updated = await new UpdateAccountUseCase(
         port,
         transactionManager,
+        emptyLedger,
       ).execute({ uuid: 'account-uuid', ownerId: 1, isDefault: true });
 
       expect(updated.isDefault).toBe(true);
@@ -177,7 +236,11 @@ describe('accounts use-cases', () => {
         buildAccount({ isDefault: true }),
       );
 
-      await new UpdateAccountUseCase(port, transactionManager).execute({
+      await new UpdateAccountUseCase(
+        port,
+        transactionManager,
+        emptyLedger,
+      ).execute({
         uuid: 'account-uuid',
         ownerId: 1,
         isDefault: true,
@@ -190,11 +253,13 @@ describe('accounts use-cases', () => {
       const { port, calls } = buildRepository(null);
 
       await expect(
-        new UpdateAccountUseCase(port, transactionManager).execute({
-          uuid: 'account-uuid',
-          ownerId: 2,
-          name: 'Stolen',
-        }),
+        new UpdateAccountUseCase(port, transactionManager, emptyLedger).execute(
+          {
+            uuid: 'account-uuid',
+            ownerId: 2,
+            name: 'Stolen',
+          },
+        ),
       ).rejects.toBeInstanceOf(AccountNotFoundError);
       expect(calls).toEqual(['lock']);
     });
@@ -205,11 +270,13 @@ describe('accounts use-cases', () => {
       );
 
       await expect(
-        new UpdateAccountUseCase(port, transactionManager).execute({
-          uuid: 'account-uuid',
-          ownerId: 1,
-          name: 'Renamed',
-        }),
+        new UpdateAccountUseCase(port, transactionManager, emptyLedger).execute(
+          {
+            uuid: 'account-uuid',
+            ownerId: 1,
+            name: 'Renamed',
+          },
+        ),
       ).rejects.toBeInstanceOf(InactiveAccountError);
     });
   });
@@ -223,6 +290,7 @@ describe('accounts use-cases', () => {
       const archived = await new UpdateAccountStatusUseCase(
         port,
         transactionManager,
+        emptyLedger,
       ).execute({
         uuid: 'account-uuid',
         ownerId: 1,
@@ -238,7 +306,11 @@ describe('accounts use-cases', () => {
       const { port } = buildRepository(null);
 
       await expect(
-        new UpdateAccountStatusUseCase(port, transactionManager).execute({
+        new UpdateAccountStatusUseCase(
+          port,
+          transactionManager,
+          emptyLedger,
+        ).execute({
           uuid: 'account-uuid',
           ownerId: 2,
           status: RecordStatus.INACTIVE,
@@ -251,7 +323,11 @@ describe('accounts use-cases', () => {
     it('soft-deletes an owned account under the owner lock', async () => {
       const { port, calls } = buildRepository();
 
-      await new DeleteAccountUseCase(port, transactionManager).execute({
+      await new DeleteAccountUseCase(
+        port,
+        transactionManager,
+        emptyLedger,
+      ).execute({
         uuid: 'account-uuid',
         ownerId: 1,
       });
@@ -259,14 +335,30 @@ describe('accounts use-cases', () => {
       expect(calls).toEqual(['lock', 'delete']);
     });
 
+    it('refuses to delete an account that transactions reference', async () => {
+      const { port, calls } = buildRepository();
+      const { ledger, port: ledgerPort } = buildLedger(new Map(), true);
+
+      await expect(
+        new DeleteAccountUseCase(port, transactionManager, ledgerPort).execute({
+          uuid: 'account-uuid',
+          ownerId: 1,
+        }),
+      ).rejects.toBeInstanceOf(AccountHasHistoryError);
+      expect(ledger.hasEntries).toHaveBeenCalledWith(1, 1);
+      expect(calls).toEqual(['lock']);
+    });
+
     it('rejects an account outside the caller ownership', async () => {
       const { port, calls } = buildRepository(null);
 
       await expect(
-        new DeleteAccountUseCase(port, transactionManager).execute({
-          uuid: 'account-uuid',
-          ownerId: 2,
-        }),
+        new DeleteAccountUseCase(port, transactionManager, emptyLedger).execute(
+          {
+            uuid: 'account-uuid',
+            ownerId: 2,
+          },
+        ),
       ).rejects.toBeInstanceOf(AccountNotFoundError);
       expect(calls).toEqual(['lock']);
     });

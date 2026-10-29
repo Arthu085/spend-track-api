@@ -24,6 +24,7 @@ export interface ReconstituteAccountInput extends AccountDetails {
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date | null;
+  ledgerBalance?: number;
 }
 
 export class AccountEntity extends BaseEntity {
@@ -40,6 +41,7 @@ export class AccountEntity extends BaseEntity {
     readonly openingBalance: number,
     readonly openingBalanceDate: string,
     readonly isDefault: boolean,
+    readonly ledgerBalance: number,
   ) {
     super(id, uuid, status, createdAt, updatedAt, deletedAt);
   }
@@ -71,11 +73,16 @@ export class AccountEntity extends BaseEntity {
       input.openingBalance,
       input.openingBalanceDate,
       input.isDefault,
+      input.ledgerBalance ?? 0,
     );
   }
 
   get currentBalance(): number {
-    return this.openingBalance;
+    return this.openingBalance + this.ledgerBalance;
+  }
+
+  withLedgerBalance(ledgerBalance: number): AccountEntity {
+    return this.copyWith({ ledgerBalance, updatedAt: this.updatedAt });
   }
 
   withDetails(details: AccountDetails): AccountEntity {
@@ -97,7 +104,11 @@ export class AccountEntity extends BaseEntity {
     changes: Partial<
       Pick<
         ReconstituteAccountInput,
-        keyof AccountDetails | 'isDefault' | 'status'
+        | keyof AccountDetails
+        | 'isDefault'
+        | 'status'
+        | 'ledgerBalance'
+        | 'updatedAt'
       >
     >,
   ): AccountEntity {
@@ -114,6 +125,7 @@ export class AccountEntity extends BaseEntity {
       createdAt: this.createdAt,
       updatedAt: new Date(),
       deletedAt: this.deletedAt,
+      ledgerBalance: this.ledgerBalance,
       ...changes,
     });
   }
