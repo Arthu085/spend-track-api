@@ -2,10 +2,10 @@
 
 > Location: `src/modules/dashboard/` · Rules: [financial data ownership](../conventions.md#financial-data-ownership)
 > · Related: [`accounts.md`](accounts.md), [`preferences.md`](preferences.md),
-> [`transactions.md`](transactions.md)
+> [`transactions.md`](transactions.md), [`credit-cards.md`](credit-cards.md)
 
 `GET /dashboard` returns the caller's monthly financial summary. It owns no table: it reads the
-caller's accounts, preferences, and transactions through their modules' ports. Routes and payloads are
+caller's accounts, preferences, transactions, and credit cards through their modules' ports. Routes and payloads are
 in Swagger; this document covers the rules behind them.
 
 ## Period
@@ -26,10 +26,13 @@ in Swagger; this document covers the rules behind them.
   are still expected. A transfer between an active and an inactive account applies each side to its
   own account, so only the active side shows.
 - `balances.actual` and `balances.projected` sum the **active** accounts; inactive accounts are
-  excluded.
+  excluded. `balances.available` is `projected` minus `creditCards.outstanding`.
 - `income` and `expenses` cover transactions of that type dated inside the period: `completed` is
   `COMPLETED`, `pending` is `PLANNED`, and `total` is both. Canceled transactions and transfers never
   count; accounts of any status do.
+- Card spending is added to `expenses.completed` (and `total`) and to `expensesByCategory` under the
+  purchase's category: installments minus refunds, grouped according to the perspective (see below).
+  Invoice payments are never expenses.
 - `expensesByCategory` groups the same expenses by category, largest total first, then by stored
   name; inactive and soft-deleted categories still appear. The totals add up to `expenses.total`.
 - `upcoming` lists at most 10 of the caller's pending planned transactions of any type dated up to
@@ -37,8 +40,14 @@ in Swagger; this document covers the rules behind them.
   `upcomingCount` is how many match, and `overdue` marks dates before today. The list is not a
   breakdown of projected minus actual: it also holds transfers between active accounts, which leave
   the total unchanged, and items on inactive accounts, which the totals exclude.
-- Until credit cards exist both perspectives give the same numbers: account transactions are
-  grouped by `date` in both.
+- The perspective only changes how card spending is grouped. `PURCHASE_DATE` counts each installment
+  and refund in the month of its `date`; `INVOICE_MONTH` counts it in the reference month of its
+  invoice. A purchase on October 29 on the November invoice is October spending in the first and
+  November spending in the second. Account transactions are grouped by `date` in both.
+- `creditCards.spending` is the card part of `expenses` for the period. `creditCards.outstanding`
+  sums what is still owed on every invoice of every card. `creditCards.invoices` lists the invoices
+  whose reference month is the period plus earlier ones still outstanding, by due date, then card
+  name.
 - Sums use integer cents (`sumMoney`) and are returned as decimal strings, so totals always equal the
   sum of the listed accounts.
 

@@ -1,12 +1,18 @@
+import {
+  compareMonths,
+  daysInMonth as daysIn,
+  firstDayOf,
+  lastDayOf,
+  monthOf,
+  type MonthRef,
+} from '@shared/domain/calendar';
+
+export { monthOf, shiftMonth, type MonthRef } from '@shared/domain/calendar';
+
 export enum PeriodTiming {
   PAST = 'PAST',
   CURRENT = 'CURRENT',
   FUTURE = 'FUTURE',
-}
-
-export interface MonthRef {
-  year: number;
-  month: number;
 }
 
 export interface MonthPeriod extends MonthRef {
@@ -16,30 +22,6 @@ export interface MonthPeriod extends MonthRef {
   daysInMonth: number;
   timing: PeriodTiming;
   remainingDays: number;
-}
-
-function pad(value: number): string {
-  return String(value).padStart(2, '0');
-}
-
-export function monthOf(date: string): MonthRef {
-  const [year, month] = date.split('-').map(Number);
-
-  return { year, month };
-}
-
-export function shiftMonth(ref: MonthRef, offset: number): MonthRef {
-  const index = ref.year * 12 + (ref.month - 1) + offset;
-
-  return { year: Math.floor(index / 12), month: (index % 12) + 1 };
-}
-
-function daysIn(ref: MonthRef): number {
-  return new Date(Date.UTC(ref.year, ref.month, 0)).getUTCDate();
-}
-
-function compareMonths(left: MonthRef, right: MonthRef): number {
-  return left.year * 12 + left.month - (right.year * 12 + right.month);
 }
 
 export function resolveMonthPeriod(ref: MonthRef, today: string): MonthPeriod {
@@ -62,8 +44,8 @@ export function resolveMonthPeriod(ref: MonthRef, today: string): MonthPeriod {
   return {
     year: ref.year,
     month: ref.month,
-    startDate: `${ref.year}-${pad(ref.month)}-01`,
-    endDate: `${ref.year}-${pad(ref.month)}-${pad(daysInMonth)}`,
+    startDate: firstDayOf(ref),
+    endDate: lastDayOf(ref),
     today,
     daysInMonth,
     timing,

@@ -1,0 +1,25 @@
+{
+  "errors": {
+    "card_not_found": "Cartão de crédito não encontrado",
+    "card_inactive": "Cartão de crédito arquivado",
+    "card_has_history": "Este cartão tem compras e não pode ser excluído; arquive-o",
+    "invoice_not_found": "Fatura não encontrada",
+    "purchase_not_found": "Compra não encontrada",
+    "purchase_not_deletable": "Esta compra já está em uma fatura fechada ou tem estornos; registre um estorno",
+    "purchase_category_kind": "Uma compra no cartão precisa de uma categoria de despesa",
+    "installments_exceed_amount": "O valor é pequeno demais para essa quantidade de parcelas",
+    "refund_not_found": "Estorno não encontrado",
+    "refund_exceeds_purchase": "O estorno ultrapassa o valor que ainda pode ser estornado desta compra",
+    "refund_before_purchase": "Um estorno não pode ter data anterior à da compra",
+    "refund_not_deletable": "Este estorno está em uma fatura fechada e não pode ser excluído",
+    "payment_not_found": "Pagamento não encontrado",
+    "payment_exceeds_outstanding": "O pagamento ultrapassa o valor em aberto da fatura",
+    "payment_already_canceled": "Este pagamento já foi cancelado"
+  },
+  "invoice_status": {
+    "open": "Aberta",
+    "closed": "Fechada",
+    "overdue": "Vencida",
+    "paid": "Paga"
+  }
+}

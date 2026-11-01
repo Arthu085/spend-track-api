@@ -12,7 +12,8 @@ payloads are in Swagger; this document covers the rules behind them.
 - `index.ts`: `TransactionEntity`, `TransactionType`, `TransactionState`, and
   `TRANSACTION_REPOSITORY`/`TransactionRepository` with its summary types, consumed by `dashboard`.
 - `presentation.ts`: `TransactionAccountResponseDto` and `transactionTypeLabel`, used by the dashboard
-  response.
+  response, and `TransactionCategoryRefResponseDto`, the shared amount, description, and notes
+  fields, `isPresent`, and `isProvided`, reused by the credit card DTOs.
 - `transactions.module.ts`: `TransactionsModule`. It imports `AccountsModule` and
   `TransactionCategoriesModule`; neither imports it back.
 

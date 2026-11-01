@@ -1,4 +1,10 @@
 import type { AccountLedger, AccountRepository } from '@modules/accounts';
+import type {
+  CategorySpendingTotal,
+  CreditCardPurchaseRepository,
+  CreditCardStatements,
+  InvoiceStatement,
+} from '@modules/credit-cards';
 import {
   DefaultMonth,
   SpendingPerspective,
@@ -12,6 +18,11 @@ import {
 } from '@modules/transactions';
 import { RecordStatus } from '@shared/domain/enums/record-status.enum';
 import { buildAccount } from '@test/support/builders/account.builder';
+import {
+  buildCreditCard,
+  buildCreditCardInvoice,
+  buildInvoiceStatement,
+} from '@test/support/builders/credit-card.builder';
 import { buildTransactionCategory } from '@test/support/builders/transaction-category.builder';
 import { buildTransaction } from '@test/support/builders/transaction.builder';
 import { mockOf } from '@test/support/mocks/mock-of';
@@ -35,6 +46,10 @@ describe('GetDashboardUseCase', () => {
     ],
     transactions: Partial<TransactionRepository> = {},
     ledgerChanges = new Map<number, number>(),
+    cards: {
+      spending?: CategorySpendingTotal[];
+      statements?: InvoiceStatement[];
+    } = {},
   ) {
     const findAllByOwner = jest.fn().mockResolvedValue(accounts);
 
@@ -46,6 +61,10 @@ describe('GetDashboardUseCase', () => {
       ...transactions,
     };
 
+    const sumSpendingByCategory = jest
+      .fn()
+      .mockResolvedValue(cards.spending ?? []);
+
     const useCase = new GetDashboardUseCase(
       mockOf<AccountRepository>({ findAllByOwner }),
       mockOf<AccountLedger>({
@@ -55,9 +74,18 @@ describe('GetDashboardUseCase', () => {
         findByUserId: jest.fn().mockResolvedValue(stored),
       }),
       mockOf<TransactionRepository>(transactionRepository),
+      mockOf<CreditCardPurchaseRepository>({ sumSpendingByCategory }),
+      mockOf<CreditCardStatements>({
+        forOwner: jest.fn().mockResolvedValue(cards.statements ?? []),
+      }),
     );
 
-    return { useCase, findAllByOwner, transactionRepository };
+    return {
+      useCase,
+      findAllByOwner,
+      transactionRepository,
+      sumSpendingByCategory,
+    };
   }
 
   it("totals the caller's active account balances exactly", async () => {
@@ -68,7 +96,11 @@ describe('GetDashboardUseCase', () => {
     expect(findAllByOwner).toHaveBeenCalledWith(8, {
       status: RecordStatus.ACTIVE,
     });
-    expect(summary.balances).toEqual({ actual: 149990, projected: 149990 });
+    expect(summary.balances).toEqual({
+      actual: 149990,
+      projected: 149990,
+      available: 149990,
+    });
     expect(summary.accounts.map((entry) => entry.actualBalance)).toEqual([
       150010, -20,
     ]);
@@ -133,7 +165,11 @@ describe('GetDashboardUseCase', () => {
 
     const summary = await useCase.execute({ ownerId: 8 });
 
-    expect(summary.balances).toEqual({ actual: 0, projected: 0 });
+    expect(summary.balances).toEqual({
+      actual: 0,
+      projected: 0,
+      available: 0,
+    });
     expect(summary.accounts).toEqual([]);
     expect(summary.income).toEqual({ total: 0, completed: 0, pending: 0 });
     expect(summary.expenses).toEqual({ total: 0, completed: 0, pending: 0 });
@@ -178,7 +214,11 @@ describe('GetDashboardUseCase', () => {
       [150000, 120000],
       [-20, 4980],
     ]);
-    expect(summary.balances).toEqual({ actual: 149980, projected: 124980 });
+    expect(summary.balances).toEqual({
+      actual: 149980,
+      projected: 124980,
+      available: 124980,
+    });
   });
 
   it('splits income and expenses of the period into completed and pending', async () => {
@@ -286,5 +326,110 @@ describe('GetDashboardUseCase', () => {
       ['due', false],
     ]);
     expect(summary.upcomingCount).toBe(12);
+  });
+
+  it('counts card spending of the perspective as completed expenses by category', async () => {
+    const groceries = buildTransactionCategory({ id: 5, name: 'Groceries' });
+    const shopping = buildTransactionCategory({ id: 6, name: 'Shopping' });
+
+    const { useCase, sumSpendingByCategory } = build(
+      null,
+      undefined,
+      {
+        sumByTypeAndState: jest.fn().mockResolvedValue([
+          {
+            type: TransactionType.EXPENSE,
+            state: TransactionState.PLANNED,
+            total: 1000,
+          },
+        ]),
+        sumExpensesByCategory: jest.fn().mockResolvedValue([
+          {
+            category: groceries,
+            state: TransactionState.PLANNED,
+            total: 1000,
+          },
+        ]),
+      },
+      undefined,
+      {
+        spending: [
+          { category: groceries, total: 2500 },
+          { category: shopping, total: 30000 },
+        ],
+      },
+    );
+
+    const summary = await useCase.execute({
+      ownerId: 8,
+      year: 2026,
+      month: 11,
+      perspective: SpendingPerspective.INVOICE_MONTH,
+    });
+
+    expect(sumSpendingByCategory).toHaveBeenCalledWith(8, {
+      from: '2026-11-01',
+      to: '2026-11-30',
+      perspective: SpendingPerspective.INVOICE_MONTH,
+    });
+    expect(summary.creditCards.spending).toBe(32500);
+    expect(summary.expenses).toEqual({
+      total: 33500,
+      completed: 32500,
+      pending: 1000,
+    });
+    expect(
+      summary.expensesByCategory.map(
+        ({ category, total, completed, pending }) => [
+          category.name,
+          total,
+          completed,
+          pending,
+        ],
+      ),
+    ).toEqual([
+      ['Shopping', 30000, 30000, 0],
+      ['Groceries', 3500, 2500, 1000],
+    ]);
+  });
+
+  it('lists invoices due in the period and unpaid earlier ones, and subtracts them from the available balance', async () => {
+    const card = buildCreditCard({ name: 'Visa' });
+
+    const statement = (referenceMonth: string, outstanding: number) =>
+      buildInvoiceStatement({
+        invoice: buildCreditCardInvoice({
+          uuid: referenceMonth,
+          card,
+          referenceMonth,
+          dueDate: `${referenceMonth.slice(0, 8)}12`,
+        }),
+        outstanding,
+      });
+
+    const { useCase } = build(null, undefined, {}, undefined, {
+      statements: [
+        statement('2026-09-01', 0),
+        statement('2026-10-01', 4000),
+        statement('2026-11-01', 30000),
+        statement('2026-12-01', 10000),
+      ],
+    });
+
+    const summary = await useCase.execute({
+      ownerId: 8,
+      year: 2026,
+      month: 11,
+    });
+
+    expect(
+      summary.creditCards.invoices.map(({ invoice }) => invoice.uuid),
+    ).toEqual(['2026-10-01', '2026-11-01']);
+    expect(summary.creditCards.outstanding).toBe(34000);
+    expect(summary.balances).toEqual({
+      actual: 149990,
+      projected: 149990,
+      available: 115990,
+    });
   });
 });

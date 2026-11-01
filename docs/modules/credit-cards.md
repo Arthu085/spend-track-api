@@ -1,0 +1,130 @@
+# Credit cards module
+
+> Location: `src/modules/credit-cards/` · Rules: [financial data ownership](../conventions.md#financial-data-ownership)
+> and [HTTP](../conventions.md#http) · Related: [`accounts.md`](accounts.md),
+> [`transaction-categories.md`](transaction-categories.md), [`dashboard.md`](dashboard.md)
+
+The user's credit cards, their monthly invoices, purchases split into installments, refunds, and
+invoice payments, in `credit_cards`, `credit_card_invoices`, `credit_card_purchases`,
+`credit_card_installments`, `credit_card_refunds`, and `credit_card_payments`. Card purchases are
+not `transactions`: they never change an account balance; only invoice payments do. Routes and
+payloads are in Swagger; this document covers the rules behind them.
+
+## Public API
+
+- `index.ts`: `CreditCardEntity`, `CreditCardInvoiceStatus`, `InvoiceStatement`,
+  `CREDIT_CARD_PURCHASE_REPOSITORY`/`CreditCardPurchaseRepository` with `CategorySpendingTotal`, and
+  `CreditCardStatements`, consumed by `dashboard`.
+- `presentation.ts`: `CreditCardInvoiceListResponseDto`, used by the dashboard response.
+- `credit-cards.module.ts`: `CreditCardsModule`. It imports `AccountsModule` and
+  `TransactionCategoriesModule`; neither imports it back.
+
+## Ownership
+
+Every route needs authentication but no ability and works only on the caller's records. Cards,
+invoices, purchases, refunds, and payments carry `user_id` and every lookup filters by it, so a
+foreign record is a `404` (`CreditCardNotFoundError`, `CreditCardInvoiceNotFoundError`,
+`CreditCardPurchaseNotFoundError`, ...) for everyone, including admins. Refunds and payments are
+looked up inside their owned purchase or invoice. Categories and accounts resolve through the
+owner-scoped lookups of their modules, so a foreign one answers that module's `404`. List filters by
+`cardUuid` or `categoryUuid` simply match nothing for a foreign or unknown uuid.
+
+## Cards
+
+- A card has a `name`, a `creditLimit` (informational, never enforced), a `closingDay` and a
+  `dueDay` (1–31), a `status`, and an `isDefault` flag.
+- At most one live card per user is the default (`uq_credit_cards_default_per_user`). Making a card
+  the default clears the previous one under the per-user card lock. Archiving a card clears its flag,
+  and a deleted card no longer counts toward the index.
+- `outstanding` sums what is still owed on every invoice, `creditBalance` is the credit left over
+  after the latest invoice, and `availableLimit` is `creditLimit - outstanding + creditBalance`.
+- `PUT /credit-cards/:uuid/status` archives (`INACTIVE`) or reactivates a card. An archived card
+  rejects new purchases, `GET /credit-cards/:uuid`, and `PATCH` (`InactiveCreditCardError`, `409`),
+  like inactive accounts, but keeps its purchases and invoices, which stay readable and payable. `GET /credit-cards` defaults to `ACTIVE`, puts the default card
+  first, then orders by name.
+- `DELETE` soft-deletes a card only while it has no purchase; otherwise `CreditCardHasHistoryError`
+  (`409`) and the user archives it instead.
+
+## Invoice cycle
+
+- An invoice is identified by its card and its **reference month**, the month of its due date
+  (`referenceMonth` is the first day of that month).
+- `dueDate` is `dueDay` of the reference month. `closingDate` is `closingDay` of the same month when
+  `closingDay < dueDay`, otherwise of the previous month. Days past the end of a short month are
+  clamped to its last day (`dayOfMonth` in `src/shared/domain/calendar/`).
+- A purchase goes to the first invoice whose closing date is strictly after the purchase date, so a
+  purchase on the closing day belongs to the next invoice. With `closingDay = 5` and `dueDay = 12`,
+  a purchase on October 29 goes to the November invoice (closes November 5, due November 12), and a
+  purchase on December 10 goes to the January invoice of the next year.
+- Invoices are created on demand (`CreditCardInvoiceAssigner`) and store their own `closingDate` and
+  `dueDate`. Changing a card's days only affects invoices created afterwards; existing invoices and
+  their purchases keep their dates. The assigner skips a stored invoice that already closed on or
+  before the date being placed.
+
+## Purchases and installments
+
+- A purchase has a card, an `EXPENSE` category (`CreditCardPurchaseCategoryKindError`, `422`), a
+  description, an amount, a purchase date, optional notes, and `installmentCount` (1–48).
+- Installments split the amount in cents: every installment gets the floor of the division and the
+  first one also gets the remainder, so they always add up to the total (`100.00` in 3 is `33.34`,
+  `33.33`, `33.33`). An amount smaller than one cent per installment is
+  `CreditCardInstallmentsExceedAmountError` (`422`).
+- Installment `k` goes to the invoice `k - 1` months after the first one, and its `date` is the
+  purchase date shifted by `k - 1` months (clamped).
+- `PATCH` changes only `description`, `categoryUuid`, and `notes`; the amount, date, card, and
+  installments never change. To correct them, delete and record the purchase again.
+- A purchase is deletable (`deletable` in the response) only while every installment is on an open
+  invoice and it has no refund; otherwise `CreditCardPurchaseNotDeletableError` (`409`).
+
+## Refunds
+
+- A refund belongs to a purchase and is credited to the card's invoice of the refund `date`, which
+  may be later than the purchase's invoices. Several partial refunds may be recorded.
+- The refund amount cannot exceed `refundableAmount` (the purchase amount minus earlier refunds;
+  `CreditCardRefundExceedsPurchaseError`, `422`) and its date cannot be before the purchase date
+  (`CreditCardRefundBeforePurchaseError`, `422`).
+- A refund can be deleted only while its invoice is open; otherwise `CreditCardRefundNotDeletableError`
+  (`409`).
+
+## Invoice statements
+
+Figures are computed on read from the stored entries (`buildInvoiceStatements`), per card in
+reference-month order:
+
+- `charges` sums the installments on the invoice, `refunds` the refunds credited to it, and `paid`
+  its live payments.
+- `previousCredit` is the previous invoice's `creditCarried`, and
+  `total = charges - refunds - previousCredit`.
+- `outstanding = max(total - paid, 0)` and `creditCarried = max(paid - total, 0)`. A refund on an
+  already paid invoice, or one larger than the next invoice, therefore becomes credit on the
+  following invoice instead of a negative balance.
+- `status` is `OPEN` until the closing date, then `PAID` when nothing is outstanding, `OVERDUE`
+  after the due date, and `CLOSED` otherwise. "Today" is `financeToday()`.
+
+`GET /credit-cards/:uuid/invoices` lists a card's invoices newest first; `GET /credit-card-invoices/:uuid`
+adds the charges (with installment number and count), refunds, and payments.
+
+## Payments
+
+- `POST /credit-card-invoices/:uuid/payments` pays an invoice from an active account of the caller,
+  on `paidOn` (default today). Partial payments are allowed; a payment larger than the outstanding
+  amount is `CreditCardPaymentExceedsOutstandingError` (`422`). An open invoice can be paid early.
+- A payment is not an expense: spending is counted from purchases, so paying never counts twice.
+- `CreditCardPaymentLedger` registers into the accounts ledger registry (`ACCOUNT_LEDGERS`, see
+  [`accounts.md`](accounts.md#balances)) and subtracts every live payment from its account. Any
+  payment, canceled or not, counts as account history.
+- `PUT /credit-card-invoices/:uuid/payments/:paymentUuid/cancellation` cancels a payment: it stays
+  listed with `canceledAt`, stops counting toward `paid` and the account balance, and cannot be
+  canceled again (`CreditCardPaymentAlreadyCanceledError`, `409`).
+
+## Concurrency
+
+Every write runs in one database transaction under the per-user card lock
+(`CreditCardRepository.lockOwnerCards`, a transaction-scoped advisory lock), so concurrent requests
+never create the same invoice twice, overpay an invoice, or over-refund a purchase. Paying and
+canceling a payment take the per-user account lock first, then the card lock, the same order as
+every account write.
+
+## Configuration
+
+None.
