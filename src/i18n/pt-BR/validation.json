@@ -18,5 +18,7 @@
   "ARRAY_UNIQUE": "O campo {property} não pode conter itens duplicados",
   "IS_MONEY": "O campo {property} deve ser um valor com até 2 casas decimais",
   "IS_DATE": "O campo {property} deve ser uma data válida no formato AAAA-MM-DD",
-  "IS_HEX_COLOR": "O campo {property} deve ser uma cor hexadecimal como #1A2B3C"
+  "IS_HEX_COLOR": "O campo {property} deve ser uma cor hexadecimal como #1A2B3C",
+  "IS_POSITIVE_MONEY": "O campo {property} deve ser um valor maior que zero com até 2 casas decimais",
+  "NOT_ALLOWED": "O campo {property} não é permitido aqui"
 }

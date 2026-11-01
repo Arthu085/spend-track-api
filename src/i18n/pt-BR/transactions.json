@@ -1,0 +1,21 @@
+{
+  "errors": {
+    "not_found": "Transação não encontrada",
+    "state_transition": "Esta transação não pode passar para a situação solicitada",
+    "not_editable": "Esta transação não pode ser alterada dessa forma: transações concluídas só aceitam alterações de descrição, categoria e observações, e transações canceladas não podem ser alteradas",
+    "not_deletable": "Somente transações previstas podem ser excluídas; cancele uma transação concluída",
+    "category_kind_mismatch": "A categoria não corresponde ao tipo da transação",
+    "transfer_same_account": "Uma transferência precisa de duas contas diferentes",
+    "invalid_references": "As contas e a categoria não correspondem ao tipo da transação"
+  },
+  "type": {
+    "income": "Receita",
+    "expense": "Despesa",
+    "transfer": "Transferência"
+  },
+  "state": {
+    "planned": "Prevista",
+    "completed": "Concluída",
+    "canceled": "Cancelada"
+  }
+}

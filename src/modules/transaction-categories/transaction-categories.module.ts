@@ -26,5 +26,6 @@ import { TransactionCategoriesController } from './presentation/controllers/tran
     UpdateTransactionCategoryStatusUseCase,
     DeleteTransactionCategoryUseCase,
   ],
+  exports: [TRANSACTION_CATEGORY_REPOSITORY],
 })
 export class TransactionCategoriesModule {}

@@ -23,6 +23,13 @@ describe('AccountEntity', () => {
     expect(account.currentBalance).toBe(12345);
   });
 
+  it('adds the completed ledger movements to the opening balance', () => {
+    const account = buildAccount().withLedgerBalance(-2345);
+
+    expect(account.currentBalance).toBe(10000);
+    expect(account.withDefault(false).currentBalance).toBe(10000);
+  });
+
   it('drops the default flag when archived', () => {
     const archived = buildAccount().withStatus(RecordStatus.INACTIVE);
 

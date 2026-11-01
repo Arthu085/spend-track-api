@@ -185,9 +185,13 @@ export class AccountsController {
     .tags('accounts')
     .summary('Soft-delete one of your accounts')
     .description(
-      `Removes the account from every list. Deactivate an account instead to keep it visible with its history. ${OWNERSHIP_NOTE}`,
+      `Removes the account from every list. An account referenced by any transaction cannot be deleted: deactivate it instead to keep it visible with its history. ${OWNERSHIP_NOTE}`,
     )
     .errorResponse(HttpStatus.NOT_FOUND, 'Account not found.')
+    .errorResponse(
+      HttpStatus.CONFLICT,
+      'Account has transactions; deactivate it instead.',
+    )
     .build())
   async remove(
     @Param('uuid', ParseUuidParamPipe) uuid: string,

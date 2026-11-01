@@ -1,0 +1,21 @@
+{
+  "errors": {
+    "not_found": "Transaction not found",
+    "state_transition": "This transaction cannot move to the requested state",
+    "not_editable": "This transaction cannot be edited this way: completed transactions only accept description, category, and notes changes, and canceled ones cannot be edited",
+    "not_deletable": "Only planned transactions can be deleted; cancel a completed transaction instead",
+    "category_kind_mismatch": "The category does not match the transaction type",
+    "transfer_same_account": "A transfer needs two different accounts",
+    "invalid_references": "The accounts and category do not match the transaction type"
+  },
+  "type": {
+    "income": "Income",
+    "expense": "Expense",
+    "transfer": "Transfer"
+  },
+  "state": {
+    "planned": "Planned",
+    "completed": "Completed",
+    "canceled": "Canceled"
+  }
+}

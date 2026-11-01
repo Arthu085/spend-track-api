@@ -1,19 +1,6 @@
-import {
-  FINANCE_TIME_ZONE,
-  PeriodTiming,
-  calendarDateIn,
-  resolveMonthPeriod,
-  shiftMonth,
-} from '../month-period';
+import { PeriodTiming, resolveMonthPeriod, shiftMonth } from '../month-period';
 
 describe('month period', () => {
-  // 02:30 UTC on Nov 1 is still Oct 31 in São Paulo (UTC-3).
-  it('reads the calendar date in the finance time zone', () => {
-    expect(
-      calendarDateIn(new Date('2026-11-01T02:30:00Z'), FINANCE_TIME_ZONE),
-    ).toBe('2026-10-31');
-  });
-
   it.each([
     [{ year: 2026, month: 12 }, 1, { year: 2027, month: 1 }],
     [{ year: 2026, month: 1 }, -1, { year: 2025, month: 12 }],

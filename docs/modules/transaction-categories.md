@@ -9,7 +9,15 @@ covers the rules behind them.
 
 ## Public API
 
-- `persistence.ts`: `GlobalTransactionCategoriesSeeder`, run by `src/core/database/seeds`.
+- `index.ts`: `TransactionCategoryEntity`, `TransactionCategoryKind`,
+  `TRANSACTION_CATEGORY_REPOSITORY`/`TransactionCategoryRepository`,
+  `findVisibleTransactionCategory`, `TransactionCategoryNotFoundError`, and
+  `InactiveTransactionCategoryError`, consumed by `transactions` and `dashboard`.
+- `presentation.ts`: `transactionCategoryName`, the localized name used by the transactions and
+  dashboard responses.
+- `persistence.ts`: `GlobalTransactionCategoriesSeeder`, run by `src/core/database/seeds`, plus
+  `TransactionCategoryOrmEntity` and `TransactionCategoryMapper`, used by the transactions
+  repository.
 - `transaction-categories.module.ts`: `TransactionCategoriesModule`.
 
 ## Scope and visibility
@@ -33,7 +41,9 @@ covers the rules behind them.
   type.
 - Deactivating (`PUT /transaction-categories/:uuid/status`) removes a category from the default `ACTIVE` list
   while records that use it keep it. `DELETE /transaction-categories/:uuid` soft-deletes a personal category,
-  removing it from every list; until transactions exist there is no history to check first. `GET` and `PATCH` reject an inactive
+  removing it from every list and from new transactions. Deleting stays allowed when transactions use
+  the category: they load it including soft-deleted rows and keep showing it, so history is
+  preserved. `GET` and `PATCH` reject an inactive
   category with `InactiveTransactionCategoryError` (`409`).
 - Names are not unique; `color` is an optional `#RRGGBB` value.
 
