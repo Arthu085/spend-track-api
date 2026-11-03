@@ -90,6 +90,20 @@ export class TransactionCategoryRefResponseDto {
   }
 }
 
+export class TransactionRecurrenceRefResponseDto {
+  @ApiProperty()
+  uuid!: string;
+
+  @ApiProperty({
+    type: String,
+    format: 'date',
+    example: '2026-11-15',
+    description:
+      'Scheduled date of this occurrence in its recurrence; stays when date is edited.',
+  })
+  occurrenceDate!: string;
+}
+
 export class TransactionResponseDto {
   @ApiProperty()
   uuid!: string;
@@ -151,6 +165,14 @@ export class TransactionResponseDto {
   @ApiProperty({ type: String, nullable: true })
   notes!: string | null;
 
+  @ApiProperty({
+    type: TransactionRecurrenceRefResponseDto,
+    nullable: true,
+    description:
+      'Recurrence that generated this transaction; null for one-time transactions.',
+  })
+  recurrence!: TransactionRecurrenceRefResponseDto | null;
+
   @ApiProperty()
   createdAt!: Date;
 
@@ -184,6 +206,12 @@ export class TransactionResponseDto {
         )
       : null;
     dto.notes = transaction.notes;
+    dto.recurrence = transaction.recurrence
+      ? Object.assign(new TransactionRecurrenceRefResponseDto(), {
+          uuid: transaction.recurrence.uuid,
+          occurrenceDate: transaction.recurrence.occurrenceDate,
+        })
+      : null;
     dto.createdAt = transaction.createdAt;
     dto.updatedAt = transaction.updatedAt;
 

@@ -81,7 +81,7 @@ export class DashboardBalancesResponseDto {
   @ApiProperty({
     example: '300.00',
     description:
-      'projected minus creditCards.outstanding: what is left once the card invoices due up to the end of the period are paid.',
+      'projected minus creditCards.outstanding and creditCards.planned: what is left once the card invoices due up to the end of the period and the planned recurring card charges of the period are paid.',
   })
   available!: string;
 }
@@ -93,6 +93,13 @@ export class DashboardCreditCardsResponseDto {
       'Card spending of the period in the selected perspective (installments by their date, or by invoice month), net of refunds; already included in expenses.completed.',
   })
   spending!: string;
+
+  @ApiProperty({
+    example: '55.90',
+    description:
+      'Planned recurring card charges of the period in the selected perspective (by charge date, or by expected invoice month), not confirmed yet; already included in expenses.pending.',
+  })
+  planned!: string;
 
   @ApiProperty({
     example: '1200.00',
@@ -114,6 +121,7 @@ export class DashboardCreditCardsResponseDto {
   ): DashboardCreditCardsResponseDto {
     return Object.assign(new DashboardCreditCardsResponseDto(), {
       spending: formatMoney(creditCards.spending),
+      planned: formatMoney(creditCards.planned),
       outstanding: formatMoney(creditCards.outstanding),
       invoices: creditCards.invoices.map((statement) =>
         CreditCardInvoiceListResponseDto.fromStatement(statement, translate),
@@ -315,7 +323,7 @@ export class DashboardResponseDto {
   @ApiProperty({
     type: DashboardAmountsResponseDto,
     description:
-      'Account expenses dated inside the period plus card spending of the period in the selected perspective (completed); transfers, invoice payments, and canceled ones never count.',
+      'Account expenses dated inside the period plus card spending of the period in the selected perspective (completed) and planned recurring card charges of the period (pending); transfers, invoice payments, and canceled or skipped ones never count.',
   })
   expenses!: DashboardAmountsResponseDto;
 

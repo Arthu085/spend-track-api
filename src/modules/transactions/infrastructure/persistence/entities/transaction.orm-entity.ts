@@ -3,6 +3,7 @@ import { BaseOrmEntity } from '@shared/infrastructure/persistence/base.orm-entit
 import { UserOrmEntity } from '@modules/users/infrastructure/persistence/entities/user.orm-entity';
 import { AccountOrmEntity } from '@modules/accounts/infrastructure/persistence/entities/account.orm-entity';
 import { TransactionCategoryOrmEntity } from '@modules/transaction-categories/infrastructure/persistence/entities/transaction-category.orm-entity';
+import { RecurrenceOrmEntity } from '@modules/recurrences/infrastructure/persistence/entities/recurrence.orm-entity';
 import { TransactionState } from '@modules/transactions/domain/enums/transaction-state.enum';
 import { TransactionType } from '@modules/transactions/domain/enums/transaction-type.enum';
 
@@ -24,7 +25,16 @@ import { TransactionType } from '@modules/transactions/domain/enums/transaction-
   'chk_transactions_canceled_at',
   `("state" = 'CANCELED') = ("canceled_at" IS NOT NULL)`,
 )
+@Check(
+  'chk_transactions_recurrence',
+  `("recurrence_id" IS NULL) = ("recurrence_date" IS NULL)`,
+)
 @Index('idx_transactions_user_id_date', ['userId', 'date'])
+@Index(
+  'uq_transactions_recurrence_occurrence',
+  ['recurrenceId', 'recurrenceDate'],
+  { unique: true, where: '"deleted_at" IS NULL' },
+)
 @Index('idx_transactions_account_id', ['accountId'])
 @Index('idx_transactions_destination_account_id', ['destinationAccountId'])
 @Index('idx_transactions_category_id', ['categoryId'])
@@ -152,4 +162,26 @@ export class TransactionOrmEntity extends BaseOrmEntity {
     comment: 'Optional free-text notes.',
   })
   notes!: string | null;
+
+  @Column({
+    name: 'recurrence_id',
+    type: 'int',
+    nullable: true,
+    comment:
+      'Recurrence that generated this transaction; null for one-time transactions.',
+  })
+  recurrenceId!: number | null;
+
+  @ManyToOne(() => RecurrenceOrmEntity, { nullable: true })
+  @JoinColumn({ name: 'recurrence_id' })
+  recurrence?: RecurrenceOrmEntity | null;
+
+  @Column({
+    name: 'recurrence_date',
+    type: 'date',
+    nullable: true,
+    comment:
+      'Scheduled date of the occurrence in its recurrence; never changes, even when date is edited.',
+  })
+  recurrenceDate!: string | null;
 }

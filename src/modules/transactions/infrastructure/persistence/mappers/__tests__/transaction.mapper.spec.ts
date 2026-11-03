@@ -97,6 +97,47 @@ describe('TransactionMapper', () => {
     });
   });
 
+  it('maps the recurrence that generated the transaction, both ways', () => {
+    const orm = Object.assign(new TransactionOrmEntity(), base, {
+      type: TransactionType.TRANSFER,
+      accountId: 1,
+      account: accountRow(1),
+      destinationAccountId: 2,
+      destinationAccount: accountRow(2),
+      categoryId: null,
+      category: null,
+      recurrenceId: 6,
+      recurrenceDate: '2026-10-15',
+      recurrence: { uuid: 'recurrence-uuid' },
+    });
+
+    const transaction = TransactionMapper.toDomain(orm);
+
+    expect(transaction.recurrence).toEqual({
+      id: 6,
+      uuid: 'recurrence-uuid',
+      occurrenceDate: '2026-10-15',
+    });
+    expect(TransactionMapper.toOrm(transaction)).toMatchObject({
+      recurrenceId: 6,
+      recurrenceDate: '2026-10-15',
+    });
+  });
+
+  it('refuses a recurring row loaded without its recurrence', () => {
+    const orm = Object.assign(new TransactionOrmEntity(), base, {
+      type: TransactionType.EXPENSE,
+      accountId: 1,
+      account: accountRow(1),
+      recurrenceId: 6,
+      recurrenceDate: '2026-10-15',
+    });
+
+    expect(() => TransactionMapper.toDomain(orm)).toThrow(
+      'Transaction recurrence relation must be loaded',
+    );
+  });
+
   it('refuses a row loaded without its account', () => {
     const orm = Object.assign(new TransactionOrmEntity(), base, {
       type: TransactionType.EXPENSE,

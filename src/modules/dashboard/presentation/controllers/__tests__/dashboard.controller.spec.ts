@@ -72,6 +72,7 @@ describe('DashboardController', () => {
       upcomingCount: 7,
       creditCards: {
         spending: 30000,
+        planned: 5590,
         outstanding: 30000,
         invoices: [buildInvoiceStatement()],
       },
@@ -146,6 +147,7 @@ describe('DashboardController', () => {
     expect(result.upcomingCount).toBe(7);
     expect(result.creditCards).toEqual({
       spending: '300.00',
+      planned: '55.90',
       outstanding: '300.00',
       invoices: [
         expect.objectContaining({

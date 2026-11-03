@@ -1,6 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
-import { shiftMonth, type MonthRef } from '@shared/domain/calendar';
+import {
+  addDaysToDate,
+  firstDayOf,
+  monthOf,
+  shiftMonth,
+  type MonthRef,
+} from '@shared/domain/calendar';
 import {
   invoiceCycleOf,
   invoiceReferenceFor,
@@ -41,6 +47,43 @@ export class CreditCardInvoiceAssigner {
     }
 
     return invoices;
+  }
+
+  async referenceMonthFor(
+    card: CreditCardEntity,
+    date: string,
+  ): Promise<string> {
+    let reference = invoiceReferenceFor(card, date);
+
+    while ((await this.closingDateOf(card, reference)) <= date) {
+      reference = shiftMonth(reference, 1);
+    }
+
+    return firstDayOf(reference);
+  }
+
+  async lastDateBefore(
+    card: CreditCardEntity,
+    referenceMonth: string,
+  ): Promise<string> {
+    return addDaysToDate(
+      await this.closingDateOf(card, shiftMonth(monthOf(referenceMonth), -1)),
+      -1,
+    );
+  }
+
+  private async closingDateOf(
+    card: CreditCardEntity,
+    reference: MonthRef,
+  ): Promise<string> {
+    const cycle = invoiceCycleOf(card, reference);
+
+    const stored = await this.invoiceRepository.findByCardAndReferenceMonth(
+      card.id,
+      cycle.referenceMonth,
+    );
+
+    return stored?.closingDate ?? cycle.closingDate;
   }
 
   private async findOrCreate(

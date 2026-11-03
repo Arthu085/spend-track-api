@@ -10,6 +10,10 @@ import {
   SpendingPerspective,
   type UserPreferencesRepository,
 } from '@modules/preferences';
+import type {
+  PlannedCardChargeTotal,
+  RecurrenceCardChargeRepository,
+} from '@modules/recurrences';
 import { TransactionCategoryKind } from '@modules/transaction-categories';
 import {
   TransactionState,
@@ -48,6 +52,7 @@ describe('GetDashboardUseCase', () => {
     ledgerChanges = new Map<number, number>(),
     cards: {
       spending?: CategorySpendingTotal[];
+      planned?: PlannedCardChargeTotal[];
       statements?: InvoiceStatement[];
     } = {},
   ) {
@@ -75,6 +80,9 @@ describe('GetDashboardUseCase', () => {
       }),
       mockOf<TransactionRepository>(transactionRepository),
       mockOf<CreditCardPurchaseRepository>({ sumSpendingByCategory }),
+      mockOf<RecurrenceCardChargeRepository>({
+        sumPlannedByCategory: jest.fn().mockResolvedValue(cards.planned ?? []),
+      }),
       mockOf<CreditCardStatements>({
         forOwner: jest.fn().mockResolvedValue(cards.statements ?? []),
       }),
@@ -431,5 +439,35 @@ describe('GetDashboardUseCase', () => {
       projected: 149990,
       available: 115990,
     });
+  });
+
+  it('counts planned recurring card charges as pending expenses and subtracts them from the available balance', async () => {
+    const subscriptions = buildTransactionCategory({
+      id: 7,
+      name: 'Subscriptions',
+    });
+
+    const { useCase } = build(null, undefined, {}, undefined, {
+      spending: [{ category: subscriptions, total: 5590 }],
+      planned: [{ category: subscriptions, total: 5590 }],
+    });
+
+    const summary = await useCase.execute({ ownerId: 8 });
+
+    expect(summary.creditCards.planned).toBe(5590);
+    expect(summary.expenses).toEqual({
+      total: 11180,
+      completed: 5590,
+      pending: 5590,
+    });
+    expect(summary.expensesByCategory).toEqual([
+      expect.objectContaining({
+        category: subscriptions,
+        total: 11180,
+        completed: 5590,
+        pending: 5590,
+      }),
+    ]);
+    expect(summary.balances.available).toBe(149990 - 5590);
   });
 });

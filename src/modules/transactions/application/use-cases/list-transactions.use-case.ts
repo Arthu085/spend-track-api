@@ -36,6 +36,7 @@ export class ListTransactionsUseCase {
           state: input.state,
           accountUuid: input.accountUuid,
           categoryUuid: input.categoryUuid,
+          recurrenceUuid: input.recurrenceUuid,
           description: normalizeTextFilter(input.description),
         },
       );

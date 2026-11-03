@@ -19,12 +19,19 @@ export interface TransactionDetails {
   notes: string | null;
 }
 
+export interface TransactionRecurrenceLink {
+  id: number;
+  uuid: string;
+  occurrenceDate: string;
+}
+
 export interface CreateTransactionInput extends TransactionDetails {
   uuid: string;
   ownerId: number;
   type: TransactionType;
   state: TransactionState.PLANNED | TransactionState.COMPLETED;
   completedOn: string | null;
+  recurrence?: TransactionRecurrenceLink | null;
 }
 
 export interface ReconstituteTransactionInput extends TransactionDetails {
@@ -36,6 +43,7 @@ export interface ReconstituteTransactionInput extends TransactionDetails {
   state: TransactionState;
   completedOn: string | null;
   canceledAt: Date | null;
+  recurrence: TransactionRecurrenceLink | null;
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date | null;
@@ -68,6 +76,7 @@ export class TransactionEntity extends BaseEntity {
     readonly destinationAccount: AccountEntity | null,
     readonly category: TransactionCategoryEntity | null,
     readonly notes: string | null,
+    readonly recurrence: TransactionRecurrenceLink | null,
   ) {
     super(id, uuid, status, createdAt, updatedAt, deletedAt);
   }
@@ -86,6 +95,7 @@ export class TransactionEntity extends BaseEntity {
           ? (input.completedOn ?? input.date)
           : null,
       canceledAt: null,
+      recurrence: input.recurrence ?? null,
       createdAt: now,
       updatedAt: now,
       deletedAt: null,
@@ -112,6 +122,7 @@ export class TransactionEntity extends BaseEntity {
       input.destinationAccount,
       input.category,
       input.notes,
+      input.recurrence,
     );
   }
 
@@ -197,6 +208,7 @@ export class TransactionEntity extends BaseEntity {
       destinationAccount: this.destinationAccount,
       category: this.category,
       notes: this.notes,
+      recurrence: this.recurrence,
       createdAt: this.createdAt,
       updatedAt: new Date(),
       deletedAt: this.deletedAt,

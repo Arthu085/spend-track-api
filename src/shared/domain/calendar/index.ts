@@ -4,6 +4,7 @@ export {
   financeToday,
 } from './calendar-date';
 export {
+  addDaysToDate,
   addMonthsToDate,
   compareMonths,
   dayOfMonth,

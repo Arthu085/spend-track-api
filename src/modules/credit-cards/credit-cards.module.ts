@@ -99,6 +99,12 @@ import { CreditCardsController } from './presentation/controllers/credit-cards.c
     DeleteCreditCardPurchaseUseCase,
     DeleteCreditCardRefundUseCase,
   ],
-  exports: [CREDIT_CARD_PURCHASE_REPOSITORY, CreditCardStatements],
+  exports: [
+    CREDIT_CARD_REPOSITORY,
+    CREDIT_CARD_PURCHASE_REPOSITORY,
+    CreditCardStatements,
+    CreditCardInvoiceAssigner,
+    CreateCreditCardPurchaseUseCase,
+  ],
 })
 export class CreditCardsModule {}

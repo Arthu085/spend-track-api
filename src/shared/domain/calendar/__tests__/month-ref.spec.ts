@@ -1,4 +1,5 @@
 import {
+  addDaysToDate,
   addMonthsToDate,
   compareMonths,
   dayOfMonth,
@@ -28,5 +29,14 @@ describe('month ref', () => {
     expect(
       compareMonths({ year: 2027, month: 1 }, { year: 2026, month: 12 }),
     ).toBeGreaterThan(0);
+  });
+
+  it.each([
+    ['2026-10-29', 7, '2026-11-05'],
+    ['2026-12-31', 1, '2027-01-01'],
+    ['2028-03-01', -1, '2028-02-29'],
+    ['2026-11-03', 0, '2026-11-03'],
+  ])('shifts %s by %i days', (date, offset, expected) => {
+    expect(addDaysToDate(date, offset)).toBe(expected);
   });
 });

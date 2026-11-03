@@ -63,6 +63,7 @@ export class TransactionsController {
       state: query.state,
       accountUuid: query.accountUuid,
       categoryUuid: query.categoryUuid,
+      recurrenceUuid: query.recurrenceUuid,
       description: query.description,
     });
 
