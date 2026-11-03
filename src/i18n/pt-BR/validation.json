@@ -16,6 +16,7 @@
   "IS_ARRAY": "O campo {property} deve ser uma lista",
   "ARRAY_NOT_EMPTY": "O campo {property} não pode estar vazio",
   "ARRAY_UNIQUE": "O campo {property} não pode conter itens duplicados",
+  "ARRAY_MAX_SIZE": "O campo {property} deve conter no máximo {constraints.0} itens",
   "IS_MONEY": "O campo {property} deve ser um valor com até 2 casas decimais",
   "IS_DATE": "O campo {property} deve ser uma data válida no formato AAAA-MM-DD",
   "IS_HEX_COLOR": "O campo {property} deve ser uma cor hexadecimal como #1A2B3C",

@@ -15,11 +15,18 @@ import { formatMoney } from '@shared/domain/money';
 import type {
   DashboardAccountBalance,
   DashboardAmounts,
+  DashboardBudget,
+  DashboardBudgetCategory,
+  DashboardBudgetLimit,
   DashboardCategoryExpenses,
   DashboardCreditCards,
   DashboardSummary,
   DashboardUpcomingItem,
 } from '../../../application/use-cases/get-dashboard.use-case';
+import {
+  SpendingGuidanceBasis,
+  type SpendingGuidance,
+} from '../../../domain/budget/spending-guidance';
 import {
   PeriodTiming,
   type MonthPeriod,
@@ -198,6 +205,128 @@ export class DashboardCategoryExpensesResponseDto extends DashboardAmountsRespon
   }
 }
 
+export class DashboardBudgetLimitResponseDto extends DashboardAmountsResponseDto {
+  @ApiProperty({ example: '3000.00' })
+  limit!: string;
+
+  @ApiProperty({
+    example: '1000.00',
+    description: 'limit minus total, or 0 once the limit is reached.',
+  })
+  remaining!: string;
+
+  @ApiProperty({
+    example: '0.00',
+    description:
+      'total minus limit when spending exceeds the limit, otherwise 0. Informational only: budgets never block transactions.',
+  })
+  overspent!: string;
+
+  static fromLimit(
+    entry: DashboardBudgetLimit,
+  ): DashboardBudgetLimitResponseDto {
+    return Object.assign(
+      new DashboardBudgetLimitResponseDto(),
+      DashboardAmountsResponseDto.fromDomain(entry),
+      {
+        limit: formatMoney(entry.limit),
+        remaining: formatMoney(entry.remaining),
+        overspent: formatMoney(entry.overspent),
+      },
+    );
+  }
+}
+
+export class DashboardBudgetCategoryResponseDto extends DashboardBudgetLimitResponseDto {
+  @ApiProperty({ type: DashboardCategoryResponseDto })
+  category!: DashboardCategoryResponseDto;
+
+  static fromCategory(
+    entry: DashboardBudgetCategory,
+    translate: (key: string) => string,
+  ): DashboardBudgetCategoryResponseDto {
+    return Object.assign(
+      new DashboardBudgetCategoryResponseDto(),
+      DashboardBudgetLimitResponseDto.fromLimit(entry),
+      {
+        category: DashboardCategoryResponseDto.fromDomain(
+          entry.category,
+          translate,
+        ),
+      },
+    );
+  }
+}
+
+export class DashboardBudgetResponseDto {
+  @ApiProperty({
+    type: DashboardBudgetLimitResponseDto,
+    nullable: true,
+    description:
+      'Overall limit against expenses (same total, completed, and pending); null when the budget has category limits only.',
+  })
+  overall!: DashboardBudgetLimitResponseDto | null;
+
+  @ApiProperty({
+    type: [DashboardBudgetCategoryResponseDto],
+    description:
+      'Each category limit against that category in expensesByCategory, in the order the limits were saved; a category without spending shows zeros.',
+  })
+  categories!: DashboardBudgetCategoryResponseDto[];
+
+  static fromDomain(
+    budget: DashboardBudget,
+    translate: (key: string) => string,
+  ): DashboardBudgetResponseDto {
+    return Object.assign(new DashboardBudgetResponseDto(), {
+      overall: budget.overall
+        ? DashboardBudgetLimitResponseDto.fromLimit(budget.overall)
+        : null,
+      categories: budget.categories.map((entry) =>
+        DashboardBudgetCategoryResponseDto.fromCategory(entry, translate),
+      ),
+    });
+  }
+}
+
+export class DashboardSpendingGuidanceResponseDto {
+  @ApiProperty({
+    enum: SpendingGuidanceBasis,
+    description:
+      'BUDGET when the month has an overall limit, otherwise BALANCE (balances.available).',
+  })
+  basis!: SpendingGuidanceBasis;
+
+  @ApiProperty({
+    example: '1000.00',
+    description:
+      'BUDGET: overall limit minus expenses.total (completed and planned, each counted once). BALANCE: balances.available. Never below 0.',
+  })
+  remaining!: string;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: '333.33',
+    description:
+      'Informational daily allowance: remaining divided by period.remainingDays, rounded down to the cent; null for a past month.',
+  })
+  dailyAllowance!: string | null;
+
+  static fromDomain(
+    guidance: SpendingGuidance,
+  ): DashboardSpendingGuidanceResponseDto {
+    return Object.assign(new DashboardSpendingGuidanceResponseDto(), {
+      basis: guidance.basis,
+      remaining: formatMoney(guidance.remaining),
+      dailyAllowance:
+        guidance.dailyAllowance === null
+          ? null
+          : formatMoney(guidance.dailyAllowance),
+    });
+  }
+}
+
 export class DashboardUpcomingResponseDto {
   @ApiProperty()
   uuid!: string;
@@ -351,6 +480,17 @@ export class DashboardResponseDto {
   @ApiProperty({ type: DashboardCreditCardsResponseDto })
   creditCards!: DashboardCreditCardsResponseDto;
 
+  @ApiProperty({
+    type: DashboardBudgetResponseDto,
+    nullable: true,
+    description:
+      'Limits of the month against its expenses in the selected perspective; null when the month has no budget.',
+  })
+  budget!: DashboardBudgetResponseDto | null;
+
+  @ApiProperty({ type: DashboardSpendingGuidanceResponseDto })
+  spendingGuidance!: DashboardSpendingGuidanceResponseDto;
+
   static fromDomain(
     summary: DashboardSummary,
     translate: (key: string) => string,
@@ -383,6 +523,12 @@ export class DashboardResponseDto {
     dto.creditCards = DashboardCreditCardsResponseDto.fromDomain(
       summary.creditCards,
       translate,
+    );
+    dto.budget = summary.budget
+      ? DashboardBudgetResponseDto.fromDomain(summary.budget, translate)
+      : null;
+    dto.spendingGuidance = DashboardSpendingGuidanceResponseDto.fromDomain(
+      summary.spendingGuidance,
     );
 
     return dto;

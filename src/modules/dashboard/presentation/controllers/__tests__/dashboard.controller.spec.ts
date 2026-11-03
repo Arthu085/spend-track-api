@@ -10,6 +10,7 @@ import { buildTransactionCategory } from '@test/support/builders/transaction-cat
 import { buildTransaction } from '@test/support/builders/transaction.builder';
 import { mockOf } from '@test/support/mocks/mock-of';
 import type { GetDashboardUseCase } from '../../../application/use-cases/get-dashboard.use-case';
+import { SpendingGuidanceBasis } from '../../../domain/budget/spending-guidance';
 import {
   PeriodTiming,
   resolveMonthPeriod,
@@ -75,6 +76,32 @@ describe('DashboardController', () => {
         planned: 5590,
         outstanding: 30000,
         invoices: [buildInvoiceStatement()],
+      },
+      budget: {
+        overall: {
+          limit: 100000,
+          total: 120000,
+          completed: 80000,
+          pending: 40000,
+          remaining: 0,
+          overspent: 20000,
+        },
+        categories: [
+          {
+            category: buildTransactionCategory({ name: 'Groceries' }),
+            limit: 150000,
+            total: 120000,
+            completed: 80000,
+            pending: 40000,
+            remaining: 30000,
+            overspent: 0,
+          },
+        ],
+      },
+      spendingGuidance: {
+        basis: SpendingGuidanceBasis.BUDGET,
+        remaining: 0,
+        dailyAllowance: null,
       },
     });
 
@@ -160,6 +187,36 @@ describe('DashboardController', () => {
           statusLabel: 't:credit_cards.invoice_status.open',
         }),
       ],
+    });
+    expect(result.budget).toEqual({
+      overall: {
+        limit: '1000.00',
+        total: '1200.00',
+        completed: '800.00',
+        pending: '400.00',
+        remaining: '0.00',
+        overspent: '200.00',
+      },
+      categories: [
+        {
+          category: {
+            uuid: 'category-uuid',
+            name: 'Groceries',
+            color: '#123456',
+          },
+          limit: '1500.00',
+          total: '1200.00',
+          completed: '800.00',
+          pending: '400.00',
+          remaining: '300.00',
+          overspent: '0.00',
+        },
+      ],
+    });
+    expect(result.spendingGuidance).toEqual({
+      basis: SpendingGuidanceBasis.BUDGET,
+      remaining: '0.00',
+      dailyAllowance: null,
     });
   });
 });

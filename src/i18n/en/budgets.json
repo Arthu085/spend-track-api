@@ -1,0 +1,7 @@
+{
+  "errors": {
+    "budget_not_found": "This month has no budget",
+    "empty_budget": "Set an overall limit or at least one category limit; delete the budget to remove it",
+    "category_not_expense": "Budgets only accept expense categories"
+  }
+}
