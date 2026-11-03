@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { AccountType } from '@modules/accounts';
 import { accountTypeLabel } from '@modules/accounts/presentation';
+import { CreditCardInvoiceListResponseDto } from '@modules/credit-cards/presentation';
 import { SpendingPerspective } from '@modules/preferences';
 import { spendingPerspectiveLabel } from '@modules/preferences/presentation';
 import type { TransactionCategoryEntity } from '@modules/transaction-categories';
@@ -15,6 +16,7 @@ import type {
   DashboardAccountBalance,
   DashboardAmounts,
   DashboardCategoryExpenses,
+  DashboardCreditCards,
   DashboardSummary,
   DashboardUpcomingItem,
 } from '../../../application/use-cases/get-dashboard.use-case';
@@ -75,6 +77,49 @@ export class DashboardBalancesResponseDto {
       'Expected balance of active accounts at the end of the period: the actual balance plus every planned transaction dated up to the end of the period, overdue ones included.',
   })
   projected!: string;
+
+  @ApiProperty({
+    example: '300.00',
+    description:
+      'projected minus creditCards.outstanding: what is left once the card invoices due up to the end of the period are paid.',
+  })
+  available!: string;
+}
+
+export class DashboardCreditCardsResponseDto {
+  @ApiProperty({
+    example: '450.00',
+    description:
+      'Card spending of the period in the selected perspective (installments by their date, or by invoice month), net of refunds; already included in expenses.completed.',
+  })
+  spending!: string;
+
+  @ApiProperty({
+    example: '1200.00',
+    description:
+      'Unpaid amount of the invoices listed in invoices: those due in the period and earlier ones still unpaid.',
+  })
+  outstanding!: string;
+
+  @ApiProperty({
+    type: [CreditCardInvoiceListResponseDto],
+    description:
+      'Invoices due in the period, plus unpaid invoices of earlier months, earliest due date first.',
+  })
+  invoices!: CreditCardInvoiceListResponseDto[];
+
+  static fromDomain(
+    creditCards: DashboardCreditCards,
+    translate: (key: string) => string,
+  ): DashboardCreditCardsResponseDto {
+    return Object.assign(new DashboardCreditCardsResponseDto(), {
+      spending: formatMoney(creditCards.spending),
+      outstanding: formatMoney(creditCards.outstanding),
+      invoices: creditCards.invoices.map((statement) =>
+        CreditCardInvoiceListResponseDto.fromStatement(statement, translate),
+      ),
+    });
+  }
 }
 
 export class DashboardAmountsResponseDto {
@@ -270,7 +315,7 @@ export class DashboardResponseDto {
   @ApiProperty({
     type: DashboardAmountsResponseDto,
     description:
-      'Expenses dated inside the period; transfers and canceled ones never count.',
+      'Account expenses dated inside the period plus card spending of the period in the selected perspective (completed); transfers, invoice payments, and canceled ones never count.',
   })
   expenses!: DashboardAmountsResponseDto;
 
@@ -295,6 +340,9 @@ export class DashboardResponseDto {
   })
   upcomingCount!: number;
 
+  @ApiProperty({ type: DashboardCreditCardsResponseDto })
+  creditCards!: DashboardCreditCardsResponseDto;
+
   static fromDomain(
     summary: DashboardSummary,
     translate: (key: string) => string,
@@ -310,6 +358,7 @@ export class DashboardResponseDto {
     dto.balances = Object.assign(new DashboardBalancesResponseDto(), {
       actual: formatMoney(summary.balances.actual),
       projected: formatMoney(summary.balances.projected),
+      available: formatMoney(summary.balances.available),
     });
     dto.accounts = summary.accounts.map((entry) =>
       DashboardAccountResponseDto.fromDomain(entry, translate),
@@ -323,6 +372,10 @@ export class DashboardResponseDto {
       DashboardUpcomingResponseDto.fromDomain(item, translate),
     );
     dto.upcomingCount = summary.upcomingCount;
+    dto.creditCards = DashboardCreditCardsResponseDto.fromDomain(
+      summary.creditCards,
+      translate,
+    );
 
     return dto;
   }

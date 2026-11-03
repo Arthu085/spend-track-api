@@ -36,7 +36,7 @@ interface AmountsShape {
 }
 
 interface DashboardShape {
-  balances: { actual: string; projected: string };
+  balances: { actual: string; projected: string; available: string };
   accounts: Array<{
     uuid: string;
     actualBalance: string;
@@ -465,6 +465,7 @@ describe('Transactions (e2e)', () => {
     expect(summary.balances).toEqual({
       actual: '3750.00',
       projected: '5504.75',
+      available: '5504.75',
     });
     expect(summary.upcomingCount).toBe(4);
     expect(summary.upcoming[0]).toMatchObject({ overdue: true });

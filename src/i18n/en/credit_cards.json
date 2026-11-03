@@ -1,0 +1,25 @@
+{
+  "errors": {
+    "card_not_found": "Credit card not found",
+    "card_inactive": "Credit card is archived",
+    "card_has_history": "This credit card has purchases and cannot be deleted; archive it instead",
+    "invoice_not_found": "Invoice not found",
+    "purchase_not_found": "Purchase not found",
+    "purchase_not_deletable": "This purchase is already billed on a closed invoice or has refunds; refund it instead",
+    "purchase_category_kind": "A credit card purchase needs an expense category",
+    "installments_exceed_amount": "The amount is too small to split into this many installments",
+    "refund_not_found": "Refund not found",
+    "refund_exceeds_purchase": "The refund exceeds what is left to refund on this purchase",
+    "refund_before_purchase": "A refund cannot be dated before its purchase",
+    "refund_not_deletable": "This refund is on a closed invoice and cannot be deleted",
+    "payment_not_found": "Payment not found",
+    "payment_exceeds_outstanding": "The payment exceeds the outstanding amount of the invoice",
+    "payment_already_canceled": "This payment is already canceled"
+  },
+  "invoice_status": {
+    "open": "Open",
+    "closed": "Closed",
+    "overdue": "Overdue",
+    "paid": "Paid"
+  }
+}

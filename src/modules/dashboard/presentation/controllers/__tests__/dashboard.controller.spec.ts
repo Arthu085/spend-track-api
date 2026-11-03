@@ -5,6 +5,7 @@ import type { Translate } from '@shared/presentation/decorators';
 import type { AuthenticatedUser } from '@shared/presentation/http';
 import { TransactionType } from '@modules/transactions';
 import { buildAccount } from '@test/support/builders/account.builder';
+import { buildInvoiceStatement } from '@test/support/builders/credit-card.builder';
 import { buildTransactionCategory } from '@test/support/builders/transaction-category.builder';
 import { buildTransaction } from '@test/support/builders/transaction.builder';
 import { mockOf } from '@test/support/mocks/mock-of';
@@ -31,7 +32,7 @@ describe('DashboardController', () => {
     const execute = jest.fn().mockResolvedValue({
       period: resolveMonthPeriod({ year: 2026, month: 11 }, '2026-10-29'),
       perspective: SpendingPerspective.INVOICE_MONTH,
-      balances: { actual: -5, projected: 100000 },
+      balances: { actual: -5, projected: 100000, available: 70000 },
       accounts: [
         {
           account: buildAccount({ isDefault: true }),
@@ -69,6 +70,11 @@ describe('DashboardController', () => {
         },
       ],
       upcomingCount: 7,
+      creditCards: {
+        spending: 30000,
+        outstanding: 30000,
+        invoices: [buildInvoiceStatement()],
+      },
     });
 
     const controller = new DashboardController(
@@ -94,7 +100,11 @@ describe('DashboardController', () => {
     expect(result.perspectiveLabel).toBe(
       't:preferences.spending_perspective.invoice_month',
     );
-    expect(result.balances).toEqual({ actual: '-0.05', projected: '1000.00' });
+    expect(result.balances).toEqual({
+      actual: '-0.05',
+      projected: '1000.00',
+      available: '700.00',
+    });
     expect(result.accounts[0]).toMatchObject({
       isDefault: true,
       typeLabel: 't:accounts.type.checking',
@@ -134,6 +144,21 @@ describe('DashboardController', () => {
       destinationAccount: { uuid: 'savings' },
     });
     expect(result.upcomingCount).toBe(7);
+    expect(result.creditCards).toEqual({
+      spending: '300.00',
+      outstanding: '300.00',
+      invoices: [
+        expect.objectContaining({
+          uuid: 'invoice-uuid',
+          card: { uuid: 'card-uuid', name: 'Visa', status: 'ACTIVE' },
+          referenceMonth: '2026-11-01',
+          total: '300.00',
+          outstanding: '300.00',
+          status: 'OPEN',
+          statusLabel: 't:credit_cards.invoice_status.open',
+        }),
+      ],
+    });
   });
 });
 

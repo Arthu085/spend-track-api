@@ -15,6 +15,7 @@ import { TransactionCategoriesModule } from '@modules/transaction-categories/tra
 import { DashboardModule } from '@modules/dashboard/dashboard.module';
 import { PreferencesModule } from '@modules/preferences/preferences.module';
 import { TransactionsModule } from '@modules/transactions/transactions.module';
+import { CreditCardsModule } from '@modules/credit-cards/credit-cards.module';
 import { UsersModule } from '@modules/users/users.module';
 
 @Module({
@@ -32,6 +33,7 @@ import { UsersModule } from '@modules/users/users.module';
     AccountsModule,
     TransactionCategoriesModule,
     TransactionsModule,
+    CreditCardsModule,
     DashboardModule,
     CoreHealthModule,
     CoreI18nModule,

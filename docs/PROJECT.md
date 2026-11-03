@@ -11,7 +11,7 @@ The REST API of Spend Track, a personal financial organization system, consumed 
 authentication with cookie-based sessions, user and role management with administrator safeguards,
 ability-based authorization, request auditing, and transactional email delivery (email confirmation, password reset, and account notifications).
 On top of it, each user manages their own finances: accounts, global and personal transaction categories,
-financial preferences, and a monthly dashboard. Financial data is private to its owner, administrators
+financial preferences, transactions, credit cards with invoices and installments, and a monthly dashboard. Financial data is private to its owner, administrators
 included ([financial data ownership](conventions.md#financial-data-ownership)).
 
 ## Stack
@@ -38,6 +38,7 @@ included ([financial data ownership](conventions.md#financial-data-ownership)).
 | [`accounts`](modules/accounts.md)                             | Per-user financial accounts with opening balances, active/inactive status, and one default account                                    | Yes         |
 | [`transaction-categories`](modules/transaction-categories.md) | Read-only global transaction category catalog plus per-user personal ones                                                             | Yes         |
 | [`transactions`](modules/transactions.md)                     | Per-user planned and completed income, expenses, and transfers between own accounts; feeds account balances                           | Yes         |
+| [`credit-cards`](modules/credit-cards.md)                     | Per-user credit cards, invoice cycles, installment purchases, refunds, and invoice payments from accounts                             | Yes         |
 | [`dashboard`](modules/dashboard.md)                           | Monthly financial summary computed from the caller's own records                                                                      | Yes         |
 
 There is no self-registration: users are created by an administrator or by the seed.

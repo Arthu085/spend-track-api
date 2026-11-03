@@ -31,7 +31,7 @@ interface TransactionCategoryShape {
 interface DashboardShape {
   period: { year: number; month: number; timing: string };
   perspective: string;
-  balances: { actual: string; projected: string };
+  balances: { actual: string; projected: string; available: string };
   accounts: Array<{ uuid: string; actualBalance: string }>;
 }
 
@@ -529,6 +529,7 @@ describe('Financial data ownership (e2e)', () => {
       expect(dashboard.balances).toEqual({
         actual: '1000.30',
         projected: '1000.30',
+        available: '1000.30',
       });
 
       const adminDashboard = dataOf<DashboardShape>(
