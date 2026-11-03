@@ -1,0 +1,5 @@
+export enum InvestmentMovementType {
+  CONTRIBUTION = 'CONTRIBUTION',
+  WITHDRAWAL = 'WITHDRAWAL',
+  VALUATION = 'VALUATION',
+}

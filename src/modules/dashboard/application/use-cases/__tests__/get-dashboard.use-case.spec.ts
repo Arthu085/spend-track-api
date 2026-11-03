@@ -7,6 +7,14 @@ import type {
   InvoiceStatement,
 } from '@modules/credit-cards';
 import {
+  InvestmentMovementType,
+  type InvestmentMovementRepository,
+  type InvestmentMovementTotal,
+  type InvestmentRepository,
+  type InvestmentValues,
+  type InvestmentWithValue,
+} from '@modules/investments';
+import {
   DefaultMonth,
   SpendingPerspective,
   type UserPreferencesRepository,
@@ -28,6 +36,7 @@ import {
   buildCreditCardInvoice,
   buildInvoiceStatement,
 } from '@test/support/builders/credit-card.builder';
+import { buildInvestment } from '@test/support/builders/investment.builder';
 import { buildTransactionCategory } from '@test/support/builders/transaction-category.builder';
 import { buildTransaction } from '@test/support/builders/transaction.builder';
 import { mockOf } from '@test/support/mocks/mock-of';
@@ -58,6 +67,11 @@ describe('GetDashboardUseCase', () => {
       statements?: InvoiceStatement[];
     } = {},
     budget: StoredBudget | null = null,
+    investments: {
+      items?: InvestmentWithValue[];
+      totals?: InvestmentMovementTotal[];
+      plannedAccountChanges?: Map<number, number>;
+    } = {},
   ) {
     const findAllByOwner = jest.fn().mockResolvedValue(accounts);
 
@@ -92,6 +106,24 @@ describe('GetDashboardUseCase', () => {
         forOwner: jest.fn().mockResolvedValue(cards.statements ?? []),
       }),
       mockOf<BudgetRepository>({ findByMonth: findBudgetByMonth }),
+      mockOf<InvestmentRepository>({
+        findAllByOwner: jest
+          .fn()
+          .mockResolvedValue(
+            (investments.items ?? []).map(({ investment }) => investment),
+          ),
+      }),
+      mockOf<InvestmentMovementRepository>({
+        sumAccountChanges: jest
+          .fn()
+          .mockResolvedValue(investments.plannedAccountChanges ?? new Map()),
+        sumByTypeAndState: jest
+          .fn()
+          .mockResolvedValue(investments.totals ?? []),
+      }),
+      mockOf<InvestmentValues>({
+        withValues: jest.fn().mockResolvedValue(investments.items ?? []),
+      }),
     );
 
     return {
@@ -476,6 +508,55 @@ describe('GetDashboardUseCase', () => {
       }),
     ]);
     expect(summary.balances.available).toBe(149990 - 5590);
+  });
+
+  it('projects planned contributions and totals investments without counting them as income or spending', async () => {
+    const reserve = buildInvestment({ id: 3, targetAmount: 100000 });
+
+    const { useCase } = build(null, undefined, {}, new Map(), {}, null, {
+      items: [
+        {
+          investment: reserve,
+          value: {
+            current: 60000,
+            contributed: 58000,
+            withdrawn: 0,
+            adjusted: 2000,
+          },
+        },
+      ],
+      totals: [
+        {
+          type: InvestmentMovementType.CONTRIBUTION,
+          state: TransactionState.COMPLETED,
+          total: 30000,
+        },
+        {
+          type: InvestmentMovementType.CONTRIBUTION,
+          state: TransactionState.PLANNED,
+          total: 10000,
+        },
+        {
+          type: InvestmentMovementType.WITHDRAWAL,
+          state: TransactionState.COMPLETED,
+          total: 5000,
+        },
+      ],
+      plannedAccountChanges: new Map([[1, -10000]]),
+    });
+
+    const summary = await useCase.execute({ ownerId: 8 });
+
+    expect(summary.accounts[0].projectedBalance).toBe(140010);
+    expect(summary.balances.projected).toBe(139990);
+    expect(summary.expenses.total).toBe(0);
+    expect(summary.income.total).toBe(0);
+    expect(summary.investments).toMatchObject({
+      totalValue: 60000,
+      contributions: { total: 40000, completed: 30000, pending: 10000 },
+      withdrawals: { total: 5000, completed: 5000, pending: 0 },
+    });
+    expect(summary.investments.items[0].investment).toBe(reserve);
   });
 
   describe('budget and spending guidance', () => {

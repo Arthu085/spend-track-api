@@ -1,0 +1,21 @@
+{
+  "errors": {
+    "not_found": "Investment not found",
+    "inactive": "Investment is archived",
+    "has_history": "This investment has movements and cannot be deleted; archive it instead",
+    "movement_not_found": "Investment movement not found",
+    "movement_state_transition": "This movement cannot move to the requested state",
+    "insufficient_value": "This would leave the investment with a negative value",
+    "valuation_unchanged": "The new value equals the current value"
+  },
+  "type": {
+    "investment": "Investment",
+    "reserve": "Reserve",
+    "goal": "Goal"
+  },
+  "movement_type": {
+    "contribution": "Contribution",
+    "withdrawal": "Withdrawal",
+    "valuation": "Valuation"
+  }
+}

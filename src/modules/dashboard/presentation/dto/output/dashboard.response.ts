@@ -2,6 +2,11 @@ import { ApiProperty } from '@nestjs/swagger';
 import { AccountType } from '@modules/accounts';
 import { accountTypeLabel } from '@modules/accounts/presentation';
 import { CreditCardInvoiceListResponseDto } from '@modules/credit-cards/presentation';
+import { InvestmentType } from '@modules/investments';
+import {
+  InvestmentProgressResponseDto,
+  investmentTypeLabel,
+} from '@modules/investments/presentation';
 import { SpendingPerspective } from '@modules/preferences';
 import { spendingPerspectiveLabel } from '@modules/preferences/presentation';
 import type { TransactionCategoryEntity } from '@modules/transaction-categories';
@@ -20,6 +25,7 @@ import type {
   DashboardBudgetLimit,
   DashboardCategoryExpenses,
   DashboardCreditCards,
+  DashboardInvestments,
   DashboardSummary,
   DashboardUpcomingItem,
 } from '../../../application/use-cases/get-dashboard.use-case';
@@ -81,7 +87,7 @@ export class DashboardBalancesResponseDto {
   @ApiProperty({
     example: '1500.00',
     description:
-      'Expected balance of active accounts at the end of the period: the actual balance plus every planned transaction dated up to the end of the period, overdue ones included.',
+      'Expected balance of active accounts at the end of the period: the actual balance plus every planned transaction and planned investment contribution or withdrawal dated up to the end of the period, overdue ones included.',
   })
   projected!: string;
 
@@ -327,6 +333,97 @@ export class DashboardSpendingGuidanceResponseDto {
   }
 }
 
+export class DashboardInvestmentResponseDto {
+  @ApiProperty()
+  uuid!: string;
+
+  @ApiProperty()
+  name!: string;
+
+  @ApiProperty({ enum: InvestmentType })
+  type!: InvestmentType;
+
+  @ApiProperty()
+  typeLabel!: string;
+
+  @ApiProperty({ example: '6000.00' })
+  currentValue!: string;
+
+  @ApiProperty({ type: String, nullable: true, example: '10000.00' })
+  targetAmount!: string | null;
+
+  @ApiProperty({
+    type: InvestmentProgressResponseDto,
+    nullable: true,
+    description: 'Progress toward targetAmount; null without a target.',
+  })
+  progress!: InvestmentProgressResponseDto | null;
+}
+
+export class DashboardInvestmentsResponseDto {
+  @ApiProperty({
+    example: '6000.00',
+    description:
+      'Current value of every active investment, reserve, and goal (completed contributions minus withdrawals plus valuation adjustments, any date). Not part of balances: it is money held outside the accounts.',
+  })
+  totalValue!: string;
+
+  @ApiProperty({
+    type: DashboardAmountsResponseDto,
+    description:
+      'Contributions dated inside the period: completed and planned. Never counted as expenses; planned ones already lower balances.projected.',
+  })
+  contributions!: DashboardAmountsResponseDto;
+
+  @ApiProperty({
+    type: DashboardAmountsResponseDto,
+    description:
+      'Withdrawals dated inside the period: completed and planned. Never counted as income; planned ones already raise balances.projected.',
+  })
+  withdrawals!: DashboardAmountsResponseDto;
+
+  @ApiProperty({
+    type: [DashboardInvestmentResponseDto],
+    description: 'Active investments, reserves, and goals, by name.',
+  })
+  items!: DashboardInvestmentResponseDto[];
+
+  static fromDomain(
+    investments: DashboardInvestments,
+    translate: (key: string) => string,
+  ): DashboardInvestmentsResponseDto {
+    return Object.assign(new DashboardInvestmentsResponseDto(), {
+      totalValue: formatMoney(investments.totalValue),
+      contributions: DashboardAmountsResponseDto.fromDomain(
+        investments.contributions,
+      ),
+      withdrawals: DashboardAmountsResponseDto.fromDomain(
+        investments.withdrawals,
+      ),
+      items: investments.items.map(({ investment, value }) =>
+        Object.assign(new DashboardInvestmentResponseDto(), {
+          uuid: investment.uuid,
+          name: investment.name,
+          type: investment.type,
+          typeLabel: investmentTypeLabel(investment.type, translate),
+          currentValue: formatMoney(value.current),
+          targetAmount:
+            investment.targetAmount === null
+              ? null
+              : formatMoney(investment.targetAmount),
+          progress:
+            investment.targetAmount === null
+              ? null
+              : InvestmentProgressResponseDto.of(
+                  value.current,
+                  investment.targetAmount,
+                ),
+        }),
+      ),
+    });
+  }
+}
+
 export class DashboardUpcomingResponseDto {
   @ApiProperty()
   uuid!: string;
@@ -488,6 +585,9 @@ export class DashboardResponseDto {
   })
   budget!: DashboardBudgetResponseDto | null;
 
+  @ApiProperty({ type: DashboardInvestmentsResponseDto })
+  investments!: DashboardInvestmentsResponseDto;
+
   @ApiProperty({ type: DashboardSpendingGuidanceResponseDto })
   spendingGuidance!: DashboardSpendingGuidanceResponseDto;
 
@@ -527,6 +627,10 @@ export class DashboardResponseDto {
     dto.budget = summary.budget
       ? DashboardBudgetResponseDto.fromDomain(summary.budget, translate)
       : null;
+    dto.investments = DashboardInvestmentsResponseDto.fromDomain(
+      summary.investments,
+      translate,
+    );
     dto.spendingGuidance = DashboardSpendingGuidanceResponseDto.fromDomain(
       summary.spendingGuidance,
     );

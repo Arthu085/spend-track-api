@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AccountsModule } from '@modules/accounts/accounts.module';
 import { BudgetsModule } from '@modules/budgets/budgets.module';
 import { CreditCardsModule } from '@modules/credit-cards/credit-cards.module';
+import { InvestmentsModule } from '@modules/investments/investments.module';
 import { PreferencesModule } from '@modules/preferences/preferences.module';
 import { RecurrencesModule } from '@modules/recurrences/recurrences.module';
 import { TransactionsModule } from '@modules/transactions/transactions.module';
@@ -13,6 +14,7 @@ import { DashboardController } from './presentation/controllers/dashboard.contro
     AccountsModule,
     BudgetsModule,
     CreditCardsModule,
+    InvestmentsModule,
     PreferencesModule,
     RecurrencesModule,
     TransactionsModule,

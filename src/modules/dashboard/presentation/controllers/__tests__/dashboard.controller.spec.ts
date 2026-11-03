@@ -6,6 +6,7 @@ import type { AuthenticatedUser } from '@shared/presentation/http';
 import { TransactionType } from '@modules/transactions';
 import { buildAccount } from '@test/support/builders/account.builder';
 import { buildInvoiceStatement } from '@test/support/builders/credit-card.builder';
+import { buildInvestment } from '@test/support/builders/investment.builder';
 import { buildTransactionCategory } from '@test/support/builders/transaction-category.builder';
 import { buildTransaction } from '@test/support/builders/transaction.builder';
 import { mockOf } from '@test/support/mocks/mock-of';
@@ -98,6 +99,26 @@ describe('DashboardController', () => {
           },
         ],
       },
+      investments: {
+        totalValue: 600050,
+        contributions: { total: 40000, completed: 30000, pending: 10000 },
+        withdrawals: { total: 0, completed: 0, pending: 0 },
+        items: [
+          {
+            investment: buildInvestment({ targetAmount: 1000000 }),
+            value: {
+              current: 600050,
+              contributed: 600000,
+              withdrawn: 0,
+              adjusted: 50,
+            },
+          },
+          {
+            investment: buildInvestment({ uuid: 'no-target' }),
+            value: { current: 0, contributed: 0, withdrawn: 0, adjusted: 0 },
+          },
+        ],
+      },
       spendingGuidance: {
         basis: SpendingGuidanceBasis.BUDGET,
         remaining: 0,
@@ -132,6 +153,35 @@ describe('DashboardController', () => {
       actual: '-0.05',
       projected: '1000.00',
       available: '700.00',
+    });
+    expect(result.investments).toEqual({
+      totalValue: '6000.50',
+      contributions: {
+        total: '400.00',
+        completed: '300.00',
+        pending: '100.00',
+      },
+      withdrawals: { total: '0.00', completed: '0.00', pending: '0.00' },
+      items: [
+        {
+          uuid: 'investment-uuid',
+          name: 'Emergency reserve',
+          type: 'RESERVE',
+          typeLabel: 't:investments.type.reserve',
+          currentValue: '6000.50',
+          targetAmount: '10000.00',
+          progress: { remaining: '3999.50', percent: 60 },
+        },
+        {
+          uuid: 'no-target',
+          name: 'Emergency reserve',
+          type: 'RESERVE',
+          typeLabel: 't:investments.type.reserve',
+          currentValue: '0.00',
+          targetAmount: null,
+          progress: null,
+        },
+      ],
     });
     expect(result.accounts[0]).toMatchObject({
       isDefault: true,
