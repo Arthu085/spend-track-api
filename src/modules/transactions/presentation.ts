@@ -1,9 +1,11 @@
 export {
   TransactionAccountResponseDto,
   TransactionCategoryRefResponseDto,
+  transactionStateLabel,
   transactionTypeLabel,
 } from './presentation/dto/output/transaction.response';
 export {
+  AllowedOnlyWhen,
   TransactionAmountField,
   TransactionDescriptionField,
   TransactionNotesField,

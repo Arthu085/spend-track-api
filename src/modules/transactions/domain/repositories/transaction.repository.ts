@@ -17,7 +17,14 @@ export interface TransactionListFilters {
   state?: TransactionState;
   accountUuid?: string;
   categoryUuid?: string;
+  recurrenceUuid?: string;
   description?: string;
+}
+
+export interface RecurrenceOccurrenceFilters {
+  from?: string;
+  to?: string;
+  state?: TransactionState;
 }
 
 export interface DateRange {
@@ -57,6 +64,18 @@ export interface TransactionRepository {
     uuid: string,
     ownerId: number,
   ): Promise<TransactionEntity | null>;
+  findPaginatedByRecurrence(
+    ownerId: number,
+    recurrenceId: number,
+    offset: number,
+    limit: number,
+    filters?: RecurrenceOccurrenceFilters,
+  ): Promise<PaginatedTransactions>;
+  findPlannedByRecurrence(
+    ownerId: number,
+    recurrenceId: number,
+    occurrenceFrom?: string,
+  ): Promise<TransactionEntity[]>;
   findPlannedUntil(
     ownerId: number,
     until: string,

@@ -7,6 +7,7 @@ import { ISO_DATE_PATTERN } from '@shared/domain/constraints';
 export function DateOnlyField(options: {
   example: string;
   required?: boolean;
+  description?: string;
 }): PropertyDecorator {
   return applyDecorators(
     ApiProperty({
@@ -14,6 +15,7 @@ export function DateOnlyField(options: {
       format: 'date',
       example: options.example,
       required: options.required ?? true,
+      description: options.description,
     }),
     IsString({ message: i18nValidationMessage('validation.IS_STRING') }),
     Matches(ISO_DATE_PATTERN, {

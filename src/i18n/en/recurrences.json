@@ -1,0 +1,23 @@
+{
+  "errors": {
+    "recurrence_not_found": "Recurrence not found",
+    "occurrence_not_found": "Occurrence not found",
+    "recurrence_ended": "This recurrence has ended and can no longer be changed",
+    "state_transition": "This recurrence cannot move to that state",
+    "occurrence_not_planned": "Only planned occurrences can be changed, confirmed, or skipped",
+    "invalid_target": "A recurrence needs exactly one account or credit card, and a card only for expenses",
+    "category_kind_mismatch": "The category kind must match the recurrence type",
+    "end_before_start": "The end date cannot be before the start date",
+    "invoice_end_not_applicable": "Only credit card recurrences can end from an invoice month"
+  },
+  "frequency": {
+    "weekly": "Weekly",
+    "monthly": "Monthly",
+    "yearly": "Yearly"
+  },
+  "state": {
+    "active": "Active",
+    "paused": "Paused",
+    "ended": "Ended"
+  }
+}

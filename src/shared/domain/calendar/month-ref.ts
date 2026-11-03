@@ -45,3 +45,10 @@ export function addMonthsToDate(date: string, offset: number): string {
     Number(date.slice(8, 10)),
   );
 }
+
+export function addDaysToDate(date: string, offset: number): string {
+  const [year, month, day] = date.split('-').map(Number);
+  const shifted = new Date(Date.UTC(year, month - 1, day + offset));
+
+  return `${shifted.getUTCFullYear()}-${pad(shifted.getUTCMonth() + 1)}-${pad(shifted.getUTCDate())}`;
+}

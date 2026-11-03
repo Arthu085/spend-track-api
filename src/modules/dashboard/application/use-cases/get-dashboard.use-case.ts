@@ -21,6 +21,11 @@ import {
   resolveUserPreferences,
   type UserPreferencesRepository,
 } from '@modules/preferences';
+import {
+  RECURRENCE_CARD_CHARGE_REPOSITORY,
+  type PlannedCardChargeTotal,
+  type RecurrenceCardChargeRepository,
+} from '@modules/recurrences';
 import type { TransactionCategoryEntity } from '@modules/transaction-categories';
 import {
   TRANSACTION_REPOSITORY,
@@ -72,6 +77,7 @@ export interface DashboardUpcomingItem {
 
 export interface DashboardCreditCards {
   spending: number;
+  planned: number;
   outstanding: number;
   invoices: InvoiceStatement[];
 }
@@ -119,6 +125,8 @@ export class GetDashboardUseCase {
     private readonly transactionRepository: TransactionRepository,
     @Inject(CREDIT_CARD_PURCHASE_REPOSITORY)
     private readonly purchaseRepository: CreditCardPurchaseRepository,
+    @Inject(RECURRENCE_CARD_CHARGE_REPOSITORY)
+    private readonly cardChargeRepository: RecurrenceCardChargeRepository,
     private readonly creditCardStatements: CreditCardStatements,
   ) {}
 
@@ -159,10 +167,17 @@ export class GetDashboardUseCase {
       { ...range, perspective },
     );
 
+    const plannedCardCharges =
+      await this.cardChargeRepository.sumPlannedByCategory(input.ownerId, {
+        ...range,
+        perspective,
+      });
+
     const creditCards = await this.creditCards(
       input.ownerId,
       period,
       cardSpending,
+      plannedCardCharges,
     );
 
     const projected = sumMoney(
@@ -175,7 +190,7 @@ export class GetDashboardUseCase {
       balances: {
         actual: sumMoney(accounts.map((balance) => balance.actualBalance)),
         projected,
-        available: projected - creditCards.outstanding,
+        available: projected - creditCards.outstanding - creditCards.planned,
       },
       accounts,
       income: amountsOf(
@@ -184,11 +199,13 @@ export class GetDashboardUseCase {
       expenses: amountsOf([
         ...totals.filter((entry) => entry.type === TransactionType.EXPENSE),
         { state: TransactionState.COMPLETED, total: creditCards.spending },
+        { state: TransactionState.PLANNED, total: creditCards.planned },
       ]),
       expensesByCategory: await this.expensesByCategory(
         input.ownerId,
         range,
         cardSpending,
+        plannedCardCharges,
       ),
       creditCards,
       upcoming: upcoming.items.map((transaction) => ({
@@ -232,6 +249,7 @@ export class GetDashboardUseCase {
     ownerId: number,
     period: MonthPeriod,
     spending: readonly CategorySpendingTotal[],
+    planned: readonly PlannedCardChargeTotal[],
   ): Promise<DashboardCreditCards> {
     const statements = await this.creditCardStatements.forOwner(ownerId);
 
@@ -249,6 +267,7 @@ export class GetDashboardUseCase {
 
     return {
       spending: sumMoney(spending.map(({ total }) => total)),
+      planned: sumMoney(planned.map(({ total }) => total)),
       outstanding: sumMoney(invoices.map(({ outstanding }) => outstanding)),
       invoices,
     };
@@ -258,6 +277,7 @@ export class GetDashboardUseCase {
     ownerId: number,
     range: { from: string; to: string },
     cardSpending: readonly CategorySpendingTotal[],
+    plannedCardCharges: readonly PlannedCardChargeTotal[],
   ): Promise<DashboardCategoryExpenses[]> {
     const rows = [
       ...(await this.transactionRepository.sumExpensesByCategory(
@@ -267,6 +287,11 @@ export class GetDashboardUseCase {
       ...cardSpending.map(({ category, total }) => ({
         category,
         state: TransactionState.COMPLETED,
+        total,
+      })),
+      ...plannedCardCharges.map(({ category, total }) => ({
+        category,
+        state: TransactionState.PLANNED,
         total,
       })),
     ];

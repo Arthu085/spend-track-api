@@ -14,8 +14,12 @@ payloads are in Swagger; this document covers the rules behind them.
 
 - `index.ts`: `CreditCardEntity`, `CreditCardInvoiceStatus`, `InvoiceStatement`,
   `CREDIT_CARD_PURCHASE_REPOSITORY`/`CreditCardPurchaseRepository` with `CategorySpendingTotal`, and
-  `CreditCardStatements`, consumed by `dashboard`.
-- `presentation.ts`: `CreditCardInvoiceListResponseDto`, used by the dashboard response.
+  `CreditCardStatements`, consumed by `dashboard`; `CREDIT_CARD_REPOSITORY`/`CreditCardRepository`,
+  `findOwnedCreditCard`, `InactiveCreditCardError`, `CreditCardInvoiceAssigner`, and
+  `CreateCreditCardPurchaseUseCase`, consumed by `recurrences`.
+- `presentation.ts`: `CreditCardInvoiceListResponseDto`, used by the dashboard response, and
+  `CreditCardRefResponseDto`, used by the recurrence response.
+- `persistence.ts`: `CreditCardMapper`, used by the recurrence mapper.
 - `credit-cards.module.ts`: `CreditCardsModule`. It imports `AccountsModule` and
   `TransactionCategoriesModule`; neither imports it back.
 
@@ -60,6 +64,10 @@ owner-scoped lookups of their modules, so a foreign one answers that module's `4
   `dueDate`. Changing a card's days only affects invoices created afterwards; existing invoices and
   their purchases keep their dates. The assigner skips a stored invoice that already closed on or
   before the date being placed.
+- `referenceMonthFor` gives the invoice a date would go to without creating it, and `lastDateBefore`
+  the last purchase date that still goes to the invoice before a given reference month (from the
+  stored invoice when it exists, otherwise from the card's current days). Recurrences use them to
+  place planned charges and to end a card recurrence from an invoice.
 
 ## Purchases and installments
 

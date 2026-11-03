@@ -1,0 +1,23 @@
+{
+  "errors": {
+    "recurrence_not_found": "Recorrência não encontrada",
+    "occurrence_not_found": "Ocorrência não encontrada",
+    "recurrence_ended": "Esta recorrência foi encerrada e não pode mais ser alterada",
+    "state_transition": "Esta recorrência não pode passar para esse estado",
+    "occurrence_not_planned": "Somente ocorrências planejadas podem ser alteradas, confirmadas ou puladas",
+    "invalid_target": "Uma recorrência precisa de exatamente uma conta ou um cartão de crédito, e cartão apenas para despesas",
+    "category_kind_mismatch": "O tipo da categoria deve corresponder ao tipo da recorrência",
+    "end_before_start": "A data final não pode ser anterior à data inicial",
+    "invoice_end_not_applicable": "Somente recorrências de cartão de crédito podem ser encerradas a partir de uma fatura"
+  },
+  "frequency": {
+    "weekly": "Semanal",
+    "monthly": "Mensal",
+    "yearly": "Anual"
+  },
+  "state": {
+    "active": "Ativa",
+    "paused": "Pausada",
+    "ended": "Encerrada"
+  }
+}

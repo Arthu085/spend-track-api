@@ -7,3 +7,9 @@ export type {
   CreditCardPurchaseRepository,
 } from './domain/repositories/credit-card-purchase.repository';
 export { CreditCardStatements } from './application/services/credit-card-statements';
+export { InactiveCreditCardError } from './domain/errors/inactive-credit-card.error';
+export { CREDIT_CARD_REPOSITORY } from './domain/repositories/credit-card.repository';
+export type { CreditCardRepository } from './domain/repositories/credit-card.repository';
+export { CreditCardInvoiceAssigner } from './application/services/credit-card-invoice-assigner';
+export { findOwnedCreditCard } from './application/services/credit-card-references';
+export { CreateCreditCardPurchaseUseCase } from './application/use-cases/create-credit-card-purchase.use-case';

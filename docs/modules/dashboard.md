@@ -5,7 +5,7 @@
 > [`transactions.md`](transactions.md), [`credit-cards.md`](credit-cards.md)
 
 `GET /dashboard` returns the caller's monthly financial summary. It owns no table: it reads the
-caller's accounts, preferences, transactions, and credit cards through their modules' ports. Routes and payloads are
+caller's accounts, preferences, transactions, credit cards, and planned recurring card charges through their modules' ports. Routes and payloads are
 in Swagger; this document covers the rules behind them.
 
 ## Period
@@ -26,13 +26,16 @@ in Swagger; this document covers the rules behind them.
   are still expected. A transfer between an active and an inactive account applies each side to its
   own account, so only the active side shows.
 - `balances.actual` and `balances.projected` sum the **active** accounts; inactive accounts are
-  excluded. `balances.available` is `projected` minus `creditCards.outstanding`.
+  excluded. `balances.available` is `projected` minus `creditCards.outstanding` and minus
+  `creditCards.planned`.
 - `income` and `expenses` cover transactions of that type dated inside the period: `completed` is
   `COMPLETED`, `pending` is `PLANNED`, and `total` is both. Canceled transactions and transfers never
   count; accounts of any status do.
 - Card spending is added to `expenses.completed` (and `total`) and to `expensesByCategory` under the
   purchase's category: installments minus refunds, grouped according to the perspective (see below).
-  Invoice payments are never expenses.
+  Invoice payments are never expenses. Planned recurring card charges of the period (not yet
+  confirmed, so on no invoice) are added to `expenses.pending` (and `total`) and to
+  `expensesByCategory`, grouped by their date or invoice month according to the perspective.
 - `expensesByCategory` groups the same expenses by category, largest total first, then by stored
   name; inactive and soft-deleted categories still appear. The totals add up to `expenses.total`.
 - `upcoming` lists at most 10 of the caller's pending planned transactions of any type dated up to
@@ -45,7 +48,8 @@ in Swagger; this document covers the rules behind them.
   invoice. A purchase on October 29 on the November invoice is October spending in the first and
   November spending in the second. Account transactions are grouped by `date` in both.
 - `creditCards.spending` is the card part of `expenses` for the period. `creditCards.outstanding`
-  sums what is still owed on every invoice of every card. `creditCards.invoices` lists the invoices
+  sums what is still owed on every invoice of every card. `creditCards.planned` sums the planned
+  recurring card charges of the period ([`recurrences.md`](recurrences.md#occurrences)). `creditCards.invoices` lists the invoices
   whose reference month is the period plus earlier ones still outstanding, by due date, then card
   name.
 - Sums use integer cents (`sumMoney`) and are returned as decimal strings, so totals always equal the

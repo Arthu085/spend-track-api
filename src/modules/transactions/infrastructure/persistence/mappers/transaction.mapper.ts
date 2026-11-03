@@ -1,7 +1,10 @@
 import { AccountMapper } from '@modules/accounts/persistence';
 import { TransactionCategoryMapper } from '@modules/transaction-categories/persistence';
 import { formatMoney, parseMoney } from '@shared/domain/money';
-import { TransactionEntity } from '../../../domain/entities/transaction.entity';
+import {
+  TransactionEntity,
+  type TransactionRecurrenceLink,
+} from '../../../domain/entities/transaction.entity';
 import { TransactionOrmEntity } from '../entities/transaction.orm-entity';
 
 export class TransactionMapper {
@@ -30,6 +33,7 @@ export class TransactionMapper {
         ? TransactionCategoryMapper.toDomain(orm.category)
         : null,
       notes: orm.notes,
+      recurrence: TransactionMapper.recurrenceOf(orm),
       createdAt: orm.createdAt,
       updatedAt: orm.updatedAt,
       deletedAt: orm.deletedAt,
@@ -58,8 +62,28 @@ export class TransactionMapper {
     orm.destinationAccountId = domain.destinationAccount?.id ?? null;
     orm.categoryId = domain.category?.id ?? null;
     orm.notes = domain.notes;
+    orm.recurrenceId = domain.recurrence?.id ?? null;
+    orm.recurrenceDate = domain.recurrence?.occurrenceDate ?? null;
     orm.deletedAt = domain.deletedAt;
 
     return orm;
+  }
+
+  private static recurrenceOf(
+    orm: TransactionOrmEntity,
+  ): TransactionRecurrenceLink | null {
+    if (!orm.recurrenceId || !orm.recurrenceDate) {
+      return null;
+    }
+
+    if (!orm.recurrence) {
+      throw new Error('Transaction recurrence relation must be loaded');
+    }
+
+    return {
+      id: orm.recurrenceId,
+      uuid: orm.recurrence.uuid,
+      occurrenceDate: orm.recurrenceDate,
+    };
   }
 }

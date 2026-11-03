@@ -19,6 +19,7 @@ import type {
   CategoryExpenseTotal,
   DateRange,
   PaginatedTransactions,
+  RecurrenceOccurrenceFilters,
   TransactionListFilters,
   TransactionRepository,
   TransactionTotal,
@@ -80,6 +81,12 @@ export class TypeOrmTransactionRepository
     applyExactFilter(qb, 'transaction.type', 'type', filters.type);
     applyExactFilter(qb, 'transaction.state', 'state', filters.state);
     applyExactFilter(qb, 'category.uuid', 'categoryUuid', filters.categoryUuid);
+    applyExactFilter(
+      qb,
+      'recurrence.uuid',
+      'recurrenceUuid',
+      filters.recurrenceUuid,
+    );
     applyILikeFilter(
       qb,
       'transaction.description',
@@ -127,6 +134,60 @@ export class TypeOrmTransactionRepository
       .getOne();
 
     return this.findByUuidForOwner(uuid, ownerId);
+  }
+
+  async findPaginatedByRecurrence(
+    ownerId: number,
+    recurrenceId: number,
+    offset: number,
+    limit: number,
+    filters: RecurrenceOccurrenceFilters = {},
+  ): Promise<PaginatedTransactions> {
+    const qb = this.ownerQuery(ownerId)
+      .andWhere('transaction.recurrenceId = :recurrenceId', { recurrenceId })
+      .orderBy('transaction.recurrenceDate', 'ASC')
+      .addOrderBy('transaction.id', 'ASC')
+      .skip(offset)
+      .take(limit);
+
+    if (filters.from) {
+      qb.andWhere('transaction.recurrenceDate >= :from', {
+        from: filters.from,
+      });
+    }
+
+    if (filters.to) {
+      qb.andWhere('transaction.recurrenceDate <= :to', { to: filters.to });
+    }
+
+    applyExactFilter(qb, 'transaction.state', 'state', filters.state);
+
+    const [rows, total] = await qb.getManyAndCount();
+
+    return { items: rows.map((row) => TransactionMapper.toDomain(row)), total };
+  }
+
+  async findPlannedByRecurrence(
+    ownerId: number,
+    recurrenceId: number,
+    occurrenceFrom?: string,
+  ): Promise<TransactionEntity[]> {
+    const qb = this.ownerQuery(ownerId)
+      .andWhere('transaction.recurrenceId = :recurrenceId', { recurrenceId })
+      .andWhere('transaction.state = :planned', {
+        planned: TransactionState.PLANNED,
+      })
+      .orderBy('transaction.recurrenceDate', 'ASC');
+
+    if (occurrenceFrom) {
+      qb.andWhere('transaction.recurrenceDate >= :occurrenceFrom', {
+        occurrenceFrom,
+      });
+    }
+
+    const rows = await qb.getMany();
+
+    return rows.map((row) => TransactionMapper.toDomain(row));
   }
 
   async findPlannedUntil(
@@ -290,6 +351,7 @@ export class TypeOrmTransactionRepository
       .innerJoinAndSelect('transaction.account', 'account')
       .leftJoinAndSelect('transaction.destinationAccount', 'destinationAccount')
       .leftJoinAndSelect('transaction.category', 'category')
+      .leftJoinAndSelect('transaction.recurrence', 'recurrence')
       .where('transaction.userId = :ownerId', { ownerId })
       .andWhere('transaction.deletedAt IS NULL');
   }

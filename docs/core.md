@@ -179,7 +179,9 @@ cannot both commit. The per-flow rules are in [`modules/auth.md`](modules/auth.m
 `@Cron(...)` handlers. Every replica runs every job; a job must be safe to run concurrently or take a
 lock ([`infrastructure.md`](infrastructure.md#running-multiple-instances)). The email outbox worker is
 not a cron job: it polls on its own interval and is replica-safe through `SKIP LOCKED`
-([`modules/email-outbox.md`](modules/email-outbox.md#worker)).
+([`modules/email-outbox.md`](modules/email-outbox.md#worker)). `RecurrenceGenerationScheduler`
+extends recurring occurrences daily at 01:00 `America/Sao_Paulo` under per-recurrence locks
+([`modules/recurrences.md`](modules/recurrences.md#generation)).
 
 Each module that owns an unbounded technical table owns the job that prunes it:
 
