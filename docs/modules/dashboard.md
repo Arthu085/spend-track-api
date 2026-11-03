@@ -2,10 +2,10 @@
 
 > Location: `src/modules/dashboard/` · Rules: [financial data ownership](../conventions.md#financial-data-ownership)
 > · Related: [`accounts.md`](accounts.md), [`preferences.md`](preferences.md),
-> [`transactions.md`](transactions.md), [`credit-cards.md`](credit-cards.md)
+> [`transactions.md`](transactions.md), [`credit-cards.md`](credit-cards.md), [`budgets.md`](budgets.md)
 
 `GET /dashboard` returns the caller's monthly financial summary. It owns no table: it reads the
-caller's accounts, preferences, transactions, credit cards, and planned recurring card charges through their modules' ports. Routes and payloads are
+caller's accounts, preferences, transactions, credit cards, planned recurring card charges, and budgets through their modules' ports. Routes and payloads are
 in Swagger; this document covers the rules behind them.
 
 ## Period
@@ -52,6 +52,20 @@ in Swagger; this document covers the rules behind them.
   recurring card charges of the period ([`recurrences.md`](recurrences.md#occurrences)). `creditCards.invoices` lists the invoices
   whose reference month is the period plus earlier ones still outstanding, by due date, then card
   name.
+- `budget` is `null` when the month has no budget ([`budgets.md`](budgets.md)). Otherwise `overall`
+  (`null` without an overall limit) measures `expenses` against the overall limit and each entry of
+  `categories` measures that category's `expensesByCategory` row (zeros when it has none) against its
+  limit, in the order the limits were saved. Each carries `total`, `completed`, and `pending`, so
+  planned and completed spending stay apart, plus `remaining` (`limit − total`, never below 0) and
+  `overspent` (`total − limit`, never below 0). Planned expenses and planned recurring card charges
+  are already in `total`, so an expected commitment is counted exactly once. Card spending follows
+  the perspective, so switching it moves card spending between months exactly as in `expenses`.
+- Budgets never block anything: exceeding a limit only changes `remaining` and `overspent`.
+- `spendingGuidance` is informational. With an overall limit, `basis` is `BUDGET` and `remaining` is
+  the overall limit minus `expenses.total`; otherwise `basis` is `BALANCE` and `remaining` is
+  `balances.available`. Category limits are never reserved on top of the overall limit. `remaining`
+  is never below 0, and `dailyAllowance` is `remaining / period.remainingDays` rounded down to the
+  cent, or `null` for a past month (no remaining days).
 - Sums use integer cents (`sumMoney`) and are returned as decimal strings, so totals always equal the
   sum of the listed accounts.
 

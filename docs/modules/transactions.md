@@ -15,7 +15,9 @@ payloads are in Swagger; this document covers the rules behind them.
 - `presentation.ts`: `TransactionAccountResponseDto`, `transactionTypeLabel`, and
   `transactionStateLabel`, used by the dashboard and recurrence responses, and
   `TransactionCategoryRefResponseDto`, the shared amount, description, and notes fields,
-  `AllowedOnlyWhen`, `isPresent`, and `isProvided`, reused by the credit card and recurrence DTOs.
+  `AllowedOnlyWhen`, `isPresent`, and `isProvided`, reused by the credit card and recurrence DTOs,
+  and `POSITIVE_MONEY_PATTERN`, reused by the budget limits; `TransactionCategoryRefResponseDto` is
+  also used by the budget response.
 - `transactions.module.ts`: `TransactionsModule`. It imports `AccountsModule` and
   `TransactionCategoriesModule`; neither imports it back.
 

@@ -1,0 +1,7 @@
+{
+  "errors": {
+    "budget_not_found": "Este mês não tem orçamento",
+    "empty_budget": "Defina um limite geral ou pelo menos um limite por categoria; exclua o orçamento para removê-lo",
+    "category_not_expense": "Orçamentos aceitam apenas categorias de despesa"
+  }
+}

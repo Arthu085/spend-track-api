@@ -9,6 +9,7 @@ export {
   TransactionAmountField,
   TransactionDescriptionField,
   TransactionNotesField,
+  POSITIVE_MONEY_PATTERN,
   isPresent,
   isProvided,
 } from './presentation/dto/input/transaction-fields';

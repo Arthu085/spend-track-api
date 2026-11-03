@@ -1,4 +1,5 @@
 import type { AccountLedger, AccountRepository } from '@modules/accounts';
+import type { BudgetRepository, StoredBudget } from '@modules/budgets';
 import type {
   CategorySpendingTotal,
   CreditCardPurchaseRepository,
@@ -30,6 +31,7 @@ import {
 import { buildTransactionCategory } from '@test/support/builders/transaction-category.builder';
 import { buildTransaction } from '@test/support/builders/transaction.builder';
 import { mockOf } from '@test/support/mocks/mock-of';
+import { SpendingGuidanceBasis } from '../../../domain/budget/spending-guidance';
 import { PeriodTiming } from '../../../domain/period/month-period';
 import { GetDashboardUseCase } from '../get-dashboard.use-case';
 
@@ -55,6 +57,7 @@ describe('GetDashboardUseCase', () => {
       planned?: PlannedCardChargeTotal[];
       statements?: InvoiceStatement[];
     } = {},
+    budget: StoredBudget | null = null,
   ) {
     const findAllByOwner = jest.fn().mockResolvedValue(accounts);
 
@@ -69,6 +72,8 @@ describe('GetDashboardUseCase', () => {
     const sumSpendingByCategory = jest
       .fn()
       .mockResolvedValue(cards.spending ?? []);
+
+    const findBudgetByMonth = jest.fn().mockResolvedValue(budget);
 
     const useCase = new GetDashboardUseCase(
       mockOf<AccountRepository>({ findAllByOwner }),
@@ -86,10 +91,12 @@ describe('GetDashboardUseCase', () => {
       mockOf<CreditCardStatements>({
         forOwner: jest.fn().mockResolvedValue(cards.statements ?? []),
       }),
+      mockOf<BudgetRepository>({ findByMonth: findBudgetByMonth }),
     );
 
     return {
       useCase,
+      findBudgetByMonth,
       findAllByOwner,
       transactionRepository,
       sumSpendingByCategory,
@@ -469,5 +476,182 @@ describe('GetDashboardUseCase', () => {
       }),
     ]);
     expect(summary.balances.available).toBe(149990 - 5590);
+  });
+
+  describe('budget and spending guidance', () => {
+    const groceries = buildTransactionCategory({ id: 5, name: 'Groceries' });
+    const travel = buildTransactionCategory({ id: 9, name: 'Travel' });
+
+    const spending: Partial<TransactionRepository> = {
+      sumByTypeAndState: jest.fn().mockResolvedValue([
+        {
+          type: TransactionType.EXPENSE,
+          state: TransactionState.COMPLETED,
+          total: 60000,
+        },
+        {
+          type: TransactionType.EXPENSE,
+          state: TransactionState.PLANNED,
+          total: 20000,
+        },
+      ]),
+      sumExpensesByCategory: jest.fn().mockResolvedValue([
+        {
+          category: groceries,
+          state: TransactionState.COMPLETED,
+          total: 60000,
+        },
+        {
+          category: groceries,
+          state: TransactionState.PLANNED,
+          total: 20000,
+        },
+      ]),
+    };
+
+    function budgetOf(
+      totalLimit: number | null,
+      categoryLimits: StoredBudget['categoryLimits'] = [],
+    ): StoredBudget {
+      return {
+        month: '2026-10-01',
+        totalLimit,
+        categoryLimits,
+        updatedAt: new Date(),
+      };
+    }
+
+    it('reports no budget and guides by the available balance when the month has none', async () => {
+      const { useCase, findBudgetByMonth } = build(null);
+
+      const summary = await useCase.execute({ ownerId: 8 });
+
+      expect(findBudgetByMonth).toHaveBeenCalledWith(8, '2026-10-01');
+      expect(summary.budget).toBeNull();
+      expect(summary.spendingGuidance).toEqual({
+        basis: SpendingGuidanceBasis.BALANCE,
+        remaining: 149990,
+        dailyAllowance: 49996,
+      });
+    });
+
+    it('measures completed and planned spending against the overall and category limits once', async () => {
+      const { useCase } = build(
+        null,
+        undefined,
+        spending,
+        undefined,
+        {},
+        budgetOf(100000, [
+          { category: groceries, limit: 50000 },
+          { category: travel, limit: 30000 },
+        ]),
+      );
+
+      const summary = await useCase.execute({ ownerId: 8 });
+
+      expect(summary.budget).toEqual({
+        overall: {
+          limit: 100000,
+          total: 80000,
+          completed: 60000,
+          pending: 20000,
+          remaining: 20000,
+          overspent: 0,
+        },
+        categories: [
+          {
+            category: groceries,
+            limit: 50000,
+            total: 80000,
+            completed: 60000,
+            pending: 20000,
+            remaining: 0,
+            overspent: 30000,
+          },
+          {
+            category: travel,
+            limit: 30000,
+            total: 0,
+            completed: 0,
+            pending: 0,
+            remaining: 30000,
+            overspent: 0,
+          },
+        ],
+      });
+      expect(summary.spendingGuidance).toEqual({
+        basis: SpendingGuidanceBasis.BUDGET,
+        remaining: 20000,
+        dailyAllowance: 6666,
+      });
+    });
+
+    it('reports overspending without a negative allowance', async () => {
+      const { useCase } = build(
+        null,
+        undefined,
+        spending,
+        undefined,
+        {},
+        budgetOf(50000),
+      );
+
+      const summary = await useCase.execute({ ownerId: 8 });
+
+      expect(summary.budget?.overall).toMatchObject({
+        remaining: 0,
+        overspent: 30000,
+      });
+      expect(summary.spendingGuidance).toEqual({
+        basis: SpendingGuidanceBasis.BUDGET,
+        remaining: 0,
+        dailyAllowance: 0,
+      });
+    });
+
+    it('guides by the available balance when the budget only has category limits', async () => {
+      const { useCase } = build(
+        null,
+        undefined,
+        spending,
+        undefined,
+        {},
+        budgetOf(null, [{ category: groceries, limit: 50000 }]),
+      );
+
+      const summary = await useCase.execute({ ownerId: 8 });
+
+      expect(summary.budget?.overall).toBeNull();
+      expect(summary.budget?.categories).toHaveLength(1);
+      expect(summary.spendingGuidance.basis).toBe(
+        SpendingGuidanceBasis.BALANCE,
+      );
+    });
+
+    it('spreads a future month over all its days and gives no allowance for a past month', async () => {
+      const { useCase } = build(
+        null,
+        undefined,
+        spending,
+        undefined,
+        {},
+        budgetOf(100000),
+      );
+
+      const future = await useCase.execute({
+        ownerId: 8,
+        year: 2026,
+        month: 11,
+      });
+
+      const past = await useCase.execute({ ownerId: 8, year: 2026, month: 9 });
+
+      expect(future.spendingGuidance.dailyAllowance).toBe(666);
+      expect(past.spendingGuidance).toMatchObject({
+        remaining: 20000,
+        dailyAllowance: null,
+      });
+    });
   });
 });

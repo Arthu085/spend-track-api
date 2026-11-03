@@ -8,6 +8,11 @@ import {
   type AccountRepository,
 } from '@modules/accounts';
 import {
+  BUDGET_REPOSITORY,
+  type BudgetRepository,
+  type StoredBudget,
+} from '@modules/budgets';
+import {
   CREDIT_CARD_PURCHASE_REPOSITORY,
   CreditCardStatements,
   type CategorySpendingTotal,
@@ -37,6 +42,12 @@ import {
 import { financeToday } from '@shared/domain/calendar';
 import { RecordStatus } from '@shared/domain/enums/record-status.enum';
 import { sumMoney } from '@shared/domain/money';
+import {
+  limitProgress,
+  spendingGuidance,
+  type LimitProgress,
+  type SpendingGuidance,
+} from '../../domain/budget/spending-guidance';
 import {
   monthOf,
   resolveMonthPeriod,
@@ -82,6 +93,17 @@ export interface DashboardCreditCards {
   invoices: InvoiceStatement[];
 }
 
+export interface DashboardBudgetLimit extends DashboardAmounts, LimitProgress {}
+
+export interface DashboardBudgetCategory extends DashboardBudgetLimit {
+  category: TransactionCategoryEntity;
+}
+
+export interface DashboardBudget {
+  overall: DashboardBudgetLimit | null;
+  categories: DashboardBudgetCategory[];
+}
+
 export interface DashboardSummary {
   period: MonthPeriod;
   perspective: SpendingPerspective;
@@ -93,6 +115,8 @@ export interface DashboardSummary {
   upcoming: DashboardUpcomingItem[];
   upcomingCount: number;
   creditCards: DashboardCreditCards;
+  budget: DashboardBudget | null;
+  spendingGuidance: SpendingGuidance;
 }
 
 interface StateTotal {
@@ -112,6 +136,42 @@ function amountsOf(totals: readonly StateTotal[]): DashboardAmounts {
   return { total: completed + pending, completed, pending };
 }
 
+function budgetLimitOf(
+  limit: number,
+  amounts: DashboardAmounts,
+): DashboardBudgetLimit {
+  return { ...amounts, ...limitProgress(limit, amounts.total) };
+}
+
+function budgetOf(
+  budget: StoredBudget,
+  expenses: DashboardAmounts,
+  expensesByCategory: readonly DashboardCategoryExpenses[],
+): DashboardBudget {
+  const spentByCategory = new Map(
+    expensesByCategory.map((entry) => [entry.category.id, entry]),
+  );
+
+  return {
+    overall:
+      budget.totalLimit === null
+        ? null
+        : budgetLimitOf(budget.totalLimit, expenses),
+    categories: budget.categoryLimits.map(({ category, limit }) => {
+      const spent = spentByCategory.get(category.id);
+
+      return {
+        category,
+        ...budgetLimitOf(limit, {
+          total: spent?.total ?? 0,
+          completed: spent?.completed ?? 0,
+          pending: spent?.pending ?? 0,
+        }),
+      };
+    }),
+  };
+}
+
 @Injectable()
 export class GetDashboardUseCase {
   constructor(
@@ -128,6 +188,8 @@ export class GetDashboardUseCase {
     @Inject(RECURRENCE_CARD_CHARGE_REPOSITORY)
     private readonly cardChargeRepository: RecurrenceCardChargeRepository,
     private readonly creditCardStatements: CreditCardStatements,
+    @Inject(BUDGET_REPOSITORY)
+    private readonly budgetRepository: BudgetRepository,
   ) {}
 
   async execute(input: GetDashboardInput): Promise<DashboardSummary> {
@@ -184,30 +246,50 @@ export class GetDashboardUseCase {
       accounts.map((balance) => balance.projectedBalance),
     );
 
+    const available = projected - creditCards.outstanding - creditCards.planned;
+
+    const expenses = amountsOf([
+      ...totals.filter((entry) => entry.type === TransactionType.EXPENSE),
+      { state: TransactionState.COMPLETED, total: creditCards.spending },
+      { state: TransactionState.PLANNED, total: creditCards.planned },
+    ]);
+
+    const expensesByCategory = await this.expensesByCategory(
+      input.ownerId,
+      range,
+      cardSpending,
+      plannedCardCharges,
+    );
+
+    const storedBudget = await this.budgetRepository.findByMonth(
+      input.ownerId,
+      period.startDate,
+    );
+
     return {
       period,
       perspective,
       balances: {
         actual: sumMoney(accounts.map((balance) => balance.actualBalance)),
         projected,
-        available: projected - creditCards.outstanding - creditCards.planned,
+        available,
       },
       accounts,
       income: amountsOf(
         totals.filter((entry) => entry.type === TransactionType.INCOME),
       ),
-      expenses: amountsOf([
-        ...totals.filter((entry) => entry.type === TransactionType.EXPENSE),
-        { state: TransactionState.COMPLETED, total: creditCards.spending },
-        { state: TransactionState.PLANNED, total: creditCards.planned },
-      ]),
-      expensesByCategory: await this.expensesByCategory(
-        input.ownerId,
-        range,
-        cardSpending,
-        plannedCardCharges,
-      ),
+      expenses,
+      expensesByCategory,
       creditCards,
+      budget: storedBudget
+        ? budgetOf(storedBudget, expenses, expensesByCategory)
+        : null,
+      spendingGuidance: spendingGuidance({
+        totalLimit: storedBudget?.totalLimit ?? null,
+        spent: expenses.total,
+        available,
+        remainingDays: period.remainingDays,
+      }),
       upcoming: upcoming.items.map((transaction) => ({
         transaction,
         overdue: transaction.date < period.today,
