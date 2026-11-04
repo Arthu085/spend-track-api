@@ -129,6 +129,8 @@ export class TypeOrmRecurrenceCardChargeRepository
 
     const rows = await this.repository
       .createQueryBuilder('charge')
+      .innerJoin('charge.recurrence', 'recurrence')
+      .innerJoin('recurrence.creditCard', 'card')
       .select('charge.categoryId', 'categoryId')
       .addSelect('SUM(charge.amount)::text', 'total')
       .where('charge.userId = :ownerId', { ownerId })
@@ -175,7 +177,7 @@ export class TypeOrmRecurrenceCardChargeRepository
     const due = { ownerId, invoiceMonth, planned: TransactionState.PLANNED };
 
     const dueCondition =
-      'charge.userId = :ownerId AND charge.state = :planned AND charge.invoiceMonth <= :invoiceMonth AND charge.deletedAt IS NULL';
+      'charge.userId = :ownerId AND charge.state = :planned AND charge.invoiceMonth <= :invoiceMonth AND charge.deletedAt IS NULL AND card.deletedAt IS NULL';
 
     const [rows, count] = await this.repository
       .createQueryBuilder('charge')
@@ -192,6 +194,8 @@ export class TypeOrmRecurrenceCardChargeRepository
     const sum = await this.repository
       .createQueryBuilder('charge')
       .withDeleted()
+      .innerJoin('charge.recurrence', 'recurrence')
+      .innerJoin('recurrence.creditCard', 'card')
       .select('COALESCE(SUM(charge.amount), 0)::text', 'total')
       .where(dueCondition, due)
       .getRawOne<{ total: string }>();

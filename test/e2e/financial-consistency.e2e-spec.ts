@@ -3,15 +3,44 @@ import { getDataSourceToken } from '@nestjs/typeorm';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 import { GenerateDueRecurrenceOccurrencesUseCase } from '@modules/recurrences/application/use-cases/generate-due-recurrence-occurrences.use-case';
-import { addDaysToDate, financeToday } from '@shared/domain/calendar';
+import {
+  addDaysToDate,
+  financeToday,
+  monthOf,
+  shiftMonth,
+} from '@shared/domain/calendar';
 import { type AuthAgent, createAuthAgent } from './helpers/auth-agent';
 import { createTestApp } from './helpers/create-test-app';
 import { createIsolatedUser } from './helpers/isolated-user';
+
+interface Amounts {
+  total: string;
+  completed: string;
+  pending: string;
+}
+
+interface Dashboard {
+  balances: { actual: string; projected: string; available: string };
+  expenses: Amounts;
+  expensesByCategory: Array<Amounts & { category: { uuid: string } }>;
+  creditCards: {
+    planned: string;
+    plannedDue: string;
+    outstanding: string;
+    plannedChargesCount: number;
+    invoices: Array<{ uuid: string; outstanding: string }>;
+  };
+}
 
 interface Occurrence {
   uuid: string;
   occurrenceDate: string;
   state: string;
+}
+
+interface Purchase {
+  uuid: string;
+  installments: Array<{ invoice: { uuid: string; referenceMonth: string } }>;
 }
 
 interface Ledger {
@@ -28,6 +57,8 @@ function dataOf<T>(response: { body: unknown }): T {
 const uuidOf = (response: { body: unknown }): string =>
   dataOf<{ uuid: string }>(response).uuid;
 
+const cents = (amount: string): number => Math.round(Number(amount) * 100);
+
 // Cross-module edge cases of the financial records. Dates derive from today
 // where generation or invoice status depend on it, and each test owns a fresh
 // user so no total depends on another.
@@ -35,6 +66,7 @@ describe('Financial consistency (e2e)', () => {
   let app: INestApplication<App>;
 
   const today = financeToday();
+  const thisMonth = monthOf(today);
 
   beforeAll(async () => {
     process.env.THROTTLE_LIMIT = '100000';
@@ -82,6 +114,20 @@ describe('Financial consistency (e2e)', () => {
     };
   }
 
+  async function dashboardOf(
+    { agent }: Ledger,
+    ref: { year: number; month: number },
+    perspective = 'PURCHASE_DATE',
+  ): Promise<Dashboard> {
+    return dataOf<Dashboard>(
+      await agent
+        .get(
+          `/api/dashboard?year=${ref.year}&month=${ref.month}&perspective=${perspective}`,
+        )
+        .expect(200),
+    );
+  }
+
   async function recurrenceOn(
     ledger: Ledger,
     target: Record<string, string>,
@@ -110,6 +156,22 @@ describe('Financial consistency (e2e)', () => {
       await agent
         .get(`/api/recurrences/${recurrence}/occurrences?limit=50`)
         .expect(200),
+    );
+  }
+
+  async function buy(ledger: Ledger, amount: string, date: string) {
+    return dataOf<Purchase>(
+      await ledger.agent
+        .post('/api/credit-card-purchases')
+        .send({
+          cardUuid: ledger.card,
+          categoryUuid: ledger.groceries,
+          description: 'Card purchase',
+          amount,
+          purchaseDate: date,
+          installmentCount: 1,
+        })
+        .expect(201),
     );
   }
 
@@ -221,5 +283,51 @@ describe('Financial consistency (e2e)', () => {
         expect(resumed[0].state).toBe('PLANNED');
       },
     );
+  });
+
+  describe('deleting a card', () => {
+    it('stops counting the planned charges of a deleted card', async () => {
+      const ledger = await newLedger();
+
+      await recurrenceOn(ledger, { creditCardUuid: ledger.card });
+
+      const ref = shiftMonth(thisMonth, 3);
+      const before = await dashboardOf(ledger, ref);
+
+      expect(cents(before.creditCards.plannedDue)).toBeGreaterThan(0);
+      expect(cents(before.creditCards.planned)).toBeGreaterThan(0);
+
+      await ledger.agent.delete(`/api/credit-cards/${ledger.card}`).expect(200);
+
+      const after = await dashboardOf(ledger, ref);
+
+      expect(after.creditCards).toMatchObject({
+        plannedDue: '0.00',
+        planned: '0.00',
+        plannedChargesCount: 0,
+      });
+      expect(after.expenses.pending).toBe('0.00');
+      expect(after.expensesByCategory).toEqual([]);
+      expect(after.balances.available).toBe(after.balances.projected);
+    });
+
+    it('drops the empty invoices of a deleted card from the dashboard', async () => {
+      const ledger = await newLedger();
+      const purchase = await buy(ledger, '100.00', '2030-10-29');
+
+      const ref = { year: 2030, month: 11 };
+
+      expect(
+        (await dashboardOf(ledger, ref)).creditCards.invoices,
+      ).toHaveLength(1);
+
+      await ledger.agent
+        .delete(`/api/credit-card-purchases/${purchase.uuid}`)
+        .expect(200);
+
+      await ledger.agent.delete(`/api/credit-cards/${ledger.card}`).expect(200);
+
+      expect((await dashboardOf(ledger, ref)).creditCards.invoices).toEqual([]);
+    });
   });
 });
