@@ -84,6 +84,7 @@ export class TransactionMapper {
       id: orm.recurrenceId,
       uuid: orm.recurrence.uuid,
       occurrenceDate: orm.recurrenceDate,
+      endDate: orm.recurrence.endDate,
     };
   }
 }

@@ -1,5 +1,8 @@
 import { TransactionCategoryKind } from '@modules/transaction-categories';
-import { TransactionState } from '@modules/transactions';
+import {
+  OccurrenceAfterRecurrenceEndError,
+  TransactionState,
+} from '@modules/transactions';
 import { buildAccount } from '@test/support/builders/account.builder';
 import { buildCreditCard } from '@test/support/builders/credit-card.builder';
 import {
@@ -172,6 +175,38 @@ describe('RecurrenceEntity', () => {
       expect(ended.state).toBe(RecurrenceState.ENDED);
       expect(ended.datesToGenerate('2027-11-30')).toEqual([]);
     }
+  });
+
+  it('takes today as the effective end when ending as a whole', () => {
+    const end = (overrides: Parameters<typeof buildRecurrence>[0] = {}) =>
+      buildRecurrence(overrides).endBefore(null, '2026-11-03').endDate;
+
+    expect(end()).toBe('2026-11-03');
+    expect(end({ endDate: '2027-01-31' })).toBe('2026-11-03');
+    expect(end({ endDate: '2026-11-03' })).toBe('2026-11-03');
+    expect(end({ startDate: '2026-11-03' })).toBe('2026-11-03');
+  });
+
+  it('keeps the end date when no scheduled date remains', () => {
+    expect(
+      buildRecurrence({ startDate: '2026-12-01' }).endBefore(null, '2026-11-03')
+        .endDate,
+    ).toBeNull();
+    expect(
+      buildRecurrence().endBefore('2026-10-15', '2026-11-03').endDate,
+    ).toBeNull();
+  });
+
+  it('refuses an occurrence date past the end date only', () => {
+    const bounded = buildRecurrence({ endDate: '2026-11-02' });
+
+    expect(() => bounded.assertOccurrenceWithinEnd('2026-11-03')).toThrow(
+      OccurrenceAfterRecurrenceEndError,
+    );
+    expect(() => bounded.assertOccurrenceWithinEnd('2026-11-02')).not.toThrow();
+    expect(() =>
+      buildRecurrence().assertOccurrenceWithinEnd('2099-01-01'),
+    ).not.toThrow();
   });
 
   it('refuses an account on a card recurrence', () => {

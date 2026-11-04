@@ -108,7 +108,7 @@ describe('TransactionMapper', () => {
       category: null,
       recurrenceId: 6,
       recurrenceDate: '2026-10-15',
-      recurrence: { uuid: 'recurrence-uuid' },
+      recurrence: { uuid: 'recurrence-uuid', endDate: '2026-12-31' },
     });
 
     const transaction = TransactionMapper.toDomain(orm);
@@ -117,6 +117,7 @@ describe('TransactionMapper', () => {
       id: 6,
       uuid: 'recurrence-uuid',
       occurrenceDate: '2026-10-15',
+      endDate: '2026-12-31',
     });
     expect(TransactionMapper.toOrm(transaction)).toMatchObject({
       recurrenceId: 6,

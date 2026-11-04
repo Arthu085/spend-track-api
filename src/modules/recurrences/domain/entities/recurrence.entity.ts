@@ -1,6 +1,7 @@
 import type { AccountEntity } from '@modules/accounts';
 import type { CreditCardEntity } from '@modules/credit-cards';
 import type { TransactionCategoryEntity } from '@modules/transaction-categories';
+import { OccurrenceAfterRecurrenceEndError } from '@modules/transactions';
 import { addDaysToDate } from '@shared/domain/calendar';
 import { BaseEntity } from '@shared/domain/entities/base.entity';
 import { RecordStatus } from '@shared/domain/enums/record-status.enum';
@@ -240,18 +241,28 @@ export class RecurrenceEntity extends BaseEntity {
   endBefore(cut: string | null, today: string): RecurrenceEntity {
     this.assertChangeable(today);
 
-    if (cut === null || cut <= this.startDate) {
+    if (cut === null) {
+      return this.copyWith({
+        state: RecurrenceState.ENDED,
+        endDate: today < this.startDate ? this.endDate : this.endingBy(today),
+      });
+    }
+
+    if (cut <= this.startDate) {
       return this.copyWith({ state: RecurrenceState.ENDED });
     }
 
-    const endDate = addDaysToDate(cut, -1);
+    return this.copyWith({ endDate: this.endingBy(addDaysToDate(cut, -1)) });
+  }
 
-    return this.copyWith({
-      endDate:
-        this.endDate !== null && this.endDate < endDate
-          ? this.endDate
-          : endDate,
-    });
+  assertOccurrenceWithinEnd(date: string): void {
+    if (this.endDate !== null && date > this.endDate) {
+      throw new OccurrenceAfterRecurrenceEndError();
+    }
+  }
+
+  private endingBy(date: string): string {
+    return this.endDate !== null && this.endDate < date ? this.endDate : date;
   }
 
   private copyWith(

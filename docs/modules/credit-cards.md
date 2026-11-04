@@ -74,7 +74,7 @@ payments are recorded history: they are never pending, and archiving never chang
 - `CANCEL` moves the charges to `CANCELED` with `canceledAt` in the same transaction, so they stay
   listed as history, stop counting, and are not generated again, including after the card is
   reactivated. It does not end their recurrences, which generate nothing while the card is archived
-  and resume from `generated_through` once it is reactivated.
+  and resume from `generated_through` once it is reactivated, unless they ended in the meantime.
 
 ## Invoice cycle
 

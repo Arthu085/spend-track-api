@@ -119,6 +119,10 @@ describe('recurrence card charge repository (integration)', () => {
   function createRecurrence(
     card: CreditCardEntity,
     category: TransactionCategoryEntity,
+    schedule: { startDate: string; endDate: string | null } = {
+      startDate: '2026-11-15',
+      endDate: null,
+    },
   ) {
     return recurrences.create(
       RecurrenceEntity.create({
@@ -128,8 +132,7 @@ describe('recurrence card charge repository (integration)', () => {
         description: 'Netflix',
         amount: 5590,
         frequency: RecurrenceFrequency.MONTHLY,
-        startDate: '2026-11-15',
-        endDate: null,
+        ...schedule,
         account: null,
         creditCard: card,
         category,
@@ -156,6 +159,68 @@ describe('recurrence card charge repository (integration)', () => {
       }),
     );
   }
+
+  it('leaves a recurrence past its end date out of generation, keeping one ending today', async () => {
+    const ownerId = await insertUser();
+    const category = await createCategory(ownerId);
+    const visa = await createCard(ownerId, 'Visa');
+    const startDate = '2026-08-15';
+
+    await createRecurrence(visa, category, {
+      startDate,
+      endDate: '2026-11-03',
+    });
+
+    const endsToday = await createRecurrence(visa, category, {
+      startDate,
+      endDate: '2026-11-04',
+    });
+
+    const openEnded = await createRecurrence(visa, category, {
+      startDate,
+      endDate: null,
+    });
+
+    const due = await recurrences.findDueForGeneration(
+      '2027-11-30',
+      '2026-11-04',
+      10,
+    );
+
+    expect(due.map(({ uuid }) => uuid)).toEqual([
+      endsToday.uuid,
+      openEnded.uuid,
+    ]);
+  });
+
+  it('selects planned charges by their scheduled date, which a reschedule never changes', async () => {
+    const ownerId = await insertUser();
+    const category = await createCategory(ownerId);
+    const visa = await createCard(ownerId, 'Visa');
+    const recurrence = await createRecurrence(visa, category);
+    const moved = await createCharge(recurrence, category, '2026-11-15');
+    const after = await createCharge(recurrence, category, '2026-12-15');
+
+    const rescheduled = await charges.update(
+      moved.rescheduled({
+        amount: moved.amount,
+        date: '2027-01-20',
+        invoiceMonth: '2027-02-01',
+      }),
+    );
+
+    expect(rescheduled).toMatchObject({
+      occurrenceDate: '2026-11-15',
+      date: '2027-01-20',
+    });
+
+    const fromCut = await charges.findPlannedByRecurrence(
+      recurrence.id,
+      '2026-12-01',
+    );
+
+    expect(fromCut.map(({ uuid }) => uuid)).toEqual([after.uuid]);
+  });
 
   it('finds the planned charges of every recurrence of the card, oldest first', async () => {
     const ownerId = await insertUser();

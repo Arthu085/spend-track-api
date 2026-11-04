@@ -36,6 +36,7 @@ export class GenerateDueRecurrenceOccurrencesUseCase {
   async execute(today: string = financeToday()): Promise<number> {
     const due = await this.recurrenceRepository.findDueForGeneration(
       generationHorizon(today),
+      today,
       GENERATION_BATCH_SIZE,
     );
 

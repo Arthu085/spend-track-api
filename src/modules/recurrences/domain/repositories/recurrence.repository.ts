@@ -38,6 +38,7 @@ export interface RecurrenceRepository {
   ): Promise<RecurrenceEntity | null>;
   findDueForGeneration(
     through: string,
+    today: string,
     limit: number,
   ): Promise<RecurrenceKey[]>;
   create(recurrence: RecurrenceEntity): Promise<RecurrenceEntity>;

@@ -20,6 +20,9 @@ import { RecurrenceOccurrenceResponseDto } from '../dto/output/recurrence-occurr
 const OWNERSHIP_NOTE =
   "Scoped to the authenticated user: another user's recurrence or occurrence answers 404, whatever the caller's roles.";
 
+const ENDED_RECURRENCE_NOTE =
+  'Also available when the recurrence is ENDED: ending freezes the template and stops generation, not the planned occurrences it kept.';
+
 const amountOf = (dto: RecurrenceOccurrenceScheduleDto): number | undefined =>
   dto.amount === undefined || dto.amount === null
     ? undefined
@@ -73,13 +76,13 @@ export class RecurrenceOccurrencesController {
     .tags('recurrences')
     .summary('Change the amount or date of one planned occurrence')
     .description(
-      `Only this occurrence changes; the recurrence and its other occurrences stay. ${OWNERSHIP_NOTE}`,
+      `Only this occurrence changes; the recurrence and its other occurrences stay. date is the expected date and cannot move past the recurrence's end date; occurrenceDate never changes. ${ENDED_RECURRENCE_NOTE} ${OWNERSHIP_NOTE}`,
     )
     .errorResponse(HttpStatus.NOT_FOUND, 'Recurrence or occurrence not found.')
     .errorResponse(HttpStatus.CONFLICT, 'Occurrence is not planned.')
     .errorResponse(
       HttpStatus.UNPROCESSABLE_ENTITY,
-      'The date is before the opening balance date of the account.',
+      'The date is before the opening balance date of the account or past the end date of the recurrence.',
     )
     .body(RecurrenceOccurrenceScheduleDto)
     .response(RecurrenceOccurrenceResponseDto)
@@ -109,7 +112,7 @@ export class RecurrenceOccurrencesController {
     .tags('recurrences')
     .summary('Confirm that a planned occurrence actually happened')
     .description(
-      `The amount and date may differ from the template. An account occurrence becomes a completed transaction paid or received on date (default today) and changes the balance once. A card charge becomes a single-installment purchase dated date (default its planned date) on the matching invoice. ${OWNERSHIP_NOTE}`,
+      `The amount and date may differ from the template. An account occurrence becomes a completed transaction paid or received on date (default today) and changes the balance once. A card charge becomes a single-installment purchase dated date (default its planned date) on the matching invoice. The date records when it actually happened, so it may be after the recurrence's end date; occurrenceDate never changes. ${ENDED_RECURRENCE_NOTE} ${OWNERSHIP_NOTE}`,
     )
     .errorResponse(HttpStatus.NOT_FOUND, 'Recurrence or occurrence not found.')
     .errorResponse(
@@ -148,7 +151,7 @@ export class RecurrenceOccurrencesController {
     .tags('recurrences')
     .summary('Skip one planned occurrence')
     .description(
-      `The occurrence stays listed as CANCELED and is never generated again. ${OWNERSHIP_NOTE}`,
+      `The occurrence stays listed as CANCELED and is never generated again. ${ENDED_RECURRENCE_NOTE} ${OWNERSHIP_NOTE}`,
     )
     .errorResponse(HttpStatus.NOT_FOUND, 'Recurrence or occurrence not found.')
     .errorResponse(HttpStatus.CONFLICT, 'Occurrence is not planned.')

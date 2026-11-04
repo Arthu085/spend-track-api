@@ -44,14 +44,15 @@ export class RecurrenceResponseDto {
     format: 'date',
     nullable: true,
     example: null,
-    description: 'Last date an occurrence may fall on; null when open-ended.',
+    description:
+      'Effective end: the last date an occurrence may be scheduled on, set to today when the recurrence is ended as a whole; null when open-ended, or when it ended before any scheduled date. Actual completion dates may be later.',
   })
   endDate!: string | null;
 
   @ApiProperty({
     enum: RecurrenceState,
     description:
-      'ENDED when the recurrence was ended as a whole or its end date has passed.',
+      'ENDED when the recurrence was ended as a whole or its end date has passed. It describes the recurrence only: the planned occurrences it kept can still be edited, confirmed, or canceled.',
   })
   state!: RecurrenceState;
 

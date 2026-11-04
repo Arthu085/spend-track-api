@@ -49,8 +49,18 @@ owner-scoped lookups of their modules.
 ## State
 
 `state` is `ACTIVE`, `PAUSED`, or `ENDED`. A recurrence whose `endDate` is before today is reported
-and filtered as `ENDED` whatever its stored state. An ended recurrence rejects every write
-(`RecurrenceEndedError`, `409`); its occurrences stay readable.
+and filtered as `ENDED` whatever its stored state.
+
+`ENDED` is final and describes the recurrence, not the occurrences it leaves behind:
+
+- The recurrence generates nothing more, cannot be paused or reactivated, and its template no longer
+  changes. `PATCH /recurrences/:uuid`, `PUT .../state`, and `PUT .../end` answer
+  `RecurrenceEndedError` (`409`).
+- The planned occurrences it kept stay editable, confirmable, and cancelable
+  ([Occurrences](#occurrences)), for account transactions and card charges alike. Completed and
+  canceled occurrences keep their history and their usual state rules.
+
+Pausing, resuming, and ending work as follows:
 
 - `PUT /recurrences/:uuid/state` pauses (`ACTIVE → PAUSED`) or resumes (`PAUSED → ACTIVE`); anything
   else is `RecurrenceStateTransitionError` (`409`). Pausing removes the planned occurrences dated
@@ -64,11 +74,18 @@ and filtered as `ENDED` whatever its stored state. An ended recurrence rejects e
     `RecurrenceInvoiceEndNotApplicableError`, `422`): no charge on that invoice or later. The cut is
     the first purchase date that would go to that invoice, from the stored invoice when it exists,
     otherwise from the card's current days;
-  - neither, or a cut on or before `startDate`: the whole recurrence ends now (`state = ENDED`).
+  - neither: the whole recurrence ends now (`state = ENDED`) and today becomes `endDate`, or the
+    earlier `endDate` it already had. A recurrence that has not started keeps its `endDate`;
+  - a cut on or before `startDate`: it also ends now (`state = ENDED`), and no scheduled date is left
+    to keep.
 
-  Planned occurrences after the new end are soft-deleted. Completed and canceled ones, and every card
-  purchase created by a confirmation, are kept. Canceling Netflix from the December invoice therefore
-  keeps the November charge and generates nothing from December on.
+  Every form follows the same rule, for account transactions and card charges alike: planned
+  occurrences scheduled after the effective end are soft-deleted, and those up to it are kept.
+  "Scheduled" means `occurrenceDate`, so a planned occurrence moved before the recurrence ended
+  follows its original schedule. Completed and canceled occurrences, and every card purchase created
+  by a confirmation, are always kept. Canceling Netflix from the December invoice therefore keeps the
+  November charge, which can still be confirmed, edited, or canceled, and generates nothing from
+  December on.
 
 ## Occurrences
 
@@ -78,7 +95,14 @@ and filtered as `ENDED` whatever its stored state. An ended recurrence rejects e
 - `PATCH .../occurrences/:occurrenceUuid` changes the `amount` or `date` of one planned occurrence;
   a card charge moves to the invoice of its new date. `PUT .../confirmation` completes it with an
   optional `amount` and `date`, which may differ from the template. `PUT .../cancellation` cancels
-  it. Each of these requires a planned occurrence (`RecurrenceOccurrenceNotPlannedError`, `409`).
+  it. Each of these requires a planned occurrence (`RecurrenceOccurrenceNotPlannedError`, `409`), and
+  none of them depends on the state of the recurrence, so they keep working once it is `ENDED`. They
+  change only the occurrence, never the template.
+- An occurrence has three dates. `occurrenceDate` is its original place in the schedule and never
+  changes. `date` is its expected date while planned. `PATCH` cannot move it past the recurrence's
+  `endDate`, through the transactions routes either (`OccurrenceAfterRecurrenceEndError`, `422`).
+  `completedOn` is when it actually happened, so a confirmation may be dated after `endDate`. A
+  confirmed card charge also takes that date as its `date`, because it is the purchase date.
 - Confirming an account occurrence completes its transaction with `completedOn = date` (default
   today), keeps its scheduled `date`, and requires an active account. Neither date, nor a date set
   through `PATCH`, can be before the account's opening date. Confirming a card charge
@@ -87,15 +111,18 @@ and filtered as `ENDED` whatever its stored state. An ended recurrence rejects e
   rule in [`credit-cards.md`](credit-cards.md#purchases-and-installments), and links it to the charge.
   The card may be archived: charges kept when it was archived stay confirmable
   ([`credit-cards.md`](credit-cards.md#archiving-with-planned-operations)).
-- Planned account occurrences are ordinary planned transactions: they appear in projections and the
-  dashboard, and the transactions routes can also edit, complete, cancel, or delete them. A planned
-  card charge is not on an invoice until it is confirmed; the dashboard counts it separately
-  ([`dashboard.md`](dashboard.md#figures)).
+- Planned account occurrences are ordinary planned transactions, whatever the state of their
+  recurrence: they appear in projections and the dashboard, and the transactions routes can also
+  edit, complete, cancel, or delete them. A planned card charge is not on an invoice until it is
+  confirmed; the dashboard counts it separately ([`dashboard.md`](dashboard.md#figures)).
 
 ## Generation
 
 - Occurrences are generated up to the last day of the twelfth month after the current one, never past
   `endDate`, only while the recurrence is `ACTIVE` and its account or card is active and not deleted.
+  Generation goes by the reported state: once `endDate` has passed it creates nothing, even for dates
+  up to `endDate` that `generated_through` never reached, for example because the card was archived
+  until then or because the recurrence was created with an `endDate` already in the past.
   Dates before the account's opening date are skipped, never rejected, so generation does not fail
   on a recurrence older than that date. A skipped date does not come back if the opening date later
   moves earlier, because `generated_through` has already passed it. A later pause and resume can only
@@ -106,12 +133,13 @@ and filtered as `ENDED` whatever its stored state. An ended recurrence rejects e
 - Partial unique indexes on `(recurrence_id, recurrence_date)` in `transactions` and
   `(recurrence_id, occurrence_date)` in `recurrence_card_charges` (live rows only) reject a duplicate
   occurrence even if generation were wrong.
-- Creating, resuming, or ending a recurrence generates immediately. `RecurrenceGenerationScheduler`
-  runs daily at 01:00 `America/Sao_Paulo` and extends up to 500 due recurrences per run, oldest first,
-  each in its own transaction. A recurrence that fails is rolled back and logged, stays due for the
-  next run, and does not stop the ones after it. Extended recurrences stop being due, so any past the
-  500 limit are reached on later runs. Failures are not counted or backed off: 500 or more recurrences
-  that keep failing would fill every batch and block the ones after them until they are fixed.
+- Creating, resuming, or ending a recurrence generates immediately, unless it is already `ENDED`.
+  `RecurrenceGenerationScheduler` runs daily at 01:00 `America/Sao_Paulo` and extends up to 500 due
+  recurrences per run, oldest first, each in its own transaction. A recurrence past its `endDate` is
+  never due. A recurrence that fails is rolled back and logged, stays due for the next run, and does
+  not stop the ones after it. Extended recurrences stop being due, so any past the 500 limit are
+  reached on later runs. Failures are not counted or backed off: 500 or more recurrences that keep
+  failing would fill every batch and block the ones after them until they are fixed.
 
 ## Concurrency
 

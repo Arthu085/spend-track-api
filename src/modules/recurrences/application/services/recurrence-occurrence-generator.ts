@@ -49,7 +49,7 @@ export class RecurrenceOccurrenceGenerator {
     today: string,
   ): Promise<RecurrenceEntity> {
     if (
-      recurrence.state !== RecurrenceState.ACTIVE ||
+      recurrence.stateOn(today) !== RecurrenceState.ACTIVE ||
       !this.targetAvailable(recurrence)
     ) {
       return recurrence;
@@ -144,6 +144,7 @@ export class RecurrenceOccurrenceGenerator {
           id: recurrence.id,
           uuid: recurrence.uuid,
           occurrenceDate: date,
+          endDate: recurrence.endDate,
         },
       }),
     );

@@ -4,6 +4,7 @@ import { BaseEntity } from '@shared/domain/entities/base.entity';
 import { RecordStatus } from '@shared/domain/enums/record-status.enum';
 import { TransactionState } from '../enums/transaction-state.enum';
 import { TransactionType } from '../enums/transaction-type.enum';
+import { OccurrenceAfterRecurrenceEndError } from '../errors/occurrence-after-recurrence-end.error';
 import { TransactionNotDeletableError } from '../errors/transaction-not-deletable.error';
 import { TransactionNotEditableError } from '../errors/transaction-not-editable.error';
 import { TransactionStateTransitionError } from '../errors/transaction-state-transition.error';
@@ -23,6 +24,7 @@ export interface TransactionRecurrenceLink {
   id: number;
   uuid: string;
   occurrenceDate: string;
+  endDate: string | null;
 }
 
 export interface CreateTransactionInput extends TransactionDetails {
@@ -136,6 +138,14 @@ export class TransactionEntity extends BaseEntity {
       this.changesFinancialFields(changes)
     ) {
       throw new TransactionNotEditableError();
+    }
+  }
+
+  assertWithinRecurrenceEnd(date: string): void {
+    const endDate = this.recurrence?.endDate ?? null;
+
+    if (endDate !== null && date > endDate) {
+      throw new OccurrenceAfterRecurrenceEndError();
     }
   }
 
