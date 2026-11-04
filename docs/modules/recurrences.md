@@ -12,7 +12,7 @@ and payloads are in Swagger; this document covers the rules behind them.
 ## Public API
 
 - `index.ts`: `RECURRENCE_CARD_CHARGE_REPOSITORY`/`RecurrenceCardChargeRepository` with
-  `PlannedCardChargeTotal`, consumed by `dashboard`.
+  `PlannedCardChargeTotal`, `PlannedCardCharge`, and `PlannedCardChargesDue`, consumed by `dashboard`.
 - `recurrences.module.ts`: `RecurrencesModule`. It imports `AccountsModule`, `CreditCardsModule`,
   `TransactionCategoriesModule`, and `TransactionsModule`; none of them imports it back.
 

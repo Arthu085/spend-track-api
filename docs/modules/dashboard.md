@@ -28,7 +28,8 @@ in Swagger; this document covers the rules behind them.
   own account, so only the active side shows.
 - `balances.actual` and `balances.projected` sum the **active** accounts; inactive accounts are
   excluded. `balances.available` is `projected` minus `creditCards.outstanding` and minus
-  `creditCards.planned`.
+  `creditCards.plannedDue`. Both follow the invoice's reference month, so no balance depends on the
+  perspective.
 - `income` and `expenses` cover transactions of that type dated inside the period: `completed` is
   `COMPLETED`, `pending` is `PLANNED`, and `total` is both. Canceled transactions and transfers never
   count; accounts of any status do.
@@ -48,11 +49,16 @@ in Swagger; this document covers the rules behind them.
   and refund in the month of its `date`; `INVOICE_MONTH` counts it in the reference month of its
   invoice. A purchase on October 29 on the November invoice is October spending in the first and
   November spending in the second. Account transactions are grouped by `date` in both.
-- `creditCards.spending` is the card part of `expenses` for the period. `creditCards.outstanding`
-  sums what is still owed on every invoice of every card. `creditCards.planned` sums the planned
-  recurring card charges of the period ([`recurrences.md`](recurrences.md#occurrences)). `creditCards.invoices` lists the invoices
-  whose reference month is the period plus earlier ones still outstanding, by due date, then card
-  name.
+- `creditCards.spending` is the card part of `expenses.completed` for the period and
+  `creditCards.planned` is its part of `expenses.pending`: the planned recurring card charges of the
+  period ([`recurrences.md`](recurrences.md#occurrences)), by the perspective's month.
+  `creditCards.invoices` lists the invoices whose reference month is the period plus earlier ones
+  still outstanding, by due date, then card name, and `creditCards.outstanding` sums what is still
+  owed on them; later invoices wait for their own month.
+- `creditCards.plannedDue` sums the planned recurring card charges expected on those same invoice
+  months, including ones an earlier month left unconfirmed. `creditCards.plannedCharges` lists the
+  first 10 of them, oldest first, with `overdue` marking dates before today, and
+  `creditCards.plannedChargesCount` says how many there are.
 - `budget` is `null` when the month has no budget ([`budgets.md`](budgets.md)). Otherwise `overall`
   (`null` without an overall limit) measures `expenses` against the overall limit and each entry of
   `categories` measures that category's `expensesByCategory` row (zeros when it has none) against its
@@ -62,11 +68,14 @@ in Swagger; this document covers the rules behind them.
   are already in `total`, so an expected commitment is counted exactly once. Card spending follows
   the perspective, so switching it moves card spending between months exactly as in `expenses`.
 - Budgets never block anything: exceeding a limit only changes `remaining` and `overspent`.
-- `spendingGuidance` is informational. With an overall limit, `basis` is `BUDGET` and `remaining` is
-  the overall limit minus `expenses.total`; otherwise `basis` is `BALANCE` and `remaining` is
-  `balances.available`. Category limits are never reserved on top of the overall limit. `remaining`
-  is never below 0, and `dailyAllowance` is `remaining / period.remainingDays` rounded down to the
-  cent, or `null` for a past month (no remaining days).
+- `spendingGuidance` is informational. `remaining` is the lower of what the overall limit leaves
+  (limit minus `expenses.total`) and `balances.available`, and `basis` says which one it is: `BUDGET`
+  or `BALANCE`. Without an overall limit it is always `BALANCE`. Taking the lower figure, never
+  subtracting one from the other, counts each commitment once while keeping money set aside by
+  planned contributions out of what is left to spend. Category limits are never reserved on top of
+  the overall limit. `remaining` is never below 0, and `dailyAllowance` is
+  `remaining / period.remainingDays` rounded down to the cent, or `null` for a past month (no
+  remaining days).
 - `investments.items` lists the active investments, reserves, and goals by name with their
   `currentValue` and target `progress` ([`investments.md`](investments.md#investments)), and
   `investments.totalValue` sums their values. It is shown next to the balances, never added to them.
@@ -76,6 +85,13 @@ in Swagger; this document covers the rules behind them.
   and the balance-based daily allowance exactly once.
 - Sums use integer cents (`sumMoney`) and are returned as decimal strings, so totals always equal the
   sum of the listed accounts.
+
+## Acceptance
+
+`test/e2e/mvp-acceptance.e2e-spec.ts` runs the product's acceptance scenarios through this endpoint
+and checks that its totals reconcile: categories to `expenses.total`, accounts to the balances, and
+`balances.available` to its parts. It also sweeps every financial route with another user and with an
+admin, expecting the owner-scoped `404`.
 
 ## Configuration
 

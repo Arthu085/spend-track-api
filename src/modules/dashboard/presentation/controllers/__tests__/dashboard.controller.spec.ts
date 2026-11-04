@@ -5,11 +5,15 @@ import type { Translate } from '@shared/presentation/decorators';
 import type { AuthenticatedUser } from '@shared/presentation/http';
 import { TransactionType } from '@modules/transactions';
 import { buildAccount } from '@test/support/builders/account.builder';
-import { buildInvoiceStatement } from '@test/support/builders/credit-card.builder';
+import {
+  buildCreditCard,
+  buildInvoiceStatement,
+} from '@test/support/builders/credit-card.builder';
 import { buildInvestment } from '@test/support/builders/investment.builder';
 import { buildTransactionCategory } from '@test/support/builders/transaction-category.builder';
 import { buildTransaction } from '@test/support/builders/transaction.builder';
 import { mockOf } from '@test/support/mocks/mock-of';
+import { buildRecurrenceCardCharge } from '@test/support/builders/recurrence.builder';
 import type { GetDashboardUseCase } from '../../../application/use-cases/get-dashboard.use-case';
 import { SpendingGuidanceBasis } from '../../../domain/budget/spending-guidance';
 import {
@@ -75,8 +79,20 @@ describe('DashboardController', () => {
       creditCards: {
         spending: 30000,
         planned: 5590,
+        plannedDue: 5590,
         outstanding: 30000,
         invoices: [buildInvoiceStatement()],
+        plannedCharges: [
+          {
+            charge: buildRecurrenceCardCharge({
+              category: buildTransactionCategory({ name: 'Streaming' }),
+            }),
+            recurrenceUuid: 'recurrence-uuid',
+            card: buildCreditCard({ uuid: 'card-uuid', name: 'Visa' }),
+            overdue: false,
+          },
+        ],
+        plannedChargesCount: 1,
       },
       budget: {
         overall: {
@@ -225,6 +241,21 @@ describe('DashboardController', () => {
     expect(result.creditCards).toEqual({
       spending: '300.00',
       planned: '55.90',
+      plannedDue: '55.90',
+      plannedCharges: [
+        {
+          uuid: 'charge-uuid',
+          recurrenceUuid: 'recurrence-uuid',
+          description: 'Netflix',
+          amount: '55.90',
+          date: '2026-11-15',
+          invoiceMonth: '2026-12-01',
+          overdue: false,
+          card: { uuid: 'card-uuid', name: 'Visa', status: 'ACTIVE' },
+          category: expect.objectContaining({ name: 'Streaming' }) as unknown,
+        },
+      ],
+      plannedChargesCount: 1,
       outstanding: '300.00',
       invoices: [
         expect.objectContaining({

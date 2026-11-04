@@ -20,6 +20,7 @@ import {
   type UserPreferencesRepository,
 } from '@modules/preferences';
 import type {
+  PlannedCardChargesDue,
   PlannedCardChargeTotal,
   RecurrenceCardChargeRepository,
 } from '@modules/recurrences';
@@ -40,6 +41,7 @@ import { buildInvestment } from '@test/support/builders/investment.builder';
 import { buildTransactionCategory } from '@test/support/builders/transaction-category.builder';
 import { buildTransaction } from '@test/support/builders/transaction.builder';
 import { mockOf } from '@test/support/mocks/mock-of';
+import { buildRecurrenceCardCharge } from '@test/support/builders/recurrence.builder';
 import { SpendingGuidanceBasis } from '../../../domain/budget/spending-guidance';
 import { PeriodTiming } from '../../../domain/period/month-period';
 import { GetDashboardUseCase } from '../get-dashboard.use-case';
@@ -64,6 +66,7 @@ describe('GetDashboardUseCase', () => {
     cards: {
       spending?: CategorySpendingTotal[];
       planned?: PlannedCardChargeTotal[];
+      plannedDue?: PlannedCardChargesDue;
       statements?: InvoiceStatement[];
     } = {},
     budget: StoredBudget | null = null,
@@ -87,6 +90,10 @@ describe('GetDashboardUseCase', () => {
       .fn()
       .mockResolvedValue(cards.spending ?? []);
 
+    const findPlannedDueThrough = jest
+      .fn()
+      .mockResolvedValue(cards.plannedDue ?? { items: [], count: 0, total: 0 });
+
     const findBudgetByMonth = jest.fn().mockResolvedValue(budget);
 
     const useCase = new GetDashboardUseCase(
@@ -101,6 +108,7 @@ describe('GetDashboardUseCase', () => {
       mockOf<CreditCardPurchaseRepository>({ sumSpendingByCategory }),
       mockOf<RecurrenceCardChargeRepository>({
         sumPlannedByCategory: jest.fn().mockResolvedValue(cards.planned ?? []),
+        findPlannedDueThrough,
       }),
       mockOf<CreditCardStatements>({
         forOwner: jest.fn().mockResolvedValue(cards.statements ?? []),
@@ -129,6 +137,7 @@ describe('GetDashboardUseCase', () => {
     return {
       useCase,
       findBudgetByMonth,
+      findPlannedDueThrough,
       findAllByOwner,
       transactionRepository,
       sumSpendingByCategory,
@@ -480,7 +489,7 @@ describe('GetDashboardUseCase', () => {
     });
   });
 
-  it('counts planned recurring card charges as pending expenses and subtracts them from the available balance', async () => {
+  it('counts planned recurring card charges of the period as pending expenses', async () => {
     const subscriptions = buildTransactionCategory({
       id: 7,
       name: 'Subscriptions',
@@ -507,7 +516,47 @@ describe('GetDashboardUseCase', () => {
         pending: 5590,
       }),
     ]);
-    expect(summary.balances.available).toBe(149990 - 5590);
+  });
+
+  // The available balance must not move with the perspective, and a charge an
+  // earlier month left unconfirmed is still owed when a later month is open.
+  it('subtracts the planned charges due through the period from the available balance, whatever the charges of the period', async () => {
+    const card = buildCreditCard({ uuid: 'card-uuid', name: 'Visa' });
+
+    const charge = buildRecurrenceCardCharge({ date: '2026-09-15' });
+
+    const { useCase, findPlannedDueThrough } = build(
+      null,
+      undefined,
+      {},
+      undefined,
+      {
+        planned: [],
+        plannedDue: {
+          items: [{ charge, recurrenceUuid: 'recurrence-uuid', card }],
+          count: 12,
+          total: 12000,
+        },
+      },
+    );
+
+    const summary = await useCase.execute({
+      ownerId: 8,
+      year: 2026,
+      month: 10,
+    });
+
+    expect(findPlannedDueThrough).toHaveBeenCalledWith(8, '2026-10-01', 10);
+    expect(summary.expenses.pending).toBe(0);
+    expect(summary.creditCards).toMatchObject({
+      planned: 0,
+      plannedDue: 12000,
+      plannedChargesCount: 12,
+      plannedCharges: [
+        { charge, recurrenceUuid: 'recurrence-uuid', card, overdue: true },
+      ],
+    });
+    expect(summary.balances.available).toBe(149990 - 12000);
   });
 
   it('projects planned contributions and totals investments without counting them as income or spending', async () => {
