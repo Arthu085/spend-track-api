@@ -1,4 +1,5 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { describeError } from '@shared/application/logging';
 import {
   TRANSACTION_MANAGER,
   type TransactionManagerPort,
@@ -6,6 +7,7 @@ import {
 import { financeToday } from '@shared/domain/calendar';
 import {
   RECURRENCE_REPOSITORY,
+  type RecurrenceKey,
   type RecurrenceRepository,
 } from '../../domain/repositories/recurrence.repository';
 import {
@@ -18,6 +20,10 @@ export const GENERATION_BATCH_SIZE = 500;
 
 @Injectable()
 export class GenerateDueRecurrenceOccurrencesUseCase {
+  private readonly logger = new Logger(
+    GenerateDueRecurrenceOccurrencesUseCase.name,
+  );
+
   constructor(
     @Inject(RECURRENCE_REPOSITORY)
     private readonly recurrenceRepository: RecurrenceRepository,
@@ -33,7 +39,19 @@ export class GenerateDueRecurrenceOccurrencesUseCase {
       GENERATION_BATCH_SIZE,
     );
 
+    let extended = 0;
+
     for (const key of due) {
+      if (await this.extend(key, today)) {
+        extended += 1;
+      }
+    }
+
+    return extended;
+  }
+
+  private async extend(key: RecurrenceKey, today: string): Promise<boolean> {
+    try {
       await this.transactionManager.runInTransaction(async () => {
         await this.references.lockOwnerFinances(key.ownerId);
 
@@ -42,8 +60,16 @@ export class GenerateDueRecurrenceOccurrencesUseCase {
           today,
         );
       });
-    }
 
-    return due.length;
+      return true;
+    } catch (error) {
+      this.logger.error({
+        msg: 'Recurrence occurrence generation failed',
+        recurrenceUuid: key.uuid,
+        error: describeError(error),
+      });
+
+      return false;
+    }
   }
 }

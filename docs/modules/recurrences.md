@@ -101,8 +101,11 @@ and filtered as `ENDED` whatever its stored state. An ended recurrence rejects e
   `(recurrence_id, occurrence_date)` in `recurrence_card_charges` (live rows only) reject a duplicate
   occurrence even if generation were wrong.
 - Creating, resuming, or ending a recurrence generates immediately. `RecurrenceGenerationScheduler`
-  runs daily at 01:00 `America/Sao_Paulo` and extends up to 500 due recurrences per run, each in its
-  own transaction; the rest are picked up on the next run.
+  runs daily at 01:00 `America/Sao_Paulo` and extends up to 500 due recurrences per run, oldest first,
+  each in its own transaction. A recurrence that fails is rolled back and logged, stays due for the
+  next run, and does not stop the ones after it. Extended recurrences stop being due, so any past the
+  500 limit are reached on later runs. Failures are not counted or backed off: 500 or more recurrences
+  that keep failing would fill every batch and block the ones after them until they are fixed.
 
 ## Concurrency
 
