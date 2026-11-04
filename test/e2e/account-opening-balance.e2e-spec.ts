@@ -242,6 +242,40 @@ describe('Account opening balance rules (e2e)', () => {
       await wallet.agent.patch(path).send({ date: OPENING_DATE }).expect(200);
     });
 
+    it('rejects changing only the destination of a transfer to an account opened after it', async () => {
+      const wallet = await newWallet();
+
+      const transfer = uuidOf(
+        await wallet.agent
+          .post('/api/transactions')
+          .send(transferBody(wallet))
+          .expect(201),
+      );
+
+      const account = async (name: string, openingBalanceDate: string) =>
+        uuidOf(
+          await wallet.agent
+            .post('/api/accounts')
+            .send({
+              name,
+              type: 'CHECKING',
+              openingBalance: '0.00',
+              openingBalanceDate,
+            })
+            .expect(201),
+        );
+
+      await wallet.agent
+        .patch(`/api/transactions/${transfer}`)
+        .send({ destinationAccountUuid: await account('Late', '2030-08-01') })
+        .expect(BEFORE_OPENING_ERROR);
+
+      await wallet.agent
+        .patch(`/api/transactions/${transfer}`)
+        .send({ destinationAccountUuid: await account('Open', AFTER_OPENING) })
+        .expect(200);
+    });
+
     it('rejects completing a transaction before the opening date', async () => {
       const wallet = await newWallet();
       const transaction = await plannedExpense(wallet);
@@ -417,6 +451,25 @@ describe('Account opening balance rules (e2e)', () => {
           .expect(200);
       });
 
+      it('rejects confirming an occurrence without a date before the account opens', async () => {
+        const opening = addDaysToDate(TODAY, 5);
+        const wallet = await newWallet(opening);
+
+        const recurrence = uuidOf(
+          await wallet.agent
+            .post('/api/recurrences')
+            .send(recurrenceBody(wallet, opening))
+            .expect(201),
+        );
+
+        const [occurrence] = await occurrencesOf(wallet, recurrence);
+        const path = `/api/recurrences/${recurrence}/occurrences/${occurrence.uuid}/confirmation`;
+
+        await wallet.agent.put(path).send({}).expect(BEFORE_OPENING_ERROR);
+
+        await wallet.agent.put(path).send({ date: opening }).expect(200);
+      });
+
       it('rejects moving planned occurrences to an account opened after them', async () => {
         const wallet = await newWallet(openedYesterday);
 
@@ -510,7 +563,7 @@ describe('Account opening balance rules (e2e)', () => {
       expect((await accountOf(wallet)).openingBalanceDate).toBe(AFTER_OPENING);
     });
 
-    it('counts completed transactions by their earliest date, transfers from either side, payments, and movements', async () => {
+    it('counts completed transactions and movements by their earliest date, transfers from either side, payments, and planned movements', async () => {
       const blockedBy = async (
         record: (wallet: Wallet) => Promise<unknown>,
         entryDate: string,
@@ -600,6 +653,22 @@ describe('Account opening balance rules (e2e)', () => {
             .expect(201),
         '2030-07-04',
       );
+
+      await blockedBy(
+        (wallet) =>
+          wallet.agent
+            .post(`/api/investments/${wallet.investment}/movements`)
+            .send({
+              type: 'CONTRIBUTION',
+              accountUuid: wallet.bank,
+              amount: '100.00',
+              date: '2030-07-10',
+              state: 'COMPLETED',
+              completedOn: '2030-07-05',
+            })
+            .expect(201),
+        '2030-07-05',
+      );
     });
 
     it('ignores canceled and deleted operations', async () => {
@@ -614,6 +683,72 @@ describe('Account opening balance rules (e2e)', () => {
         .expect(200);
 
       await wallet.agent.delete(`/api/transactions/${deleted}`).expect(200);
+
+      await patchOpening(wallet, { openingBalanceDate: '2030-12-01' }).expect(
+        200,
+      );
+    });
+
+    it('ignores canceled invoice payments', async () => {
+      const wallet = await newWallet();
+
+      const purchase = dataOf<{
+        installments: Array<{ invoice: { uuid: string } }>;
+      }>(
+        await wallet.agent
+          .post('/api/credit-card-purchases')
+          .send({
+            cardUuid: wallet.card,
+            categoryUuid: wallet.expense,
+            description: 'Purchase',
+            amount: '100.00',
+            purchaseDate: AFTER_OPENING,
+            installmentCount: 1,
+          })
+          .expect(201),
+      );
+
+      const payments = `/api/credit-card-invoices/${purchase.installments[0].invoice.uuid}/payments`;
+
+      const payment = uuidOf(
+        await wallet.agent
+          .post(payments)
+          .send({
+            accountUuid: wallet.bank,
+            amount: '10.00',
+            paidOn: AFTER_OPENING,
+          })
+          .expect(201),
+      );
+
+      await wallet.agent.put(`${payments}/${payment}/cancellation`).expect(200);
+
+      await patchOpening(wallet, { openingBalanceDate: '2030-12-01' }).expect(
+        200,
+      );
+    });
+
+    it('ignores canceled investment movements', async () => {
+      const wallet = await newWallet();
+      const movements = `/api/investments/${wallet.investment}/movements`;
+
+      const movement = uuidOf(
+        await wallet.agent
+          .post(movements)
+          .send({
+            type: 'CONTRIBUTION',
+            accountUuid: wallet.bank,
+            amount: '100.00',
+            date: AFTER_OPENING,
+            state: 'PLANNED',
+          })
+          .expect(201),
+      );
+
+      await wallet.agent
+        .put(`${movements}/${movement}/state`)
+        .send({ state: 'CANCELED' })
+        .expect(200);
 
       await patchOpening(wallet, { openingBalanceDate: '2030-12-01' }).expect(
         200,
@@ -716,6 +851,79 @@ describe('Account opening balance rules (e2e)', () => {
       await patchOpening(wallet, { openingBalanceDate: '2030-04-01' }).expect(
         BEFORE_OPENING_ERROR,
       );
+    });
+
+    it('rejects completing a planned transaction dated before the opening date', async () => {
+      const wallet = await newWallet('2030-01-01');
+      const legacy = await plannedExpense(wallet, { date: '2030-02-01' });
+
+      await moveOpeningWithoutChecks(wallet.bank, '2030-03-01');
+
+      await wallet.agent
+        .put(`/api/transactions/${legacy}/state`)
+        .send({ state: 'COMPLETED', completedOn: '2030-03-15' })
+        .expect(BEFORE_OPENING_ERROR);
+    });
+
+    it('rejects completing a planned movement dated before the opening date', async () => {
+      const wallet = await newWallet('2030-01-01');
+      const movements = `/api/investments/${wallet.investment}/movements`;
+
+      const legacy = uuidOf(
+        await wallet.agent
+          .post(movements)
+          .send({
+            type: 'CONTRIBUTION',
+            accountUuid: wallet.bank,
+            amount: '100.00',
+            date: '2030-02-01',
+            state: 'PLANNED',
+          })
+          .expect(201),
+      );
+
+      await moveOpeningWithoutChecks(wallet.bank, '2030-03-01');
+
+      await wallet.agent
+        .put(`${movements}/${legacy}/state`)
+        .send({ state: 'COMPLETED', completedOn: '2030-03-15' })
+        .expect(BEFORE_OPENING_ERROR);
+    });
+
+    it('rejects confirming a planned occurrence dated before the opening date', async () => {
+      const wallet = await newWallet(addDaysToDate(TODAY, -1));
+
+      const recurrence = uuidOf(
+        await wallet.agent
+          .post('/api/recurrences')
+          .send({
+            type: 'EXPENSE',
+            description: 'Rent',
+            amount: '50.00',
+            frequency: 'MONTHLY',
+            startDate: TODAY,
+            accountUuid: wallet.bank,
+            categoryUuid: wallet.expense,
+          })
+          .expect(201),
+      );
+
+      const [occurrence] = dataOf<Occurrence[]>(
+        await wallet.agent
+          .get(`/api/recurrences/${recurrence}/occurrences?limit=1`)
+          .expect(200),
+      );
+
+      const opening = addDaysToDate(TODAY, 1);
+
+      await moveOpeningWithoutChecks(wallet.bank, opening);
+
+      await wallet.agent
+        .put(
+          `/api/recurrences/${recurrence}/occurrences/${occurrence.uuid}/confirmation`,
+        )
+        .send({ date: opening })
+        .expect(BEFORE_OPENING_ERROR);
     });
   });
 });
