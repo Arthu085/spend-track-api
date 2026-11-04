@@ -110,6 +110,7 @@ export class TypeOrmRecurrenceRepository
 
   async findDueForGeneration(
     through: string,
+    today: string,
     limit: number,
   ): Promise<RecurrenceKey[]> {
     const rows = await this.repository
@@ -132,6 +133,14 @@ export class TypeOrmRecurrenceRepository
         { activeAccount: RecordStatus.ACTIVE, activeCard: RecordStatus.ACTIVE },
       )
       .andWhere('recurrence.startDate <= :through', { through })
+      .andWhere(
+        new Brackets((either) =>
+          either
+            .where('recurrence.endDate IS NULL')
+            .orWhere('recurrence.endDate >= :today'),
+        ),
+        { today },
+      )
       .andWhere(
         new Brackets((either) =>
           either

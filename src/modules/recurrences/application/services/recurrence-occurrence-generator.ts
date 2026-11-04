@@ -49,7 +49,7 @@ export class RecurrenceOccurrenceGenerator {
     today: string,
   ): Promise<RecurrenceEntity> {
     if (
-      recurrence.state !== RecurrenceState.ACTIVE ||
+      recurrence.stateOn(today) !== RecurrenceState.ACTIVE ||
       !this.targetAvailable(recurrence)
     ) {
       return recurrence;

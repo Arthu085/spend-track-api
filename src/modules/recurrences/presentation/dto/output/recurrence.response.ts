@@ -51,7 +51,7 @@ export class RecurrenceResponseDto {
   @ApiProperty({
     enum: RecurrenceState,
     description:
-      'ENDED when the recurrence was ended as a whole or its end date has passed.',
+      'ENDED when the recurrence was ended as a whole or its end date has passed. It describes the recurrence only: the planned occurrences it kept can still be edited, confirmed, or canceled.',
   })
   state!: RecurrenceState;
 

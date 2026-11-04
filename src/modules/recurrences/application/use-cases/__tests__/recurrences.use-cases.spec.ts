@@ -318,6 +318,34 @@ describe('recurrence use-cases', () => {
       ]);
     });
 
+    it.each([
+      ['an account', { accountUuid: 'account' }],
+      ['a card', { creditCardUuid: 'card' }],
+    ])(
+      'generates nothing for %s recurrence whose end date already passed',
+      async (_target, target) => {
+        const { create, charges, transactions, recurrences } = setup();
+
+        const recurrence = await create.execute({
+          ownerId: 1,
+          type: RecurrenceType.EXPENSE,
+          description: 'Rent',
+          amount: 150000,
+          frequency: RecurrenceFrequency.MONTHLY,
+          startDate: '2026-08-15',
+          endDate: '2026-11-02',
+          categoryUuid: 'category',
+          ...target,
+        });
+
+        expect(recurrence.stateOn('2026-11-03')).toBe(RecurrenceState.ENDED);
+        expect(recurrence.generatedThrough).toBeNull();
+        expect(transactions.create).not.toHaveBeenCalled();
+        expect(charges.create).not.toHaveBeenCalled();
+        expect(recurrences.update).not.toHaveBeenCalled();
+      },
+    );
+
     it('rejects an archived card', async () => {
       const { create } = setup();
 
@@ -353,6 +381,7 @@ describe('recurrence use-cases', () => {
 
       expect(recurrences.findDueForGeneration).toHaveBeenCalledWith(
         '2027-12-31',
+        '2026-12-01',
         500,
       );
       expect(createdTransactions(transactions).map(({ date }) => date)).toEqual(
@@ -403,6 +432,55 @@ describe('recurrence use-cases', () => {
       );
 
       error.mockRestore();
+    });
+
+    it.each([
+      ['account', { account }],
+      ['card', { account: null, creditCard: card }],
+    ])(
+      'generates nothing for a stored-active %s recurrence past its end date even if behind',
+      async (_target, target) => {
+        const recurrence = buildRecurrence({
+          ...target,
+          startDate: '2026-08-15',
+          endDate: '2026-11-02',
+          generatedThrough: '2026-08-31',
+        });
+
+        const { generateDue, recurrences, charges, transactions } =
+          setup(recurrence);
+
+        recurrences.findDueForGeneration.mockResolvedValue([
+          { uuid: recurrence.uuid, ownerId: 1 },
+        ]);
+
+        await generateDue.execute('2026-11-03');
+
+        expect(transactions.create).not.toHaveBeenCalled();
+        expect(charges.create).not.toHaveBeenCalled();
+        expect(recurrences.update).not.toHaveBeenCalled();
+      },
+    );
+
+    it('still generates on the end date itself', async () => {
+      const recurrence = buildRecurrence({
+        account,
+        startDate: '2026-08-15',
+        endDate: '2026-11-03',
+        generatedThrough: '2026-09-30',
+      });
+
+      const { generateDue, recurrences, transactions } = setup(recurrence);
+
+      recurrences.findDueForGeneration.mockResolvedValue([
+        { uuid: recurrence.uuid, ownerId: 1 },
+      ]);
+
+      await generateDue.execute('2026-11-03');
+
+      expect(createdTransactions(transactions).map(({ date }) => date)).toEqual(
+        ['2026-10-15'],
+      );
     });
 
     it('skips recurrences whose account is archived', async () => {
@@ -584,6 +662,48 @@ describe('recurrence use-cases', () => {
       expect(transactions.softDelete).toHaveBeenCalledTimes(2);
     });
 
+    it.each([
+      ['account', { account }],
+      ['card', { account: null, creditCard: card }],
+    ])(
+      'removes only the planned %s occurrences past the new end and generates no skipped date',
+      async (_target, target) => {
+        const recurrence = buildRecurrence({
+          ...target,
+          startDate: '2026-08-15',
+          generatedThrough: '2026-08-31',
+        });
+
+        const { end, recurrences, charges, transactions } = setup(recurrence);
+
+        const ended = await end.execute({
+          uuid: 'recurrence-uuid',
+          ownerId: 1,
+          from: '2026-11-03',
+        });
+
+        expect(ended.endDate).toBe('2026-11-02');
+        expect(ended.stateOn('2026-11-03')).toBe(RecurrenceState.ENDED);
+
+        if (recurrence.isCardRecurrence) {
+          expect(charges.findPlannedByRecurrence).toHaveBeenCalledWith(
+            1,
+            '2026-11-03',
+          );
+        } else {
+          expect(transactions.findPlannedByRecurrence).toHaveBeenCalledWith(
+            1,
+            1,
+            '2026-11-03',
+          );
+        }
+
+        expect(transactions.create).not.toHaveBeenCalled();
+        expect(charges.create).not.toHaveBeenCalled();
+        expect(recurrences.update).toHaveBeenCalledTimes(1);
+      },
+    );
+
     it('rejects an invoice month on an account recurrence', async () => {
       await expect(
         setup().end.execute({
@@ -749,6 +869,149 @@ describe('recurrence use-cases', () => {
           ownerId: 1,
         }),
       ).resolves.toMatchObject({ state: TransactionState.CANCELED });
+    });
+
+    describe.each([
+      ['ended as a whole', { state: RecurrenceState.ENDED }],
+      ['past its end date', { endDate: '2026-11-02' }],
+    ])('on a recurrence %s', (_ended, ended) => {
+      const input = {
+        uuid: 'recurrence-uuid',
+        occurrenceUuid: 'occurrence',
+        ownerId: 1,
+      };
+
+      function endedOnAccount() {
+        const context = setup(buildRecurrence({ account, ...ended }));
+
+        context.transactions.findByUuidForOwnerForUpdate.mockResolvedValue(
+          occurrence({
+            date: '2026-10-15',
+            recurrence: {
+              id: 1,
+              uuid: 'recurrence-uuid',
+              occurrenceDate: '2026-10-15',
+            },
+          }),
+        );
+
+        return context;
+      }
+
+      function endedOnCard() {
+        const context = setup(cardRecurrence(ended));
+
+        context.charges.findByUuidForRecurrence.mockResolvedValue(
+          buildRecurrenceCardCharge({
+            category,
+            occurrenceDate: '2026-10-15',
+            date: '2026-10-15',
+            invoiceMonth: '2026-11-01',
+          }),
+        );
+
+        return context;
+      }
+
+      it('edits, confirms, and cancels a planned account occurrence without touching the template', async () => {
+        const editing = endedOnAccount();
+
+        await expect(
+          editing.updateOccurrence.execute({ ...input, amount: 160000 }),
+        ).resolves.toMatchObject({
+          amount: 160000,
+          state: TransactionState.PLANNED,
+        });
+
+        const confirming = endedOnAccount();
+
+        await expect(
+          confirming.confirm.execute({ ...input, date: '2026-10-20' }),
+        ).resolves.toMatchObject({
+          state: TransactionState.COMPLETED,
+          completedOn: '2026-10-20',
+        });
+
+        const canceling = endedOnAccount();
+
+        await expect(canceling.cancel.execute(input)).resolves.toMatchObject({
+          state: TransactionState.CANCELED,
+        });
+
+        for (const { recurrences } of [editing, confirming, canceling]) {
+          expect(recurrences.update).not.toHaveBeenCalled();
+        }
+      });
+
+      it('edits, confirms, and cancels a planned card charge without touching the template', async () => {
+        const editing = endedOnCard();
+
+        await expect(
+          editing.updateOccurrence.execute({ ...input, amount: 5990 }),
+        ).resolves.toMatchObject({
+          amount: 5990,
+          state: TransactionState.PLANNED,
+        });
+
+        const confirming = endedOnCard();
+
+        confirming.createPurchase.recordPlannedCharge.mockResolvedValue(
+          buildCreditCardPurchase({
+            id: 9,
+            uuid: 'purchase',
+            installments: [
+              {
+                number: 1,
+                amount: 5590,
+                date: '2026-10-15',
+                invoice: buildCreditCardInvoice({
+                  referenceMonth: '2026-11-01',
+                }),
+              },
+            ],
+          }),
+        );
+
+        await expect(confirming.confirm.execute(input)).resolves.toMatchObject({
+          state: TransactionState.COMPLETED,
+          purchaseUuid: 'purchase',
+        });
+
+        const canceling = endedOnCard();
+
+        await expect(canceling.cancel.execute(input)).resolves.toMatchObject({
+          state: TransactionState.CANCELED,
+        });
+
+        for (const { recurrences } of [editing, confirming, canceling]) {
+          expect(recurrences.update).not.toHaveBeenCalled();
+        }
+      });
+
+      it('keeps rejecting a completed or canceled occurrence', async () => {
+        const completed = endedOnAccount();
+
+        completed.transactions.findByUuidForOwnerForUpdate.mockResolvedValue(
+          occurrence({
+            state: TransactionState.COMPLETED,
+            completedOn: '2026-10-15',
+          }),
+        );
+
+        await expect(completed.cancel.execute(input)).rejects.toThrow(
+          RecurrenceOccurrenceNotPlannedError,
+        );
+
+        const canceled = endedOnCard();
+
+        canceled.charges.findByUuidForRecurrence.mockResolvedValue(
+          buildRecurrenceCardCharge({ state: TransactionState.CANCELED }),
+        );
+
+        await expect(canceled.confirm.execute(input)).rejects.toThrow(
+          RecurrenceOccurrenceNotPlannedError,
+        );
+      });
     });
   });
 });

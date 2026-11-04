@@ -95,7 +95,7 @@ export class RecurrencesController {
     .tags('recurrences')
     .summary('Create a recurring income, expense, or card charge')
     .description(
-      'Generates planned occurrences from startDate up to 12 months ahead, never twice for the same date; a daily job keeps extending them. Account recurrences generate planned transactions; card recurrences generate planned charges that become purchases once confirmed. Nothing is paid or received until an occurrence is confirmed. Account, card, and category resolve within your own records (404) and must be active (409).',
+      'Generates planned occurrences from startDate up to 12 months ahead, never twice for the same date; a daily job keeps extending them. Account recurrences generate planned transactions; card recurrences generate planned charges that become purchases once confirmed. Nothing is paid or received until an occurrence is confirmed. An endDate already in the past creates an ENDED recurrence that generates nothing. Account, card, and category resolve within your own records (404) and must be active (409).',
     )
     .errorResponse(
       HttpStatus.NOT_FOUND,
@@ -141,7 +141,7 @@ export class RecurrencesController {
     .tags('recurrences')
     .summary('Update a recurrence and its planned occurrences')
     .description(
-      `Changes the template and, by scope, the planned occurrences scheduled on or after from (FUTURE) or all of them (ALL). Completed and canceled occurrences never change. Type, frequency, start date, card, and end date are fixed: end the recurrence and create a new one. ${OWNERSHIP_NOTE}`,
+      `Changes the template and, by scope, the planned occurrences scheduled on or after from (FUTURE) or all of them (ALL). Completed and canceled occurrences never change. Type, frequency, start date, card, and end date are fixed: end the recurrence and create a new one. An ended recurrence rejects this route; change its remaining planned occurrences through the occurrence routes. ${OWNERSHIP_NOTE}`,
     )
     .errorResponse(
       HttpStatus.NOT_FOUND,
@@ -186,7 +186,7 @@ export class RecurrencesController {
     .tags('recurrences')
     .summary('Pause or resume a recurrence')
     .description(
-      `PAUSED removes the planned occurrences dated today or later and stops generating; ACTIVE resumes from today without creating the dates skipped while paused. ${OWNERSHIP_NOTE}`,
+      `PAUSED removes the planned occurrences dated today or later and stops generating; ACTIVE resumes from today without creating the dates skipped while paused. An ended recurrence cannot be paused or reactivated. ${OWNERSHIP_NOTE}`,
     )
     .errorResponse(HttpStatus.NOT_FOUND, 'Recurrence not found.')
     .errorResponse(
@@ -219,7 +219,7 @@ export class RecurrencesController {
     .tags('recurrences')
     .summary('End a recurrence from a date or an invoice month')
     .description(
-      `from: no occurrence on or after that date. fromInvoiceMonth (card recurrences): no charge on that invoice or later, so earlier invoices stay unchanged. Without either, or with a cut on or before the start date, the whole recurrence ends. Planned occurrences after the cut are removed; completed history stays. ${OWNERSHIP_NOTE}`,
+      `from: no occurrence on or after that date. fromInvoiceMonth (card recurrences): no charge on that invoice or later, so earlier invoices stay unchanged. Without either, or with a cut on or before the start date, the whole recurrence ends and every planned occurrence is removed. Otherwise only planned occurrences scheduled after the new end date are removed; those up to it stay editable, confirmable, and cancelable through the occurrence routes, even once the recurrence is ENDED. Completed and canceled occurrences always stay. Ending is final: an ended recurrence generates nothing more and its template no longer changes. ${OWNERSHIP_NOTE}`,
     )
     .errorResponse(HttpStatus.NOT_FOUND, 'Recurrence not found.')
     .errorResponse(HttpStatus.CONFLICT, 'Recurrence already ended.')
