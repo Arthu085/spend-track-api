@@ -73,3 +73,53 @@ jobs:
       # Disposable PostgreSQL and Mailpit, secrets generated per run.
       - name: Smoke test
         run: scripts/smoke-test-prod-image.sh api:ci-${{ github.sha }}
+
+  client-integration:
+    name: Client API integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: spend-track-api
+
+      # A coordinated contract change uses one branch name in both repositories;
+      # otherwise the suite runs against the other repository's main.
+      - name: Resolve client ref
+        id: other-ref
+        env:
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+          REPOSITORY_URL: https://github.com/${{ github.repository_owner }}/spend-track-client
+        run: |
+          if git ls-remote --exit-code --heads "$REPOSITORY_URL" "refs/heads/$BRANCH" > /dev/null; then
+            echo "ref=$BRANCH" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=main" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/spend-track-client
+          ref: ${{ steps.other-ref.outputs.ref }}
+          path: spend-track-client
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: spend-track-api/.nvmrc
+          cache: npm
+          cache-dependency-path: |
+            spend-track-api/package-lock.json
+            spend-track-client/package-lock.json
+
+      - name: Install API dependencies
+        run: npm ci
+        working-directory: spend-track-api
+
+      - name: Install client dependencies
+        run: npm ci
+        working-directory: spend-track-client
+
+      # Testcontainers provisions the API's ephemeral Postgres; the runner's Docker
+      # daemon is the only requirement.
+      - name: Run API integration tests
+        run: npm run test:integration
+        working-directory: spend-track-client
