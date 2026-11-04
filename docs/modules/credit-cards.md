@@ -117,6 +117,8 @@ adds the charges (with installment number and count), refunds, and payments.
 - `POST /credit-card-invoices/:uuid/payments` pays an invoice from an active account of the caller,
   on `paidOn` (default today). Partial payments are allowed; a payment larger than the outstanding
   amount is `CreditCardPaymentExceedsOutstandingError` (`422`). An open invoice can be paid early.
+  `paidOn` cannot be before the account's opening date
+  ([`accounts.md`](accounts.md#opening-balance)).
 - A payment is not an expense: spending is counted from purchases, so paying never counts twice.
 - `CreditCardPaymentLedger` registers into the accounts ledger registry (`ACCOUNT_LEDGERS`, see
   [`accounts.md`](accounts.md#balances)) and subtracts every live payment from its account. Any

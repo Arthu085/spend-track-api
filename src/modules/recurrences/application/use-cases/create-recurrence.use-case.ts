@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
+import { assertNotBeforeOpening } from '@modules/accounts';
 import {
   TRANSACTION_MANAGER,
   type TransactionManagerPort,
@@ -44,6 +45,12 @@ export class CreateRecurrenceUseCase {
     return this.transactionManager.runInTransaction(async () => {
       await this.references.lockOwnerFinances(input.ownerId);
 
+      const account = input.accountUuid
+        ? await this.references.activeAccount(input.accountUuid, input.ownerId)
+        : null;
+
+      assertNotBeforeOpening([account], [input.startDate]);
+
       const recurrence = await this.recurrenceRepository.create(
         RecurrenceEntity.create({
           uuid: randomUUID(),
@@ -54,12 +61,7 @@ export class CreateRecurrenceUseCase {
           frequency: input.frequency,
           startDate: input.startDate,
           endDate: input.endDate ?? null,
-          account: input.accountUuid
-            ? await this.references.activeAccount(
-                input.accountUuid,
-                input.ownerId,
-              )
-            : null,
+          account,
           creditCard: input.creditCardUuid
             ? await this.references.activeCard(
                 input.creditCardUuid,

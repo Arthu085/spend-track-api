@@ -65,6 +65,21 @@ export class TypeOrmCreditCardPaymentRepository
     return this.repository.exists({ where: { userId: ownerId, accountId } });
   }
 
+  async findEarliestDateForAccount(
+    ownerId: number,
+    accountId: number,
+  ): Promise<string | null> {
+    const row = await this.repository
+      .createQueryBuilder('payment')
+      .select('MIN(payment.paidOn)::text', 'earliest')
+      .where('payment.userId = :ownerId', { ownerId })
+      .andWhere('payment.accountId = :accountId', { accountId })
+      .andWhere('payment.canceledAt IS NULL')
+      .getRawOne<{ earliest: string | null }>();
+
+    return row?.earliest ?? null;
+  }
+
   async create(
     payment: CreditCardPaymentEntity,
   ): Promise<CreditCardPaymentEntity> {

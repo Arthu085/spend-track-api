@@ -9,6 +9,7 @@ describe('TransactionAccountLedger', () => {
     const repository = {
       sumBalanceChanges: jest.fn().mockResolvedValue(new Map([[3, 120]])),
       existsForAccount: jest.fn().mockResolvedValue(true),
+      findEarliestDateForAccount: jest.fn().mockResolvedValue('2026-02-03'),
     };
 
     const registry = { register: jest.fn() };
@@ -45,5 +46,12 @@ describe('TransactionAccountLedger', () => {
 
     await expect(ledger.hasEntries(1, 3)).resolves.toBe(true);
     expect(repository.existsForAccount).toHaveBeenCalledWith(1, 3);
+  });
+
+  it('reports the earliest live transaction date of the account', async () => {
+    const { ledger, repository } = build();
+
+    await expect(ledger.earliestEntryDate(1, 3)).resolves.toBe('2026-02-03');
+    expect(repository.findEarliestDateForAccount).toHaveBeenCalledWith(1, 3);
   });
 });

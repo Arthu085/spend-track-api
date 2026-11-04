@@ -87,6 +87,10 @@ export interface TransactionRepository {
     filter: BalanceChangeFilter,
   ): Promise<Map<number, number>>;
   existsForAccount(ownerId: number, accountId: number): Promise<boolean>;
+  findEarliestDateForAccount(
+    ownerId: number,
+    accountId: number,
+  ): Promise<string | null>;
   sumByTypeAndState(
     ownerId: number,
     range: DateRange,

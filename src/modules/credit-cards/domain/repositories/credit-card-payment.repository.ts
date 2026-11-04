@@ -14,6 +14,10 @@ export interface CreditCardPaymentRepository {
     accountIds: readonly number[],
   ): Promise<Map<number, number>>;
   existsForAccount(ownerId: number, accountId: number): Promise<boolean>;
+  findEarliestDateForAccount(
+    ownerId: number,
+    accountId: number,
+  ): Promise<string | null>;
   create(payment: CreditCardPaymentEntity): Promise<CreditCardPaymentEntity>;
   update(payment: CreditCardPaymentEntity): Promise<CreditCardPaymentEntity>;
 }

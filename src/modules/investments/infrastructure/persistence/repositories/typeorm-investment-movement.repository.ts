@@ -189,6 +189,26 @@ export class TypeOrmInvestmentMovementRepository
     return this.repository.exists({ where: { userId: ownerId, accountId } });
   }
 
+  async findEarliestDateForAccount(
+    ownerId: number,
+    accountId: number,
+  ): Promise<string | null> {
+    const row = await this.repository
+      .createQueryBuilder('movement')
+      .select(
+        'MIN(LEAST(movement.date, COALESCE(movement.completedOn, movement.date)))::text',
+        'earliest',
+      )
+      .where('movement.userId = :ownerId', { ownerId })
+      .andWhere('movement.accountId = :accountId', { accountId })
+      .andWhere('movement.state IN (:...states)', {
+        states: [TransactionState.PLANNED, TransactionState.COMPLETED],
+      })
+      .getRawOne<{ earliest: string | null }>();
+
+    return row?.earliest ?? null;
+  }
+
   async existsForInvestment(
     ownerId: number,
     investmentId: number,

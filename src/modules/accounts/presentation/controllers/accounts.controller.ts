@@ -121,10 +121,14 @@ export class AccountsController {
     .tags('accounts')
     .summary('Update one of your accounts')
     .description(
-      `Partial update: omitted fields keep their current values. isDefault true clears the flag on the previous default account. ${OWNERSHIP_NOTE}`,
+      `Partial update: omitted fields keep their current values. isDefault true clears the flag on the previous default account. openingBalance may change at any time and shifts the balances by the difference. openingBalanceDate may move earlier at any time, and later only up to the earliest planned or completed operation. ${OWNERSHIP_NOTE}`,
     )
     .errorResponse(HttpStatus.NOT_FOUND, 'Account not found.')
     .errorResponse(HttpStatus.CONFLICT, 'Account is inactive.')
+    .errorResponse(
+      HttpStatus.UNPROCESSABLE_ENTITY,
+      'openingBalanceDate is after the earliest operation of the account.',
+    )
     .body(UpdateAccountDto)
     .response(AccountResponseDto)
     .build())

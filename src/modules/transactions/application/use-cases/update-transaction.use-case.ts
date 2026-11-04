@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   ACCOUNT_REPOSITORY,
+  assertNotBeforeOpening,
   type AccountEntity,
   type AccountRepository,
 } from '@modules/accounts';
@@ -61,22 +62,36 @@ export class UpdateTransactionUseCase {
 
       transaction.assertEditable(input);
 
+      const date = input.date ?? transaction.date;
+
+      const account =
+        (await this.changedAccount(
+          input.accountUuid,
+          transaction.account,
+          input.ownerId,
+        )) ?? transaction.account;
+
+      const destinationAccount = await this.changedAccount(
+        input.destinationAccountUuid,
+        transaction.destinationAccount,
+        input.ownerId,
+      );
+
+      if (
+        date !== transaction.date ||
+        account !== transaction.account ||
+        destinationAccount !== transaction.destinationAccount
+      ) {
+        assertNotBeforeOpening([account, destinationAccount], [date]);
+      }
+
       return this.transactionRepository.update(
         transaction.withDetails({
           description: input.description ?? transaction.description,
           amount: input.amount ?? transaction.amount,
-          date: input.date ?? transaction.date,
-          account:
-            (await this.changedAccount(
-              input.accountUuid,
-              transaction.account,
-              input.ownerId,
-            )) ?? transaction.account,
-          destinationAccount: await this.changedAccount(
-            input.destinationAccountUuid,
-            transaction.destinationAccount,
-            input.ownerId,
-          ),
+          date,
+          account,
+          destinationAccount,
           category: await this.changedCategory(
             input.categoryUuid,
             transaction.category,

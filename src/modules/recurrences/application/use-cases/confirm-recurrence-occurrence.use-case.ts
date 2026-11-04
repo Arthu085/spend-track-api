@@ -1,5 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { InactiveAccountError } from '@modules/accounts';
+import {
+  InactiveAccountError,
+  assertNotBeforeOpening,
+} from '@modules/accounts';
 import { CreateCreditCardPurchaseUseCase } from '@modules/credit-cards';
 import {
   TRANSACTION_REPOSITORY,
@@ -76,6 +79,13 @@ export class ConfirmRecurrenceOccurrenceUseCase {
   ): Promise<RecurrenceOccurrence> {
     assertRecordActive(transaction.account, new InactiveAccountError());
 
+    const completedOn = input.date ?? financeToday();
+
+    assertNotBeforeOpening(
+      [transaction.account],
+      [transaction.date, completedOn],
+    );
+
     const completed = transaction
       .withDetails({
         description: transaction.description,
@@ -86,7 +96,7 @@ export class ConfirmRecurrenceOccurrenceUseCase {
         category: transaction.category,
         notes: transaction.notes,
       })
-      .complete(input.date ?? financeToday());
+      .complete(completedOn);
 
     return occurrenceOfTransaction(
       await this.transactionRepository.update(completed),

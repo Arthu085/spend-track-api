@@ -79,7 +79,7 @@ export class InvestmentMovementsController {
     )
     .errorResponse(
       HttpStatus.UNPROCESSABLE_ENTITY,
-      'Withdrawal exceeds the current value.',
+      'Withdrawal exceeds the current value, or a date is before the opening balance date of the account.',
     )
     .body(CreateInvestmentMovementDto)
     .response(InvestmentMovementResponseDto, HttpStatus.CREATED)
@@ -155,7 +155,7 @@ export class InvestmentMovementsController {
     )
     .errorResponse(
       HttpStatus.UNPROCESSABLE_ENTITY,
-      'The value would fall below 0.',
+      'The value would fall below 0, or a date is before the opening balance date of the account.',
     )
     .body(UpdateInvestmentMovementStateDto)
     .response(InvestmentMovementResponseDto)

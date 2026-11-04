@@ -63,6 +63,8 @@ investment, so a foreign record is a `404` (`InvestmentNotFoundError`,
   by canceling it and recording a new one.
 - A movement created as `COMPLETED` defaults `completedOn` to its `date`; confirming later defaults
   it to today in `America/Sao_Paulo` and needs an active investment and account.
+- `date` and `completedOn` cannot be before the account's opening date
+  ([`accounts.md`](accounts.md#opening-balance)).
 - `POST /investments/:uuid/valuations` takes the new `value` (non-negative) and records the
   difference from `currentValue` as a completed `VALUATION`, dated today unless `date` is sent. A
   value equal to the current one is `InvestmentValuationUnchangedError` (`422`). Valuations never

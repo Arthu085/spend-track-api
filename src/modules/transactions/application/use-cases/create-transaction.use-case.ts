@@ -1,6 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
-import { ACCOUNT_REPOSITORY, type AccountRepository } from '@modules/accounts';
+import {
+  ACCOUNT_REPOSITORY,
+  assertNotBeforeOpening,
+  type AccountRepository,
+} from '@modules/accounts';
 import {
   TRANSACTION_CATEGORY_REPOSITORY,
   type TransactionCategoryRepository,
@@ -65,6 +69,11 @@ export class CreateTransactionUseCase {
             input.ownerId,
           )
         : null;
+
+      assertNotBeforeOpening(
+        [account, destinationAccount],
+        [input.date, input.completedOn],
+      );
 
       const category = input.categoryUuid
         ? await findActiveCategory(

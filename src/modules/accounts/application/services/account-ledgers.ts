@@ -38,4 +38,21 @@ export class AccountLedgers implements AccountLedgerRegistry {
 
     return false;
   }
+
+  async earliestEntryDate(
+    ownerId: number,
+    accountId: number,
+  ): Promise<string | null> {
+    let earliest: string | null = null;
+
+    for (const ledger of this.ledgers) {
+      const date = await ledger.earliestEntryDate(ownerId, accountId);
+
+      if (date !== null && (earliest === null || date < earliest)) {
+        earliest = date;
+      }
+    }
+
+    return earliest;
+  }
 }

@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { AccountEntity } from '@modules/accounts';
+import { assertNotBeforeOpening, type AccountEntity } from '@modules/accounts';
 import { CreditCardInvoiceAssigner } from '@modules/credit-cards';
 import type { TransactionCategoryEntity } from '@modules/transaction-categories';
 import {
@@ -111,6 +111,10 @@ export class RecurrenceOccurrences {
     if (occurrence.kind === 'transaction') {
       const { transaction } = occurrence;
 
+      if (schedule.date !== undefined && schedule.date !== transaction.date) {
+        assertNotBeforeOpening([transaction.account], [schedule.date]);
+      }
+
       return occurrenceOfTransaction(
         await this.transactionRepository.update(
           transaction.withDetails({
@@ -178,6 +182,10 @@ export class RecurrenceOccurrences {
       recurrence,
       occurrenceFrom,
     )) {
+      if (changes.account && changes.account.id !== transaction.account.id) {
+        assertNotBeforeOpening([changes.account], [transaction.date]);
+      }
+
       await this.transactionRepository.update(
         transaction.withDetails({
           description: changes.description,

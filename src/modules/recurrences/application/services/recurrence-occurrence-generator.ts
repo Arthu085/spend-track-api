@@ -58,7 +58,12 @@ export class RecurrenceOccurrenceGenerator {
     const horizon = generationHorizon(today);
 
     for (const date of recurrence.datesToGenerate(horizon)) {
-      await this.createOccurrence(recurrence, date);
+      if (
+        !recurrence.account ||
+        date >= recurrence.account.openingBalanceDate
+      ) {
+        await this.createOccurrence(recurrence, date);
+      }
     }
 
     const through =

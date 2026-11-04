@@ -266,6 +266,31 @@ export class TypeOrmTransactionRepository
       .getExists();
   }
 
+  async findEarliestDateForAccount(
+    ownerId: number,
+    accountId: number,
+  ): Promise<string | null> {
+    const row = await this.repository
+      .createQueryBuilder('transaction')
+      .select(
+        'MIN(LEAST(transaction.date, COALESCE(transaction.completedOn, transaction.date)))::text',
+        'earliest',
+      )
+      .where('transaction.userId = :ownerId', { ownerId })
+      .andWhere('transaction.state IN (:...states)', { states: COUNTED_STATES })
+      .andWhere(
+        new Brackets((either) =>
+          either
+            .where('transaction.accountId = :accountId')
+            .orWhere('transaction.destinationAccountId = :accountId'),
+        ),
+        { accountId },
+      )
+      .getRawOne<{ earliest: string | null }>();
+
+    return row?.earliest ?? null;
+  }
+
   async sumByTypeAndState(
     ownerId: number,
     range: DateRange,

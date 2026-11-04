@@ -10,7 +10,8 @@ payloads are in Swagger; this document covers the rules behind them.
 ## Public API
 
 - `index.ts`: `AccountEntity`, `AccountType`, `ACCOUNT_REPOSITORY`/`AccountRepository`,
-  `findOwnedAccount`, `AccountNotFoundError`, `InactiveAccountError`, the ledger port
+  `findOwnedAccount`, `AccountNotFoundError`, `InactiveAccountError`, `assertNotBeforeOpening`,
+  `AccountOperationBeforeOpeningError`, the ledger port
   (`ACCOUNT_LEDGERS`, `AccountLedger`, `AccountLedgerRegistry`), and `withCurrentBalances`, consumed
   by `transactions`, `credit-cards`, `investments`, and `dashboard`.
 - `presentation.ts`: `accountTypeLabel`, used by the dashboard response.
@@ -33,14 +34,35 @@ everyone, including admins.
 - `accounts` cannot import `transactions`, which depends on it, so it owns a ledger port with a
   registry (`ACCOUNT_LEDGERS`, the same mechanism as the
   [revoker registries](users.md#sessions-and-tokens)). `transactions` registers its ledger in
-  `onModuleInit`; `balanceChanges(ownerId, accountIds)` adds up every registered ledger per account
-  and `hasEntries(ownerId, accountId)` tells whether any ledger references the account. With nothing
-  registered, changes are 0 and there are no entries. A module that adds operations on accounts
+  `onModuleInit`; `balanceChanges(ownerId, accountIds)` adds up every registered ledger per account,
+  `hasEntries(ownerId, accountId)` tells whether any ledger references the account, and
+  `earliestEntryDate(ownerId, accountId)` answers the earliest date of its planned or completed
+  operations. With nothing registered, changes are 0 and there are no entries. A module that adds operations on accounts
   registers its own ledger; nothing checks that at compile time, so cover it with a test.
   `credit-cards` registers one for invoice payments and `investments` one for contributions and
   withdrawals.
 - Amounts follow the shared money rules: integer cents in the domain, `numeric(14,2)` columns, and
   decimal strings over HTTP.
+
+## Opening balance
+
+`openingBalance` already includes everything that happened before `openingBalanceDate`, so an
+operation dated before it would count twice.
+
+- An operation cannot be dated before the opening date of any account it touches
+  (`assertNotBeforeOpening`, `AccountOperationBeforeOpeningError`, `422`): a transaction's `date` and
+  `completedOn` on both accounts of a transfer, an invoice payment's `paidOn`, an investment
+  movement's `date` and `completedOn`, and an account recurrence's `startDate`, occurrence edits, and
+  confirmations. An operation on the opening date itself is allowed. A date left out defaults to
+  today, so an account opening in the future rejects it too.
+- `openingBalanceDate` can move earlier at any time. It can move later only up to the earliest planned
+  or completed, non-deleted operation (`earliestEntryDate`); past that it answers
+  `AccountOpeningAfterOperationsError` (`422`). Canceled and deleted operations do not hold it back.
+- `openingBalance` can change at any time, with or without history. Current and projected balances
+  shift by exactly the difference and no operation is rewritten.
+- There is no data migration: an operation recorded before these rules, dated before its account's
+  opening date, keeps counting so no balance silently changes. Edits that leave its date and accounts
+  alone are accepted; changing them, or completing a planned one, applies the rule above.
 
 ## Default account
 

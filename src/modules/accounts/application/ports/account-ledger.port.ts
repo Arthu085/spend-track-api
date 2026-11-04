@@ -6,6 +6,7 @@ export interface AccountLedger {
     accountIds: readonly number[],
   ): Promise<Map<number, number>>;
   hasEntries(ownerId: number, accountId: number): Promise<boolean>;
+  earliestEntryDate(ownerId: number, accountId: number): Promise<string | null>;
 }
 
 export interface AccountLedgerRegistry extends AccountLedger {

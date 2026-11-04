@@ -77,6 +77,10 @@ export class RecurrenceOccurrencesController {
     )
     .errorResponse(HttpStatus.NOT_FOUND, 'Recurrence or occurrence not found.')
     .errorResponse(HttpStatus.CONFLICT, 'Occurrence is not planned.')
+    .errorResponse(
+      HttpStatus.UNPROCESSABLE_ENTITY,
+      'The date is before the opening balance date of the account.',
+    )
     .body(RecurrenceOccurrenceScheduleDto)
     .response(RecurrenceOccurrenceResponseDto)
     .build())
@@ -111,6 +115,10 @@ export class RecurrenceOccurrencesController {
     .errorResponse(
       HttpStatus.CONFLICT,
       'Occurrence is not planned, or account, card, or category is inactive.',
+    )
+    .errorResponse(
+      HttpStatus.UNPROCESSABLE_ENTITY,
+      'A date is before the opening balance date of the account.',
     )
     .body(RecurrenceOccurrenceScheduleDto)
     .response(RecurrenceOccurrenceResponseDto)

@@ -8,6 +8,7 @@ import {
   AccountEntity,
   type AccountDetails,
 } from '../../domain/entities/account.entity';
+import { AccountOpeningAfterOperationsError } from '../../domain/errors/account-opening-after-operations.error';
 import { InactiveAccountError } from '../../domain/errors/inactive-account.error';
 import {
   ACCOUNT_REPOSITORY,
@@ -49,6 +50,8 @@ export class UpdateAccountUseCase {
 
       assertRecordActive(account, new InactiveAccountError());
 
+      await this.assertOpeningDateMovable(account, input.openingBalanceDate);
+
       const isDefault = input.isDefault ?? account.isDefault;
 
       if (isDefault && !account.isDefault) {
@@ -69,5 +72,26 @@ export class UpdateAccountUseCase {
 
       return withCurrentBalance(this.accountLedger, updated);
     });
+  }
+
+  private async assertOpeningDateMovable(
+    account: AccountEntity,
+    openingBalanceDate: string | undefined,
+  ): Promise<void> {
+    if (
+      !openingBalanceDate ||
+      openingBalanceDate <= account.openingBalanceDate
+    ) {
+      return;
+    }
+
+    const earliest = await this.accountLedger.earliestEntryDate(
+      account.ownerId,
+      account.id,
+    );
+
+    if (earliest !== null && openingBalanceDate > earliest) {
+      throw new AccountOpeningAfterOperationsError();
+    }
   }
 }

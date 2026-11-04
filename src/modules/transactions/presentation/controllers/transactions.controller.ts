@@ -105,7 +105,7 @@ export class TransactionsController {
     .errorResponse(HttpStatus.CONFLICT, 'Account or category is inactive.')
     .errorResponse(
       HttpStatus.UNPROCESSABLE_ENTITY,
-      'Category kind does not match the type, or a transfer uses the same account twice.',
+      'A date is before the opening balance date of an account, category kind does not match the type, or a transfer uses the same account twice.',
     )
     .body(CreateTransactionDto)
     .response(TransactionResponseDto, HttpStatus.CREATED)
@@ -151,7 +151,7 @@ export class TransactionsController {
     )
     .errorResponse(
       HttpStatus.UNPROCESSABLE_ENTITY,
-      'Account or category does not match the transaction type, or a transfer uses the same account twice.',
+      'The date is before the opening balance date of an account, account or category does not match the transaction type, or a transfer uses the same account twice.',
     )
     .body(UpdateTransactionDto)
     .response(TransactionResponseDto)
@@ -190,6 +190,10 @@ export class TransactionsController {
     .errorResponse(
       HttpStatus.CONFLICT,
       'Invalid state transition, or account is inactive.',
+    )
+    .errorResponse(
+      HttpStatus.UNPROCESSABLE_ENTITY,
+      'A date is before the opening balance date of an account.',
     )
     .body(UpdateTransactionStateDto)
     .response(TransactionResponseDto)

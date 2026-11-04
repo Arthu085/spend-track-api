@@ -1,6 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
-import { ACCOUNT_REPOSITORY, type AccountRepository } from '@modules/accounts';
+import {
+  ACCOUNT_REPOSITORY,
+  assertNotBeforeOpening,
+  type AccountRepository,
+} from '@modules/accounts';
 import type { TransactionState } from '@modules/transactions';
 import {
   TRANSACTION_MANAGER,
@@ -65,6 +69,8 @@ export class CreateInvestmentMovementUseCase {
         input.accountUuid,
         input.ownerId,
       );
+
+      assertNotBeforeOpening([account], [input.date, input.completedOn]);
 
       const movement = InvestmentMovementEntity.createTransfer({
         uuid: randomUUID(),
