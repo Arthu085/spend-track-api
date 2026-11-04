@@ -18,6 +18,11 @@ describe('CreditCardsModule routes', () => {
       ['CreditCardsController', 'GET /credit-cards', false],
       ['CreditCardsController', 'GET /credit-cards/:uuid', false],
       ['CreditCardsController', 'GET /credit-cards/:uuid/invoices', false],
+      [
+        'CreditCardsController',
+        'GET /credit-cards/:uuid/pending-operations',
+        false,
+      ],
       ['CreditCardsController', 'POST /credit-cards', false],
       ['CreditCardsController', 'PATCH /credit-cards/:uuid', false],
       ['CreditCardsController', 'PUT /credit-cards/:uuid/status', false],

@@ -7,11 +7,15 @@ import {
   Translator,
   type Translate,
 } from '@shared/presentation/decorators';
-import { PaginationQueryDto } from '@shared/presentation/dto';
+import {
+  PaginationQueryDto,
+  PendingOperationsResponseDto,
+} from '@shared/presentation/dto';
 import type { AuthenticatedUser } from '@shared/presentation/http';
 import { ParseUuidParamPipe } from '@shared/presentation/pipes';
 import { CreateCreditCardUseCase } from '../../application/use-cases/create-credit-card.use-case';
 import { DeleteCreditCardUseCase } from '../../application/use-cases/delete-credit-card.use-case';
+import { GetCreditCardPendingOperationsUseCase } from '../../application/use-cases/get-credit-card-pending-operations.use-case';
 import { GetCreditCardUseCase } from '../../application/use-cases/get-credit-card.use-case';
 import { ListCreditCardInvoicesUseCase } from '../../application/use-cases/list-credit-card-invoices.use-case';
 import { ListCreditCardsUseCase } from '../../application/use-cases/list-credit-cards.use-case';
@@ -33,6 +37,7 @@ export class CreditCardsController {
     private readonly listCreditCards: ListCreditCardsUseCase,
     private readonly getCreditCard: GetCreditCardUseCase,
     private readonly listCreditCardInvoices: ListCreditCardInvoicesUseCase,
+    private readonly getCreditCardPendingOperations: GetCreditCardPendingOperationsUseCase,
     private readonly createCreditCard: CreateCreditCardUseCase,
     private readonly updateCreditCard: UpdateCreditCardUseCase,
     private readonly updateCreditCardStatus: UpdateCreditCardStatusUseCase,
@@ -117,6 +122,26 @@ export class CreditCardsController {
   }
 
   @(endpoint()
+    .get(':uuid/pending-operations')
+    .successMessage('success.ok')
+    .tags('credit-cards')
+    .summary('Summarize the planned operations of one of your credit cards')
+    .description(
+      `Count and total of its planned recurring charges, archived cards included. Purchases, installments, and invoices are recorded history and never count. ${OWNERSHIP_NOTE}`,
+    )
+    .errorResponse(HttpStatus.NOT_FOUND, 'Credit card not found.')
+    .response(PendingOperationsResponseDto)
+    .build())
+  async findPendingOperations(
+    @Param('uuid', ParseUuidParamPipe) uuid: string,
+    @CurrentActor() actor: AuthenticatedUser,
+  ): Promise<PendingOperationsResponseDto> {
+    return PendingOperationsResponseDto.fromSummary(
+      await this.getCreditCardPendingOperations.execute(uuid, actor.id),
+    );
+  }
+
+  @(endpoint()
     .post()
     .httpCode(HttpStatus.CREATED)
     .audit('CreditCard.create')
@@ -187,9 +212,13 @@ export class CreditCardsController {
     .tags('credit-cards')
     .summary('Archive or reactivate one of your credit cards')
     .description(
-      `Archiving (INACTIVE) keeps the card with its invoices and purchases, blocks new purchases, and clears its default flag; its invoices can still be paid. ${OWNERSHIP_NOTE}`,
+      `Archiving (INACTIVE) keeps the card with its invoices and purchases, blocks new purchases, and clears its default flag; its invoices can still be paid. A card with planned recurring charges also needs pendingOperations: KEEP leaves them planned and confirmable, CANCEL cancels them. ${OWNERSHIP_NOTE}`,
     )
     .errorResponse(HttpStatus.NOT_FOUND, 'Credit card not found.')
+    .errorResponse(
+      HttpStatus.CONFLICT,
+      'Credit card has planned operations and pendingOperations is missing.',
+    )
     .body(UpdateCreditCardStatusDto)
     .response(CreditCardResponseDto)
     .build())
@@ -203,6 +232,7 @@ export class CreditCardsController {
       uuid,
       ownerId: actor.id,
       status: dto.status,
+      pendingOperations: dto.pendingOperations,
     });
 
     return CreditCardResponseDto.fromDomain(card, translate);

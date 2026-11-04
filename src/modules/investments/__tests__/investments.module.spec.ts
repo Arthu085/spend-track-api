@@ -17,6 +17,11 @@ describe('InvestmentsModule routes', () => {
     ).toEqual([
       ['InvestmentsController', 'GET /investments', false],
       ['InvestmentsController', 'GET /investments/:uuid', false],
+      [
+        'InvestmentsController',
+        'GET /investments/:uuid/pending-operations',
+        false,
+      ],
       ['InvestmentsController', 'POST /investments', false],
       ['InvestmentsController', 'PATCH /investments/:uuid', false],
       ['InvestmentsController', 'PUT /investments/:uuid/status', false],

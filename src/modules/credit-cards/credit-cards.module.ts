@@ -2,8 +2,10 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AccountsModule } from '@modules/accounts/accounts.module';
 import { TransactionCategoriesModule } from '@modules/transaction-categories/transaction-categories.module';
+import { CREDIT_CARD_PENDING_OPERATIONS } from './application/ports/credit-card-pending-operations.port';
 import { CreditCardInvoiceAssigner } from './application/services/credit-card-invoice-assigner';
 import { CreditCardPaymentLedger } from './application/services/credit-card-payment-ledger';
+import { CreditCardPendingOperationSources } from './application/services/credit-card-pending-operation-sources';
 import { CreditCardStatements } from './application/services/credit-card-statements';
 import { CancelCreditCardPaymentUseCase } from './application/use-cases/cancel-credit-card-payment.use-case';
 import { CreateCreditCardPurchaseUseCase } from './application/use-cases/create-credit-card-purchase.use-case';
@@ -14,6 +16,7 @@ import { DeleteCreditCardRefundUseCase } from './application/use-cases/delete-cr
 import { DeleteCreditCardUseCase } from './application/use-cases/delete-credit-card.use-case';
 import { GetCreditCardInvoiceUseCase } from './application/use-cases/get-credit-card-invoice.use-case';
 import { GetCreditCardPurchaseUseCase } from './application/use-cases/get-credit-card-purchase.use-case';
+import { GetCreditCardPendingOperationsUseCase } from './application/use-cases/get-credit-card-pending-operations.use-case';
 import { GetCreditCardUseCase } from './application/use-cases/get-credit-card.use-case';
 import { ListCreditCardInvoicesUseCase } from './application/use-cases/list-credit-card-invoices.use-case';
 import { ListCreditCardPurchasesUseCase } from './application/use-cases/list-credit-card-purchases.use-case';
@@ -81,9 +84,14 @@ import { CreditCardsController } from './presentation/controllers/credit-cards.c
     CreditCardInvoiceAssigner,
     CreditCardStatements,
     CreditCardPaymentLedger,
+    {
+      provide: CREDIT_CARD_PENDING_OPERATIONS,
+      useClass: CreditCardPendingOperationSources,
+    },
     ListCreditCardsUseCase,
     GetCreditCardUseCase,
     ListCreditCardInvoicesUseCase,
+    GetCreditCardPendingOperationsUseCase,
     CreateCreditCardUseCase,
     UpdateCreditCardUseCase,
     UpdateCreditCardStatusUseCase,
@@ -102,6 +110,7 @@ import { CreditCardsController } from './presentation/controllers/credit-cards.c
   exports: [
     CREDIT_CARD_REPOSITORY,
     CREDIT_CARD_PURCHASE_REPOSITORY,
+    CREDIT_CARD_PENDING_OPERATIONS,
     CreditCardStatements,
     CreditCardInvoiceAssigner,
     CreateCreditCardPurchaseUseCase,

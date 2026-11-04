@@ -4,6 +4,7 @@ import { AccountsModule } from '@modules/accounts/accounts.module';
 import { CreditCardsModule } from '@modules/credit-cards/credit-cards.module';
 import { TransactionCategoriesModule } from '@modules/transaction-categories/transaction-categories.module';
 import { TransactionsModule } from '@modules/transactions/transactions.module';
+import { RecurrenceCardChargePendingOperations } from './application/services/recurrence-card-charge-pending-operations';
 import { RecurrenceOccurrenceGenerator } from './application/services/recurrence-occurrence-generator';
 import { RecurrenceOccurrences } from './application/services/recurrence-occurrences';
 import { RecurrenceReferences } from './application/services/recurrence-references';
@@ -49,6 +50,7 @@ import { RecurrencesController } from './presentation/controllers/recurrences.co
     RecurrenceReferences,
     RecurrenceOccurrences,
     RecurrenceOccurrenceGenerator,
+    RecurrenceCardChargePendingOperations,
     ListRecurrencesUseCase,
     GetRecurrenceUseCase,
     ListRecurrenceOccurrencesUseCase,

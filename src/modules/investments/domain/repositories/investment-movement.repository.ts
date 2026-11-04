@@ -39,6 +39,10 @@ export interface InvestmentMovementRepository {
     uuid: string,
     investmentId: number,
   ): Promise<InvestmentMovementEntity | null>;
+  findPlannedByInvestment(
+    ownerId: number,
+    investmentId: number,
+  ): Promise<InvestmentMovementEntity[]>;
   sumTotalsByInvestment(
     ownerId: number,
     investmentIds: readonly number[],

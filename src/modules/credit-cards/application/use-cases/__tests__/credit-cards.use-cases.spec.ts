@@ -5,6 +5,7 @@ import {
 } from '@modules/accounts';
 import type { TransactionManagerPort } from '@shared/application/ports';
 import { RecordStatus } from '@shared/domain/enums/record-status.enum';
+import { PendingOperationsDecision } from '@shared/domain/pending-operations';
 import { buildAccount } from '@test/support/builders/account.builder';
 import {
   buildCreditCard,
@@ -20,15 +21,18 @@ import { CreditCardInvoiceNotFoundError } from '../../../domain/errors/credit-ca
 import { CreditCardNotFoundError } from '../../../domain/errors/credit-card-not-found.error';
 import { CreditCardPaymentExceedsOutstandingError } from '../../../domain/errors/credit-card-payment-exceeds-outstanding.error';
 import { CreditCardPaymentNotFoundError } from '../../../domain/errors/credit-card-payment-not-found.error';
+import { CreditCardPendingOperationsDecisionRequiredError } from '../../../domain/errors/credit-card-pending-operations-decision-required.error';
 import { InactiveCreditCardError } from '../../../domain/errors/inactive-credit-card.error';
 import type { CreditCardInvoiceRepository } from '../../../domain/repositories/credit-card-invoice.repository';
 import type { CreditCardPaymentRepository } from '../../../domain/repositories/credit-card-payment.repository';
 import type { CreditCardRepository } from '../../../domain/repositories/credit-card.repository';
+import type { CreditCardPendingOperations } from '../../ports/credit-card-pending-operations.port';
 import type { CreditCardStatements } from '../../services/credit-card-statements';
 import { CancelCreditCardPaymentUseCase } from '../cancel-credit-card-payment.use-case';
 import { CreateCreditCardUseCase } from '../create-credit-card.use-case';
 import { DeleteCreditCardUseCase } from '../delete-credit-card.use-case';
 import { GetCreditCardInvoiceUseCase } from '../get-credit-card-invoice.use-case';
+import { GetCreditCardPendingOperationsUseCase } from '../get-credit-card-pending-operations.use-case';
 import { GetCreditCardUseCase } from '../get-credit-card.use-case';
 import { ListCreditCardInvoicesUseCase } from '../list-credit-card-invoices.use-case';
 import { ListCreditCardsUseCase } from '../list-credit-cards.use-case';
@@ -84,12 +88,20 @@ function setup(found: CreditCardEntity | null = buildCreditCard()) {
     ),
   };
 
+  const pendingOperations = {
+    summarize: jest.fn().mockResolvedValue({ count: 0, total: 0 }),
+    cancel: jest.fn().mockResolvedValue(undefined),
+  };
+
   return {
     calls,
     cards,
     statements,
+    pendingOperations,
     cardPort: mockOf<CreditCardRepository>(cards),
     statementsPort: mockOf<CreditCardStatements>(statements),
+    pendingOperationsPort:
+      mockOf<CreditCardPendingOperations>(pendingOperations),
   };
 }
 
@@ -193,7 +205,7 @@ describe('credit card use-cases', () => {
   });
 
   it('archives a card', async () => {
-    const { cardPort, statementsPort } = setup(
+    const { cardPort, statementsPort, pendingOperationsPort } = setup(
       buildCreditCard({ isDefault: true }),
     );
 
@@ -201,12 +213,124 @@ describe('credit card use-cases', () => {
       cardPort,
       transactionManager,
       statementsPort,
+      pendingOperationsPort,
     ).execute({ uuid: 'card-uuid', ownerId: 1, status: RecordStatus.INACTIVE });
 
     expect(result.card).toMatchObject({
       status: RecordStatus.INACTIVE,
       isDefault: false,
     });
+  });
+
+  describe('archiving a card with planned operations', () => {
+    const archive = (
+      context: ReturnType<typeof setup>,
+      pendingOperations?: PendingOperationsDecision,
+    ) =>
+      new UpdateCreditCardStatusUseCase(
+        context.cardPort,
+        transactionManager,
+        context.statementsPort,
+        context.pendingOperationsPort,
+      ).execute({
+        uuid: 'card-uuid',
+        ownerId: 1,
+        status: RecordStatus.INACTIVE,
+        pendingOperations,
+      });
+
+    it('asks for a decision and changes nothing without one', async () => {
+      const context = setup();
+
+      context.pendingOperations.summarize.mockResolvedValue({
+        count: 2,
+        total: 11180,
+      });
+
+      await expect(archive(context)).rejects.toThrow(
+        CreditCardPendingOperationsDecisionRequiredError,
+      );
+      expect(context.cards.update).not.toHaveBeenCalled();
+      expect(context.pendingOperations.cancel).not.toHaveBeenCalled();
+    });
+
+    it('keeps them when asked, without touching them', async () => {
+      const context = setup();
+
+      const result = await archive(context, PendingOperationsDecision.KEEP);
+
+      expect(result.card.status).toBe(RecordStatus.INACTIVE);
+      expect(context.pendingOperations.cancel).not.toHaveBeenCalled();
+    });
+
+    it('cancels them when asked', async () => {
+      const context = setup(buildCreditCard({ id: 4, ownerId: 1 }));
+
+      const result = await archive(context, PendingOperationsDecision.CANCEL);
+
+      expect(result.card.status).toBe(RecordStatus.INACTIVE);
+      expect(context.pendingOperations.cancel).toHaveBeenCalledWith(1, 4);
+    });
+
+    it('needs no decision and cancels nothing when the status does not move to archived', async () => {
+      const archived = setup(
+        buildCreditCard({ status: RecordStatus.INACTIVE }),
+      );
+
+      archived.pendingOperations.summarize.mockResolvedValue({
+        count: 2,
+        total: 11180,
+      });
+
+      await archive(archived);
+      await archive(archived, PendingOperationsDecision.CANCEL);
+
+      const reactivated = await new UpdateCreditCardStatusUseCase(
+        archived.cardPort,
+        transactionManager,
+        archived.statementsPort,
+        archived.pendingOperationsPort,
+      ).execute({
+        uuid: 'card-uuid',
+        ownerId: 1,
+        status: RecordStatus.ACTIVE,
+        pendingOperations: PendingOperationsDecision.CANCEL,
+      });
+
+      expect(reactivated.card.status).toBe(RecordStatus.ACTIVE);
+      expect(archived.pendingOperations.summarize).not.toHaveBeenCalled();
+      expect(archived.pendingOperations.cancel).not.toHaveBeenCalled();
+    });
+  });
+
+  it('summarizes the planned operations of an owned card, archived or not', async () => {
+    const context = setup(
+      buildCreditCard({ id: 4, status: RecordStatus.INACTIVE }),
+    );
+
+    context.pendingOperations.summarize.mockResolvedValue({
+      count: 2,
+      total: 11180,
+    });
+
+    await expect(
+      new GetCreditCardPendingOperationsUseCase(
+        context.cardPort,
+        context.pendingOperationsPort,
+      ).execute('card-uuid', 1),
+    ).resolves.toEqual({ count: 2, total: 11180 });
+    expect(context.pendingOperations.summarize).toHaveBeenCalledWith(1, 4);
+  });
+
+  it('answers not found for the planned operations of a foreign card', async () => {
+    const context = setup(null);
+
+    await expect(
+      new GetCreditCardPendingOperationsUseCase(
+        context.cardPort,
+        context.pendingOperationsPort,
+      ).execute('card-uuid', 1),
+    ).rejects.toThrow(CreditCardNotFoundError);
   });
 
   it('deletes a card without purchases and keeps one with history', async () => {

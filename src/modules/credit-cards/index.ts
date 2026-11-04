@@ -6,6 +6,11 @@ export type {
   CategorySpendingTotal,
   CreditCardPurchaseRepository,
 } from './domain/repositories/credit-card-purchase.repository';
+export { CREDIT_CARD_PENDING_OPERATIONS } from './application/ports/credit-card-pending-operations.port';
+export type {
+  CreditCardPendingOperations,
+  CreditCardPendingOperationsRegistry,
+} from './application/ports/credit-card-pending-operations.port';
 export { CreditCardStatements } from './application/services/credit-card-statements';
 export { InactiveCreditCardError } from './domain/errors/inactive-credit-card.error';
 export { CREDIT_CARD_REPOSITORY } from './domain/repositories/credit-card.repository';

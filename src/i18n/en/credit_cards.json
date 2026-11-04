@@ -3,6 +3,7 @@
     "card_not_found": "Credit card not found",
     "card_inactive": "Credit card is archived",
     "card_has_history": "This credit card has purchases or invoice payments and cannot be deleted; archive it instead",
+    "pending_operations_decision_required": "This credit card has planned recurring charges; choose whether to keep or cancel them before archiving it",
     "invoice_not_found": "Invoice not found",
     "purchase_not_found": "Purchase not found",
     "purchase_not_deletable": "This purchase is already billed on a closed invoice or has refunds; refund it instead",

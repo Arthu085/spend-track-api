@@ -115,7 +115,7 @@ export class ConfirmRecurrenceOccurrenceUseCase {
     const amount = input.amount ?? charge.amount;
     const date = input.date ?? charge.date;
 
-    const purchase = await this.createPurchase.execute({
+    const purchase = await this.createPurchase.recordPlannedCharge({
       ownerId: recurrence.ownerId,
       cardUuid: recurrence.creditCard.uuid,
       categoryUuid: charge.category.uuid,

@@ -9,7 +9,40 @@ import type { CreditCardInvoiceRepository } from '../../../domain/repositories/c
 import type { CreditCardPaymentRepository } from '../../../domain/repositories/credit-card-payment.repository';
 import { CreditCardInvoiceAssigner } from '../credit-card-invoice-assigner';
 import { CreditCardPaymentLedger } from '../credit-card-payment-ledger';
+import { CreditCardPendingOperationSources } from '../credit-card-pending-operation-sources';
 import { CreditCardStatements } from '../credit-card-statements';
+
+describe('CreditCardPendingOperationSources', () => {
+  const source = (count: number, total: number) => ({
+    summarize: jest.fn().mockResolvedValue({ count, total }),
+    cancel: jest.fn().mockResolvedValue(undefined),
+  });
+
+  it('reports nothing pending without a source', async () => {
+    await expect(
+      new CreditCardPendingOperationSources().summarize(1, 4),
+    ).resolves.toEqual({ count: 0, total: 0 });
+  });
+
+  it('adds up every source and cancels on all of them', async () => {
+    const sources = new CreditCardPendingOperationSources();
+    const first = source(2, 11180);
+    const second = source(1, 2190);
+
+    sources.register(first);
+    sources.register(second);
+
+    await expect(sources.summarize(1, 4)).resolves.toEqual({
+      count: 3,
+      total: 13370,
+    });
+
+    await sources.cancel(1, 4);
+
+    expect(first.cancel).toHaveBeenCalledWith(1, 4);
+    expect(second.cancel).toHaveBeenCalledWith(1, 4);
+  });
+});
 
 describe('CreditCardInvoiceAssigner', () => {
   const card = buildCreditCard({ id: 4, closingDay: 5, dueDay: 12 });

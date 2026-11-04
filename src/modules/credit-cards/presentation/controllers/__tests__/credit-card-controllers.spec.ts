@@ -1,6 +1,7 @@
 import { PaginatedResult } from '@shared/application/dto';
 import { PaginationQueryDto } from '@shared/presentation/dto';
 import { RecordStatus } from '@shared/domain/enums/record-status.enum';
+import { PendingOperationsDecision } from '@shared/domain/pending-operations';
 import type { Translate } from '@shared/presentation/decorators';
 import type { AuthenticatedUser } from '@shared/presentation/http';
 import {
@@ -21,6 +22,7 @@ import type { DeleteCreditCardRefundUseCase } from '../../../application/use-cas
 import type { DeleteCreditCardUseCase } from '../../../application/use-cases/delete-credit-card.use-case';
 import type { GetCreditCardInvoiceUseCase } from '../../../application/use-cases/get-credit-card-invoice.use-case';
 import type { GetCreditCardPurchaseUseCase } from '../../../application/use-cases/get-credit-card-purchase.use-case';
+import type { GetCreditCardPendingOperationsUseCase } from '../../../application/use-cases/get-credit-card-pending-operations.use-case';
 import type { GetCreditCardUseCase } from '../../../application/use-cases/get-credit-card.use-case';
 import type { ListCreditCardInvoicesUseCase } from '../../../application/use-cases/list-credit-card-invoices.use-case';
 import type { ListCreditCardPurchasesUseCase } from '../../../application/use-cases/list-credit-card-purchases.use-case';
@@ -63,10 +65,17 @@ describe('CreditCardsController', () => {
 
   const deleteExecute = jest.fn().mockResolvedValue(undefined);
 
+  const pendingOperationsExecute = jest
+    .fn()
+    .mockResolvedValue({ count: 2, total: 11180 });
+
   const controller = new CreditCardsController(
     mockOf<ListCreditCardsUseCase>({ execute: listExecute }),
     mockOf<GetCreditCardUseCase>({ execute }),
     mockOf<ListCreditCardInvoicesUseCase>({ execute: invoicesExecute }),
+    mockOf<GetCreditCardPendingOperationsUseCase>({
+      execute: pendingOperationsExecute,
+    }),
     mockOf<CreateCreditCardUseCase>({ execute }),
     mockOf<UpdateCreditCardUseCase>({ execute }),
     mockOf<UpdateCreditCardStatusUseCase>({ execute }),
@@ -149,6 +158,32 @@ describe('CreditCardsController', () => {
     expect(execute).toHaveBeenLastCalledWith(
       expect.objectContaining({ creditLimit: 100 }),
     );
+  });
+
+  it('serializes the planned operations with an exact total', async () => {
+    await expect(
+      controller.findPendingOperations('card-uuid', actor),
+    ).resolves.toEqual({ count: 2, total: '111.80' });
+    expect(pendingOperationsExecute).toHaveBeenCalledWith('card-uuid', 41);
+  });
+
+  it('forwards the decision about planned operations', async () => {
+    await controller.updateStatus(
+      'card-uuid',
+      {
+        status: RecordStatus.INACTIVE,
+        pendingOperations: PendingOperationsDecision.CANCEL,
+      },
+      actor,
+      translate,
+    );
+
+    expect(execute).toHaveBeenLastCalledWith({
+      uuid: 'card-uuid',
+      ownerId: 41,
+      status: RecordStatus.INACTIVE,
+      pendingOperations: PendingOperationsDecision.CANCEL,
+    });
   });
 
   it('changes the status and deletes', async () => {

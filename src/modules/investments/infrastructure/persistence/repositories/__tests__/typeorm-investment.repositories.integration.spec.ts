@@ -298,6 +298,72 @@ describe('investment repositories (integration)', () => {
     expect(page.items[1].account?.uuid).toBe(bank.uuid);
   });
 
+  it('finds only the planned movements of the investment, oldest first', async () => {
+    const ownerId = await insertUser();
+    const reserve = await createInvestment(ownerId, 'Reserve');
+    const other = await createInvestment(ownerId, 'Other');
+    const bank = await createAccount(ownerId);
+
+    const later = await transfer(
+      reserve,
+      bank,
+      InvestmentMovementType.WITHDRAWAL,
+      300,
+      '2026-12-05',
+      TransactionState.PLANNED,
+    );
+
+    const earlier = await transfer(
+      reserve,
+      bank,
+      InvestmentMovementType.CONTRIBUTION,
+      200,
+      '2026-11-05',
+      TransactionState.PLANNED,
+    );
+
+    await transfer(
+      reserve,
+      bank,
+      InvestmentMovementType.CONTRIBUTION,
+      100,
+      '2026-10-05',
+      TransactionState.COMPLETED,
+    );
+
+    await movements.update(
+      (
+        await transfer(
+          reserve,
+          bank,
+          InvestmentMovementType.CONTRIBUTION,
+          400,
+          '2026-10-06',
+          TransactionState.PLANNED,
+        )
+      ).cancel(),
+    );
+
+    await transfer(
+      other,
+      bank,
+      InvestmentMovementType.CONTRIBUTION,
+      500,
+      '2026-10-07',
+      TransactionState.PLANNED,
+    );
+
+    const planned = await movements.findPlannedByInvestment(
+      ownerId,
+      reserve.id,
+    );
+
+    expect(planned.map(({ uuid }) => uuid)).toEqual([earlier.uuid, later.uuid]);
+    await expect(
+      movements.findPlannedByInvestment(await insertUser(), reserve.id),
+    ).resolves.toEqual([]);
+  });
+
   it('finds a movement only inside its investment', async () => {
     const ownerId = await insertUser();
     const reserve = await createInvestment(ownerId, 'Reserve');

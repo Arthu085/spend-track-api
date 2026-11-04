@@ -87,6 +87,24 @@ export class TypeOrmInvestmentMovementRepository
     return row ? InvestmentMovementMapper.toDomain(row) : null;
   }
 
+  async findPlannedByInvestment(
+    ownerId: number,
+    investmentId: number,
+  ): Promise<InvestmentMovementEntity[]> {
+    const rows = await this.movementQuery()
+      .where('movement.userId = :ownerId', { ownerId })
+      .andWhere('movement.investmentId = :investmentId', { investmentId })
+      .andWhere('movement.state = :planned', {
+        planned: TransactionState.PLANNED,
+      })
+      .andWhere('movement.deletedAt IS NULL')
+      .orderBy('movement.date', 'ASC')
+      .addOrderBy('movement.id', 'ASC')
+      .getMany();
+
+    return rows.map((row) => InvestmentMovementMapper.toDomain(row));
+  }
+
   async sumTotalsByInvestment(
     ownerId: number,
     investmentIds: readonly number[],

@@ -22,6 +22,7 @@ import { CreditCardPurchaseNotFoundError } from '../../../domain/errors/credit-c
 import { CreditCardRefundExceedsPurchaseError } from '../../../domain/errors/credit-card-refund-exceeds-purchase.error';
 import { CreditCardRefundNotDeletableError } from '../../../domain/errors/credit-card-refund-not-deletable.error';
 import { CreditCardRefundNotFoundError } from '../../../domain/errors/credit-card-refund-not-found.error';
+import { CreditCardNotFoundError } from '../../../domain/errors/credit-card-not-found.error';
 import { InactiveCreditCardError } from '../../../domain/errors/inactive-credit-card.error';
 import type { CreditCardPurchaseRepository } from '../../../domain/repositories/credit-card-purchase.repository';
 import type { CreditCardRefundRepository } from '../../../domain/repositories/credit-card-refund.repository';
@@ -179,6 +180,21 @@ describe('credit card purchase use-cases', () => {
       [3, 33333, '2026-12-31', 'invoice-13'],
     ]);
     expect(purchase.notes).toBeNull();
+  });
+
+  it('records a planned charge on an archived card, but not on a missing one', async () => {
+    const context = setup();
+    const useCase = createUseCase(context);
+
+    const purchase = await useCase.recordPlannedCharge({
+      ...purchaseInput,
+      cardUuid: 'archived',
+    });
+
+    expect(purchase.card.status).toBe(RecordStatus.INACTIVE);
+    await expect(
+      useCase.recordPlannedCharge({ ...purchaseInput, cardUuid: 'missing' }),
+    ).rejects.toThrow(CreditCardNotFoundError);
   });
 
   it('refuses an archived card, a non-expense or inactive category, and too many installments', async () => {
