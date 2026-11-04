@@ -479,6 +479,12 @@ describe('Account opening balance rules (e2e)', () => {
 
         expect(occurrences.length).toBeGreaterThan(0);
         expect(occurrences[0].occurrenceDate).toBe(opening);
+
+        const details = dataOf<{ nextOccurrenceDate: string }>(
+          await wallet.agent.get(`/api/recurrences/${recurrence}`).expect(200),
+        );
+
+        expect(details.nextOccurrenceDate).toBe(opening);
       });
     });
   });

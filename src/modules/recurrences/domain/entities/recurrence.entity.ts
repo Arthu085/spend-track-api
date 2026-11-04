@@ -154,10 +154,14 @@ export class RecurrenceEntity extends BaseEntity {
       return null;
     }
 
+    const opening = this.account?.openingBalanceDate ?? today;
+
     const next = firstScheduleDateFrom(
       this.startDate,
       this.frequency,
-      today > this.startDate ? today : this.startDate,
+      [today, this.startDate, opening].reduce((latest, date) =>
+        date > latest ? date : latest,
+      ),
     );
 
     return this.endDate !== null && next > this.endDate ? null : next;

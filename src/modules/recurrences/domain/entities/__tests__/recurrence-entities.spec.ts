@@ -124,6 +124,14 @@ describe('RecurrenceEntity', () => {
     );
   });
 
+  it('gives the next date generation can create when the account opens later', () => {
+    const recurrence = buildRecurrence({
+      account: buildAccount({ openingBalanceDate: '2027-02-01' }),
+    });
+
+    expect(recurrence.nextOccurrenceDate('2026-11-16')).toBe('2027-02-15');
+  });
+
   it('pauses from today and resumes without the skipped dates', () => {
     const paused = buildRecurrence({ generatedThrough: '2027-11-30' }).pause(
       '2026-11-03',

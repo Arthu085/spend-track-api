@@ -84,7 +84,7 @@ export class RecurrenceResponseDto {
     nullable: true,
     example: '2026-12-15',
     description:
-      'Next scheduled date from today on; null when the recurrence is not active or has no further date.',
+      "Next scheduled date from today on, never before the account's opening date; null when the recurrence is not active or has no further date.",
   })
   nextOccurrenceDate!: string | null;
 
