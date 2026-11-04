@@ -86,6 +86,11 @@ export interface TransactionRepository {
     accountIds: readonly number[],
     filter: BalanceChangeFilter,
   ): Promise<Map<number, number>>;
+  findRecurrenceDatesFrom(
+    ownerId: number,
+    recurrenceId: number,
+    from: string,
+  ): Promise<string[]>;
   existsForAccount(ownerId: number, accountId: number): Promise<boolean>;
   findEarliestDateForAccount(
     ownerId: number,

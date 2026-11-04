@@ -89,6 +89,7 @@ function setup(stored: RecurrenceEntity | null = buildRecurrence()) {
 
   const charges = {
     findPlannedByRecurrence: jest.fn().mockResolvedValue([]),
+    findOccurrenceDatesFrom: jest.fn().mockResolvedValue([]),
     findByUuidForRecurrence: jest.fn().mockResolvedValue(null),
     create: jest.fn((charge: RecurrenceCardChargeEntity) =>
       Promise.resolve(charge),
@@ -101,6 +102,7 @@ function setup(stored: RecurrenceEntity | null = buildRecurrence()) {
 
   const transactions = {
     findPlannedByRecurrence: jest.fn().mockResolvedValue([]),
+    findRecurrenceDatesFrom: jest.fn().mockResolvedValue([]),
     findByUuidForOwnerForUpdate: jest.fn().mockResolvedValue(null),
     create: jest.fn((transaction: TransactionEntity) =>
       Promise.resolve(transaction),

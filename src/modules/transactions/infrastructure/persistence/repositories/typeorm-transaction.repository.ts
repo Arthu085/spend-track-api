@@ -190,6 +190,22 @@ export class TypeOrmTransactionRepository
     return rows.map((row) => TransactionMapper.toDomain(row));
   }
 
+  async findRecurrenceDatesFrom(
+    ownerId: number,
+    recurrenceId: number,
+    from: string,
+  ): Promise<string[]> {
+    const rows = await this.repository
+      .createQueryBuilder('transaction')
+      .select('CAST(transaction.recurrenceDate AS text)', 'date')
+      .where('transaction.userId = :ownerId', { ownerId })
+      .andWhere('transaction.recurrenceId = :recurrenceId', { recurrenceId })
+      .andWhere('transaction.recurrenceDate >= :from', { from })
+      .getRawMany<{ date: string }>();
+
+    return rows.map(({ date }) => date);
+  }
+
   async findPlannedUntil(
     ownerId: number,
     until: string,

@@ -178,4 +178,48 @@ describe('Financial consistency (e2e)', () => {
       ).toEqual(cardDates);
     });
   });
+
+  describe('pausing and resuming a recurrence', () => {
+    it.each([
+      ['an account', (ledger: Ledger) => ({ accountUuid: ledger.bank })],
+      ['a card', (ledger: Ledger) => ({ creditCardUuid: ledger.card })],
+    ])(
+      'keeps canceled and confirmed future occurrences of %s recurrence',
+      async (_target, targetOf) => {
+        const ledger = await newLedger();
+        const recurrence = await recurrenceOn(ledger, targetOf(ledger));
+        const occurrences = await occurrencesOf(ledger, recurrence);
+        const path = `/api/recurrences/${recurrence}/occurrences`;
+
+        await ledger.agent
+          .put(`${path}/${occurrences[2].uuid}/cancellation`)
+          .send({})
+          .expect(200);
+
+        await ledger.agent
+          .put(`${path}/${occurrences[3].uuid}/confirmation`)
+          .send({ date: occurrences[3].occurrenceDate })
+          .expect(200);
+
+        await ledger.agent
+          .put(`/api/recurrences/${recurrence}/state`)
+          .send({ state: 'PAUSED' })
+          .expect(200);
+
+        await ledger.agent
+          .put(`/api/recurrences/${recurrence}/state`)
+          .send({ state: 'ACTIVE' })
+          .expect(200);
+
+        const resumed = await occurrencesOf(ledger, recurrence);
+
+        expect(resumed.map(({ occurrenceDate }) => occurrenceDate)).toEqual(
+          occurrences.map(({ occurrenceDate }) => occurrenceDate),
+        );
+        expect(resumed[2].state).toBe('CANCELED');
+        expect(resumed[3].state).toBe('COMPLETED');
+        expect(resumed[0].state).toBe('PLANNED');
+      },
+    );
+  });
 });

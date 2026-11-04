@@ -53,7 +53,9 @@ and filtered as `ENDED` whatever its stored state. An ended recurrence rejects e
 - `PUT /recurrences/:uuid/state` pauses (`ACTIVE → PAUSED`) or resumes (`PAUSED → ACTIVE`); anything
   else is `RecurrenceStateTransitionError` (`409`). Pausing removes the planned occurrences dated
   today or later; resuming generates again from today, so dates that fell during the pause are
-  skipped.
+  skipped. Completed and canceled occurrences stay as they are and are not generated again; a planned
+  occurrence that was deleted before the pause can no longer be told apart from one the pause removed,
+  so it comes back.
 - `PUT /recurrences/:uuid/end` stops the recurrence before a cut date and only ever shortens it:
   - `from`: no occurrence on or after that date (`endDate = from - 1`);
   - `fromInvoiceMonth` (card recurrences only, first day of a month; otherwise
@@ -92,11 +94,12 @@ and filtered as `ENDED` whatever its stored state. An ended recurrence rejects e
   `endDate`, only while the recurrence is `ACTIVE` and its account or card is active and not deleted.
   Dates before the account's opening date are skipped, never rejected, so generation does not fail
   on a recurrence older than that date.
-- `generated_through` records the last date already generated and never moves back. Generation only
-  creates dates after it, so an occurrence that was canceled, deleted, or moved is never recreated.
+- `generated_through` records the last date already generated, and only pausing moves it back.
+  Generation only creates dates after it, and skips dates that already have a live occurrence, so an
+  occurrence that was canceled, confirmed, or moved is never recreated.
 - Partial unique indexes on `(recurrence_id, recurrence_date)` in `transactions` and
   `(recurrence_id, occurrence_date)` in `recurrence_card_charges` (live rows only) reject a duplicate
-  occurrence even if the cursor were wrong.
+  occurrence even if generation were wrong.
 - Creating, resuming, or ending a recurrence generates immediately. `RecurrenceGenerationScheduler`
   runs daily at 01:00 `America/Sao_Paulo` and extends up to 500 due recurrences per run, each in its
   own transaction; the rest are picked up on the next run.

@@ -57,13 +57,8 @@ export class RecurrenceOccurrenceGenerator {
 
     const horizon = generationHorizon(today);
 
-    for (const date of recurrence.datesToGenerate(horizon)) {
-      if (
-        !recurrence.account ||
-        date >= recurrence.account.openingBalanceDate
-      ) {
-        await this.createOccurrence(recurrence, date);
-      }
+    for (const date of await this.missingDates(recurrence, horizon)) {
+      await this.createOccurrence(recurrence, date);
     }
 
     const through =
@@ -72,6 +67,36 @@ export class RecurrenceOccurrenceGenerator {
         : horizon;
 
     return this.recurrenceRepository.update(recurrence.generatedUntil(through));
+  }
+
+  private async missingDates(
+    recurrence: RecurrenceEntity,
+    horizon: string,
+  ): Promise<string[]> {
+    const opening = recurrence.account?.openingBalanceDate;
+
+    const dates = recurrence
+      .datesToGenerate(horizon)
+      .filter((date) => opening === undefined || date >= opening);
+
+    if (dates.length === 0) {
+      return [];
+    }
+
+    const existing = new Set(
+      recurrence.isCardRecurrence
+        ? await this.chargeRepository.findOccurrenceDatesFrom(
+            recurrence.id,
+            dates[0],
+          )
+        : await this.transactionRepository.findRecurrenceDatesFrom(
+            recurrence.ownerId,
+            recurrence.id,
+            dates[0],
+          ),
+    );
+
+    return dates.filter((date) => !existing.has(date));
   }
 
   private targetAvailable(recurrence: RecurrenceEntity): boolean {

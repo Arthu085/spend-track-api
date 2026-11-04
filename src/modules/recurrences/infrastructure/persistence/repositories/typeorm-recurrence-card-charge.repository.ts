@@ -104,6 +104,20 @@ export class TypeOrmRecurrenceCardChargeRepository
     return rows.map((row) => RecurrenceCardChargeMapper.toDomain(row));
   }
 
+  async findOccurrenceDatesFrom(
+    recurrenceId: number,
+    from: string,
+  ): Promise<string[]> {
+    const rows = await this.repository
+      .createQueryBuilder('charge')
+      .select('CAST(charge.occurrenceDate AS text)', 'date')
+      .where('charge.recurrenceId = :recurrenceId', { recurrenceId })
+      .andWhere('charge.occurrenceDate >= :from', { from })
+      .getRawMany<{ date: string }>();
+
+    return rows.map(({ date }) => date);
+  }
+
   async sumPlannedByCategory(
     ownerId: number,
     query: PlannedCardChargeQuery,
