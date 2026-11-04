@@ -437,13 +437,20 @@ beforehand. Restarting or scaling the API does not help.
 
 ## CI
 
-`.github/workflows/ci.yml` runs on pull requests to `main` and pushes to `main`, in two parallel
+`.github/workflows/ci.yml` runs on pull requests to `main` and pushes to `main`, in three parallel
 jobs:
 
 - **Lint, typecheck, test and build** runs the repository gate. Branch protection can require this
   job by name, so renaming it blocks merges until the rule is updated.
 - **Production image smoke test** builds the `prod` target with Buildx (cached, nothing pushed) and
   runs `scripts/smoke-test-prod-image.sh`.
+- **Client API integration tests** checks out
+  [spend-track-client](https://github.com/Arthu085/spend-track-client) and runs its
+  [API integration suite](https://github.com/Arthu085/spend-track-client#api-integration-tests) against
+  this code through `test/frontend/server.ts`, so a change that breaks the client's contract fails
+  here. It uses the client branch with the same name when one exists, and `main` otherwise, so a
+  coordinated contract change uses one branch name in both repositories. The client's CI runs the same
+  suite against this repository.
 
 The smoke test uses disposable PostgreSQL and Mailpit containers and generated secrets. It checks
 that the image runs as non-root and ships compiled code, migrations, seeds, and translations without

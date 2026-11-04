@@ -12,9 +12,10 @@ presentation layers; cross-cutting wiring lives in `src/core/`. The architecture
 ## Related repository
 
 The related web client project is [spend-track-client](https://github.com/Arthu085/spend-track-client).
-The frontend consumes the authentication, users, roles, and abilities endpoints. Its optional
+The frontend consumes the authentication, users, roles, and abilities endpoints. Its
 [API integration suite](https://github.com/Arthu085/spend-track-client#api-integration-tests) validates
-real requests and response schemas against this checkout using disposable PostgreSQL. The
+real requests and response schemas against this checkout using disposable PostgreSQL, and runs in the
+CI of both repositories. The
 repositories retain separate setup and validation, and this API can be developed, run, and validated
 on its own.
 

@@ -19,7 +19,7 @@ async function start(): Promise<void> {
 
   process.env.CORS_ORIGINS = 'http://localhost:5173';
   process.env.APP_WEB_URL = 'http://localhost:5173';
-  process.env.JWT_ACCESS_TTL = '2s';
+  process.env.JWT_ACCESS_TTL = '5s';
   process.env.COOKIE_SECURE = 'false';
   process.env.COOKIE_SAMESITE = 'lax';
   process.env.COOKIE_DOMAIN = '';
