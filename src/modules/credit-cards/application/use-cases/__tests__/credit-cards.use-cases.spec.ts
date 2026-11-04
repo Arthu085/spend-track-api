@@ -51,7 +51,7 @@ function setup(found: CreditCardEntity | null = buildCreditCard()) {
       .fn()
       .mockResolvedValue({ items: [buildCreditCard()], total: 3 }),
     findByUuidForOwner: jest.fn().mockResolvedValue(found),
-    hasPurchases: jest.fn().mockResolvedValue(false),
+    hasHistory: jest.fn().mockResolvedValue(false),
     lockOwnerCards: jest.fn(() => {
       calls.push('lock-cards');
       return Promise.resolve();
@@ -216,7 +216,7 @@ describe('credit card use-cases', () => {
     await useCase.execute({ uuid: 'card-uuid', ownerId: 1 });
     expect(cards.softDelete).toHaveBeenCalled();
 
-    cards.hasPurchases.mockResolvedValue(true);
+    cards.hasHistory.mockResolvedValue(true);
     await expect(
       useCase.execute({ uuid: 'card-uuid', ownerId: 1 }),
     ).rejects.toThrow(CreditCardHasHistoryError);

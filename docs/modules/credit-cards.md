@@ -46,8 +46,11 @@ owner-scoped lookups of their modules, so a foreign one answers that module's `4
   rejects new purchases, `GET /credit-cards/:uuid`, and `PATCH` (`InactiveCreditCardError`, `409`),
   like inactive accounts, but keeps its purchases and invoices, which stay readable and payable. `GET /credit-cards` defaults to `ACTIVE`, puts the default card
   first, then orders by name.
-- `DELETE` soft-deletes a card only while it has no purchase; otherwise `CreditCardHasHistoryError`
-  (`409`) and the user archives it instead.
+- `DELETE` soft-deletes a card only while it has no purchase and no invoice payment, canceled or not;
+  otherwise `CreditCardHasHistoryError` (`409`) and the user archives it instead. A payment can
+  outlive its purchase as credit, which a deleted card could no longer use. Planned recurring charges
+  do not block deletion: they stop counting ([`dashboard.md`](dashboard.md#figures)), and the
+  recurrence generates nothing more.
 
 ## Invoice cycle
 

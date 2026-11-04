@@ -12,6 +12,7 @@ import type {
   CreditCardRepository,
   PaginatedCreditCards,
 } from '../../../domain/repositories/credit-card.repository';
+import { CreditCardPaymentOrmEntity } from '../entities/credit-card-payment.orm-entity';
 import { CreditCardPurchaseOrmEntity } from '../entities/credit-card-purchase.orm-entity';
 import { CreditCardOrmEntity } from '../entities/credit-card.orm-entity';
 import { CreditCardMapper } from '../mappers/credit-card.mapper';
@@ -64,10 +65,17 @@ export class TypeOrmCreditCardRepository
     return row ? CreditCardMapper.toDomain(row) : null;
   }
 
-  async hasPurchases(ownerId: number, cardId: number): Promise<boolean> {
-    return this.repository.manager
-      .getRepository(CreditCardPurchaseOrmEntity)
-      .exists({ where: { userId: ownerId, creditCardId: cardId } });
+  async hasHistory(ownerId: number, cardId: number): Promise<boolean> {
+    const { manager } = this.repository;
+
+    return (
+      (await manager
+        .getRepository(CreditCardPurchaseOrmEntity)
+        .exists({ where: { userId: ownerId, creditCardId: cardId } })) ||
+      (await manager.getRepository(CreditCardPaymentOrmEntity).exists({
+        where: { userId: ownerId, invoice: { creditCardId: cardId } },
+      }))
+    );
   }
 
   async lockOwnerCards(ownerId: number): Promise<void> {

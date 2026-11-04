@@ -5,6 +5,7 @@ import { DataSource } from 'typeorm';
 import { GenerateDueRecurrenceOccurrencesUseCase } from '@modules/recurrences/application/use-cases/generate-due-recurrence-occurrences.use-case';
 import {
   addDaysToDate,
+  dayOfMonth,
   financeToday,
   monthOf,
   shiftMonth,
@@ -41,6 +42,11 @@ interface Occurrence {
 interface Purchase {
   uuid: string;
   installments: Array<{ invoice: { uuid: string; referenceMonth: string } }>;
+}
+
+interface Invoice {
+  outstanding: string;
+  creditCarried: string;
 }
 
 interface Ledger {
@@ -311,6 +317,29 @@ describe('Financial consistency (e2e)', () => {
       expect(after.balances.available).toBe(after.balances.projected);
     });
 
+    it('keeps a card holding an invoice payment, so its credit is not stranded', async () => {
+      const ledger = await newLedger();
+      const purchase = await buy(ledger, '100.00', '2030-10-29');
+      const invoice = purchase.installments[0].invoice.uuid;
+
+      await ledger.agent
+        .post(`/api/credit-card-invoices/${invoice}/payments`)
+        .send({ accountUuid: ledger.bank, amount: '100.00' })
+        .expect(201);
+
+      await ledger.agent
+        .delete(`/api/credit-card-purchases/${purchase.uuid}`)
+        .expect(200);
+
+      await ledger.agent.delete(`/api/credit-cards/${ledger.card}`).expect(409);
+
+      const card = dataOf<{ creditBalance: string }>(
+        await ledger.agent.get(`/api/credit-cards/${ledger.card}`).expect(200),
+      );
+
+      expect(card.creditBalance).toBe('100.00');
+    });
+
     it('drops the empty invoices of a deleted card from the dashboard', async () => {
       const ledger = await newLedger();
       const purchase = await buy(ledger, '100.00', '2030-10-29');
@@ -328,6 +357,113 @@ describe('Financial consistency (e2e)', () => {
       await ledger.agent.delete(`/api/credit-cards/${ledger.card}`).expect(200);
 
       expect((await dashboardOf(ledger, ref)).creditCards.invoices).toEqual([]);
+    });
+  });
+
+  describe('refunds and credit carried between invoices', () => {
+    it('keeps category totals reconciled in both perspectives when a refund exceeds the month spending', async () => {
+      const ledger = await newLedger();
+      const purchase = await buy(ledger, '300.00', '2030-10-29');
+
+      await ledger.agent
+        .post(`/api/credit-card-purchases/${purchase.uuid}/refunds`)
+        .send({ amount: '120.00', date: '2030-12-10' })
+        .expect(201);
+
+      for (const [perspective, ref] of [
+        ['PURCHASE_DATE', { year: 2030, month: 12 }],
+        ['INVOICE_MONTH', { year: 2031, month: 1 }],
+      ] as const) {
+        const summary = await dashboardOf(ledger, ref, perspective);
+
+        expect(summary.expenses.completed).toBe('-120.00');
+        expect(
+          summary.expensesByCategory.reduce(
+            (total, entry) => total + cents(entry.total),
+            0,
+          ),
+        ).toBe(cents(summary.expenses.total));
+      }
+    });
+
+    it('moves the carried credit back to the invoice when a payment is canceled', async () => {
+      const ledger = await newLedger();
+      const first = await buy(ledger, '100.00', '2030-10-29');
+      const second = await buy(ledger, '40.00', '2030-11-20');
+      const firstInvoice = first.installments[0].invoice.uuid;
+      const secondInvoice = second.installments[0].invoice.uuid;
+
+      const payment = uuidOf(
+        await ledger.agent
+          .post(`/api/credit-card-invoices/${firstInvoice}/payments`)
+          .send({ accountUuid: ledger.bank, amount: '100.00' })
+          .expect(201),
+      );
+
+      await ledger.agent
+        .post(`/api/credit-card-purchases/${first.uuid}/refunds`)
+        .send({ amount: '30.00', date: '2030-10-30' })
+        .expect(201);
+
+      const invoiceOf = async (uuid: string) =>
+        dataOf<Invoice>(
+          await ledger.agent
+            .get(`/api/credit-card-invoices/${uuid}`)
+            .expect(200),
+        );
+
+      expect(await invoiceOf(firstInvoice)).toMatchObject({
+        outstanding: '0.00',
+        creditCarried: '30.00',
+      });
+      expect(await invoiceOf(secondInvoice)).toMatchObject({
+        outstanding: '10.00',
+      });
+
+      await ledger.agent
+        .put(
+          `/api/credit-card-invoices/${firstInvoice}/payments/${payment}/cancellation`,
+        )
+        .send({})
+        .expect(200);
+
+      expect(await invoiceOf(firstInvoice)).toMatchObject({
+        outstanding: '70.00',
+        creditCarried: '0.00',
+      });
+      expect(await invoiceOf(secondInvoice)).toMatchObject({
+        outstanding: '40.00',
+      });
+    });
+
+    it('leaves the account balance and the outstanding amounts in agreement after an archived card is paid', async () => {
+      const ledger = await newLedger();
+      const purchase = await buy(ledger, '80.00', dayOfMonth(thisMonth, 2));
+      const invoice = purchase.installments[0].invoice.uuid;
+      const ref = monthOf(purchase.installments[0].invoice.referenceMonth);
+
+      await ledger.agent
+        .put(`/api/credit-cards/${ledger.card}/status`)
+        .send({ status: 'INACTIVE' })
+        .expect(200);
+
+      const owing = await dashboardOf(ledger, ref);
+
+      expect(owing.creditCards.outstanding).toBe('80.00');
+      expect(owing.balances.available).toBe('920.00');
+
+      await ledger.agent
+        .post(`/api/credit-card-invoices/${invoice}/payments`)
+        .send({ accountUuid: ledger.bank, amount: '80.00', paidOn: today })
+        .expect(201);
+
+      const paid = await dashboardOf(ledger, ref);
+
+      expect(paid.creditCards.outstanding).toBe('0.00');
+      expect(paid.balances).toMatchObject({
+        actual: '920.00',
+        available: '920.00',
+      });
     });
   });
 });

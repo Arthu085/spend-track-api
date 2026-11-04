@@ -2,7 +2,7 @@
   "errors": {
     "card_not_found": "Credit card not found",
     "card_inactive": "Credit card is archived",
-    "card_has_history": "This credit card has purchases and cannot be deleted; archive it instead",
+    "card_has_history": "This credit card has purchases or invoice payments and cannot be deleted; archive it instead",
     "invoice_not_found": "Invoice not found",
     "purchase_not_found": "Purchase not found",
     "purchase_not_deletable": "This purchase is already billed on a closed invoice or has refunds; refund it instead",
