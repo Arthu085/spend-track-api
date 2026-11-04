@@ -1,3 +1,4 @@
+import type { CreditCardEntity } from '@modules/credit-cards';
 import type { SpendingPerspective } from '@modules/preferences';
 import type { TransactionCategoryEntity } from '@modules/transaction-categories';
 import type { TransactionState } from '@modules/transactions';
@@ -29,6 +30,18 @@ export interface PlannedCardChargeTotal {
   total: number;
 }
 
+export interface PlannedCardCharge {
+  charge: RecurrenceCardChargeEntity;
+  recurrenceUuid: string;
+  card: CreditCardEntity;
+}
+
+export interface PlannedCardChargesDue {
+  items: PlannedCardCharge[];
+  count: number;
+  total: number;
+}
+
 export interface RecurrenceCardChargeRepository {
   findPaginatedByRecurrence(
     recurrenceId: number,
@@ -48,6 +61,11 @@ export interface RecurrenceCardChargeRepository {
     ownerId: number,
     query: PlannedCardChargeQuery,
   ): Promise<PlannedCardChargeTotal[]>;
+  findPlannedDueThrough(
+    ownerId: number,
+    invoiceMonth: string,
+    limit: number,
+  ): Promise<PlannedCardChargesDue>;
   create(
     charge: RecurrenceCardChargeEntity,
   ): Promise<RecurrenceCardChargeEntity>;

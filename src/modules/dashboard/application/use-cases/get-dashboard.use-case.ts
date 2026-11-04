@@ -37,6 +37,8 @@ import {
 } from '@modules/preferences';
 import {
   RECURRENCE_CARD_CHARGE_REPOSITORY,
+  type PlannedCardCharge,
+  type PlannedCardChargesDue,
   type PlannedCardChargeTotal,
   type RecurrenceCardChargeRepository,
 } from '@modules/recurrences';
@@ -66,6 +68,7 @@ import {
 } from '../../domain/period/month-period';
 
 const UPCOMING_LIMIT = 10;
+const PLANNED_CHARGES_LIMIT = 10;
 
 export interface GetDashboardInput {
   ownerId: number;
@@ -95,11 +98,18 @@ export interface DashboardUpcomingItem {
   overdue: boolean;
 }
 
+export interface DashboardPlannedCardCharge extends PlannedCardCharge {
+  overdue: boolean;
+}
+
 export interface DashboardCreditCards {
   spending: number;
   planned: number;
+  plannedDue: number;
   outstanding: number;
   invoices: InvoiceStatement[];
+  plannedCharges: DashboardPlannedCardCharge[];
+  plannedChargesCount: number;
 }
 
 export interface DashboardBudgetLimit extends DashboardAmounts, LimitProgress {}
@@ -257,18 +267,27 @@ export class GetDashboardUseCase {
         perspective,
       });
 
+    const plannedChargesDue =
+      await this.cardChargeRepository.findPlannedDueThrough(
+        input.ownerId,
+        period.startDate,
+        PLANNED_CHARGES_LIMIT,
+      );
+
     const creditCards = await this.creditCards(
       input.ownerId,
       period,
       cardSpending,
       plannedCardCharges,
+      plannedChargesDue,
     );
 
     const projected = sumMoney(
       accounts.map((balance) => balance.projectedBalance),
     );
 
-    const available = projected - creditCards.outstanding - creditCards.planned;
+    const available =
+      projected - creditCards.outstanding - creditCards.plannedDue;
 
     const expenses = amountsOf([
       ...totals.filter((entry) => entry.type === TransactionType.EXPENSE),
@@ -402,6 +421,7 @@ export class GetDashboardUseCase {
     period: MonthPeriod,
     spending: readonly CategorySpendingTotal[],
     planned: readonly PlannedCardChargeTotal[],
+    plannedDue: PlannedCardChargesDue,
   ): Promise<DashboardCreditCards> {
     const statements = await this.creditCardStatements.forOwner(ownerId);
 
@@ -420,8 +440,14 @@ export class GetDashboardUseCase {
     return {
       spending: sumMoney(spending.map(({ total }) => total)),
       planned: sumMoney(planned.map(({ total }) => total)),
+      plannedDue: plannedDue.total,
       outstanding: sumMoney(invoices.map(({ outstanding }) => outstanding)),
       invoices,
+      plannedCharges: plannedDue.items.map((item) => ({
+        ...item,
+        overdue: item.charge.date < period.today,
+      })),
+      plannedChargesCount: plannedDue.count,
     };
   }
 

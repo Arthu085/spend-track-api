@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository, type SelectQueryBuilder } from 'typeorm';
+import { CreditCardMapper } from '@modules/credit-cards/persistence';
 import { SpendingPerspective } from '@modules/preferences';
 import {
   TransactionCategoryMapper,
@@ -17,6 +18,7 @@ import type {
   OccurrenceListFilters,
   PaginatedRecurrenceCardCharges,
   PlannedCardChargeQuery,
+  PlannedCardChargesDue,
   PlannedCardChargeTotal,
   RecurrenceCardChargeRepository,
 } from '../../../domain/repositories/recurrence-card-charge.repository';
@@ -149,6 +151,46 @@ export class TypeOrmRecurrenceCardChargeRepository
 
       return category ? [{ category, total: parseMoneyTotal(row.total) }] : [];
     });
+  }
+
+  async findPlannedDueThrough(
+    ownerId: number,
+    invoiceMonth: string,
+    limit: number,
+  ): Promise<PlannedCardChargesDue> {
+    const due = { ownerId, invoiceMonth, planned: TransactionState.PLANNED };
+
+    const dueCondition =
+      'charge.userId = :ownerId AND charge.state = :planned AND charge.invoiceMonth <= :invoiceMonth AND charge.deletedAt IS NULL';
+
+    const [rows, count] = await this.repository
+      .createQueryBuilder('charge')
+      .withDeleted()
+      .innerJoinAndSelect('charge.category', 'category')
+      .innerJoinAndSelect('charge.recurrence', 'recurrence')
+      .innerJoinAndSelect('recurrence.creditCard', 'card')
+      .where(dueCondition, due)
+      .orderBy('charge.date', 'ASC')
+      .addOrderBy('charge.id', 'ASC')
+      .take(limit)
+      .getManyAndCount();
+
+    const sum = await this.repository
+      .createQueryBuilder('charge')
+      .withDeleted()
+      .select('COALESCE(SUM(charge.amount), 0)::text', 'total')
+      .where(dueCondition, due)
+      .getRawOne<{ total: string }>();
+
+    return {
+      items: rows.map((row) => ({
+        charge: RecurrenceCardChargeMapper.toDomain(row),
+        recurrenceUuid: row.recurrence!.uuid,
+        card: CreditCardMapper.toDomain(row.recurrence!.creditCard!),
+      })),
+      count,
+      total: parseMoneyTotal(sum?.total ?? '0'),
+    };
   }
 
   async create(

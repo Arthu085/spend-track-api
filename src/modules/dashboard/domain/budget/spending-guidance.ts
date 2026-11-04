@@ -30,20 +30,23 @@ export function limitProgress(limit: number, spent: number): LimitProgress {
   };
 }
 
+function tightestLimit({
+  totalLimit,
+  spent,
+  available,
+}: SpendingGuidanceInput): { basis: SpendingGuidanceBasis; amount: number } {
+  if (totalLimit !== null && totalLimit - spent <= available) {
+    return { basis: SpendingGuidanceBasis.BUDGET, amount: totalLimit - spent };
+  }
+
+  return { basis: SpendingGuidanceBasis.BALANCE, amount: available };
+}
+
 export function spendingGuidance(
   input: SpendingGuidanceInput,
 ): SpendingGuidance {
-  const basis =
-    input.totalLimit === null
-      ? SpendingGuidanceBasis.BALANCE
-      : SpendingGuidanceBasis.BUDGET;
-
-  const remaining = Math.max(
-    0,
-    input.totalLimit === null
-      ? input.available
-      : input.totalLimit - input.spent,
-  );
+  const { basis, amount } = tightestLimit(input);
+  const remaining = Math.max(0, amount);
 
   return {
     basis,

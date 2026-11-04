@@ -28,13 +28,45 @@ describe('spendingGuidance', () => {
       spendingGuidance({
         totalLimit: 100000,
         spent: 0,
-        available: -50000,
+        available: 100000,
         remainingDays: 3,
       }),
     ).toEqual({
       basis: SpendingGuidanceBasis.BUDGET,
       remaining: 100000,
       dailyAllowance: 33333,
+    });
+  });
+
+  // A planned contribution lowers the available balance only, so without this
+  // cap the limit would suggest spending money already set aside.
+  it('lowers what is left to the available balance when less money is available than the limit leaves', () => {
+    expect(
+      spendingGuidance({
+        totalLimit: 100000,
+        spent: 40000,
+        available: 15000,
+        remainingDays: 5,
+      }),
+    ).toEqual({
+      basis: SpendingGuidanceBasis.BALANCE,
+      remaining: 15000,
+      dailyAllowance: 3000,
+    });
+  });
+
+  it('counts a commitment on both sides once, keeping the budget when it is the lower figure', () => {
+    expect(
+      spendingGuidance({
+        totalLimit: 100000,
+        spent: 40000,
+        available: 60000,
+        remainingDays: 6,
+      }),
+    ).toEqual({
+      basis: SpendingGuidanceBasis.BUDGET,
+      remaining: 60000,
+      dailyAllowance: 10000,
     });
   });
 

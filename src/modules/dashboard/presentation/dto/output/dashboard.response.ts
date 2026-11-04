@@ -1,7 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { AccountType } from '@modules/accounts';
 import { accountTypeLabel } from '@modules/accounts/presentation';
-import { CreditCardInvoiceListResponseDto } from '@modules/credit-cards/presentation';
+import {
+  CreditCardInvoiceListResponseDto,
+  CreditCardRefResponseDto,
+} from '@modules/credit-cards/presentation';
 import { InvestmentType } from '@modules/investments';
 import {
   InvestmentProgressResponseDto,
@@ -26,6 +29,7 @@ import type {
   DashboardCategoryExpenses,
   DashboardCreditCards,
   DashboardInvestments,
+  DashboardPlannedCardCharge,
   DashboardSummary,
   DashboardUpcomingItem,
 } from '../../../application/use-cases/get-dashboard.use-case';
@@ -94,75 +98,9 @@ export class DashboardBalancesResponseDto {
   @ApiProperty({
     example: '300.00',
     description:
-      'projected minus creditCards.outstanding and creditCards.planned: what is left once the card invoices due up to the end of the period and the planned recurring card charges of the period are paid.',
+      'projected minus creditCards.outstanding and creditCards.plannedDue: what is left once the card invoices of the period and earlier ones, and the planned recurring card charges expected on them, are paid. Never depends on the spending perspective.',
   })
   available!: string;
-}
-
-export class DashboardCreditCardsResponseDto {
-  @ApiProperty({
-    example: '450.00',
-    description:
-      'Card spending of the period in the selected perspective (installments by their date, or by invoice month), net of refunds; already included in expenses.completed.',
-  })
-  spending!: string;
-
-  @ApiProperty({
-    example: '55.90',
-    description:
-      'Planned recurring card charges of the period in the selected perspective (by charge date, or by expected invoice month), not confirmed yet; already included in expenses.pending.',
-  })
-  planned!: string;
-
-  @ApiProperty({
-    example: '1200.00',
-    description:
-      'Unpaid amount of the invoices listed in invoices: those due in the period and earlier ones still unpaid.',
-  })
-  outstanding!: string;
-
-  @ApiProperty({
-    type: [CreditCardInvoiceListResponseDto],
-    description:
-      'Invoices due in the period, plus unpaid invoices of earlier months, earliest due date first.',
-  })
-  invoices!: CreditCardInvoiceListResponseDto[];
-
-  static fromDomain(
-    creditCards: DashboardCreditCards,
-    translate: (key: string) => string,
-  ): DashboardCreditCardsResponseDto {
-    return Object.assign(new DashboardCreditCardsResponseDto(), {
-      spending: formatMoney(creditCards.spending),
-      planned: formatMoney(creditCards.planned),
-      outstanding: formatMoney(creditCards.outstanding),
-      invoices: creditCards.invoices.map((statement) =>
-        CreditCardInvoiceListResponseDto.fromStatement(statement, translate),
-      ),
-    });
-  }
-}
-
-export class DashboardAmountsResponseDto {
-  @ApiProperty({
-    example: '5000.00',
-    description: 'completed + pending.',
-  })
-  total!: string;
-
-  @ApiProperty({ example: '3000.00', description: 'COMPLETED transactions.' })
-  completed!: string;
-
-  @ApiProperty({ example: '2000.00', description: 'PLANNED transactions.' })
-  pending!: string;
-
-  static fromDomain(amounts: DashboardAmounts): DashboardAmountsResponseDto {
-    return Object.assign(new DashboardAmountsResponseDto(), {
-      total: formatMoney(amounts.total),
-      completed: formatMoney(amounts.completed),
-      pending: formatMoney(amounts.pending),
-    });
-  }
 }
 
 export class DashboardCategoryResponseDto {
@@ -186,6 +124,151 @@ export class DashboardCategoryResponseDto {
       uuid: category.uuid,
       name: transactionCategoryName(category, translate),
       color: category.color,
+    });
+  }
+}
+
+export class DashboardPlannedCardChargeResponseDto {
+  @ApiProperty()
+  uuid!: string;
+
+  @ApiProperty({ description: 'Recurrence that generated the charge.' })
+  recurrenceUuid!: string;
+
+  @ApiProperty()
+  description!: string;
+
+  @ApiProperty({ example: '55.90', description: 'Decimal string in BRL.' })
+  amount!: string;
+
+  @ApiProperty({ type: String, format: 'date', example: '2026-10-15' })
+  date!: string;
+
+  @ApiProperty({
+    type: String,
+    format: 'date',
+    example: '2026-11-01',
+    description: 'First day of the month of the invoice it is expected on.',
+  })
+  invoiceMonth!: string;
+
+  @ApiProperty({ description: 'True when date is before today.' })
+  overdue!: boolean;
+
+  @ApiProperty({ type: CreditCardRefResponseDto })
+  card!: CreditCardRefResponseDto;
+
+  @ApiProperty({ type: DashboardCategoryResponseDto })
+  category!: DashboardCategoryResponseDto;
+
+  static fromDomain(
+    { charge, recurrenceUuid, card, overdue }: DashboardPlannedCardCharge,
+    translate: (key: string) => string,
+  ): DashboardPlannedCardChargeResponseDto {
+    return Object.assign(new DashboardPlannedCardChargeResponseDto(), {
+      uuid: charge.uuid,
+      recurrenceUuid,
+      description: charge.description,
+      amount: formatMoney(charge.amount),
+      date: charge.date,
+      invoiceMonth: charge.invoiceMonth,
+      overdue,
+      card: CreditCardRefResponseDto.fromDomain(card),
+      category: DashboardCategoryResponseDto.fromDomain(
+        charge.category,
+        translate,
+      ),
+    });
+  }
+}
+
+export class DashboardCreditCardsResponseDto {
+  @ApiProperty({
+    example: '450.00',
+    description:
+      'Card spending of the period in the selected perspective (installments by their date, or by invoice month), net of refunds; already included in expenses.completed.',
+  })
+  spending!: string;
+
+  @ApiProperty({
+    example: '55.90',
+    description:
+      'Planned recurring card charges of the period in the selected perspective (by charge date, or by expected invoice month), not confirmed yet; already included in expenses.pending.',
+  })
+  planned!: string;
+
+  @ApiProperty({
+    example: '55.90',
+    description:
+      'Planned recurring card charges expected on the invoices of the period and earlier ones, by invoice month whatever the perspective; subtracted from balances.available.',
+  })
+  plannedDue!: string;
+
+  @ApiProperty({
+    example: '1200.00',
+    description:
+      'Unpaid amount of the invoices listed in invoices: those due in the period and earlier ones still unpaid.',
+  })
+  outstanding!: string;
+
+  @ApiProperty({
+    type: [CreditCardInvoiceListResponseDto],
+    description:
+      'Invoices due in the period, plus unpaid invoices of earlier months, earliest due date first.',
+  })
+  invoices!: CreditCardInvoiceListResponseDto[];
+
+  @ApiProperty({
+    type: [DashboardPlannedCardChargeResponseDto],
+    description:
+      'The first 10 planned recurring card charges counted by plannedDue, oldest first.',
+  })
+  plannedCharges!: DashboardPlannedCardChargeResponseDto[];
+
+  @ApiProperty({
+    example: 1,
+    description: 'How many planned charges plannedDue counts.',
+  })
+  plannedChargesCount!: number;
+
+  static fromDomain(
+    creditCards: DashboardCreditCards,
+    translate: (key: string) => string,
+  ): DashboardCreditCardsResponseDto {
+    return Object.assign(new DashboardCreditCardsResponseDto(), {
+      spending: formatMoney(creditCards.spending),
+      planned: formatMoney(creditCards.planned),
+      plannedDue: formatMoney(creditCards.plannedDue),
+      outstanding: formatMoney(creditCards.outstanding),
+      invoices: creditCards.invoices.map((statement) =>
+        CreditCardInvoiceListResponseDto.fromStatement(statement, translate),
+      ),
+      plannedCharges: creditCards.plannedCharges.map((item) =>
+        DashboardPlannedCardChargeResponseDto.fromDomain(item, translate),
+      ),
+      plannedChargesCount: creditCards.plannedChargesCount,
+    });
+  }
+}
+
+export class DashboardAmountsResponseDto {
+  @ApiProperty({
+    example: '5000.00',
+    description: 'completed + pending.',
+  })
+  total!: string;
+
+  @ApiProperty({ example: '3000.00', description: 'COMPLETED transactions.' })
+  completed!: string;
+
+  @ApiProperty({ example: '2000.00', description: 'PLANNED transactions.' })
+  pending!: string;
+
+  static fromDomain(amounts: DashboardAmounts): DashboardAmountsResponseDto {
+    return Object.assign(new DashboardAmountsResponseDto(), {
+      total: formatMoney(amounts.total),
+      completed: formatMoney(amounts.completed),
+      pending: formatMoney(amounts.pending),
     });
   }
 }
@@ -299,14 +382,14 @@ export class DashboardSpendingGuidanceResponseDto {
   @ApiProperty({
     enum: SpendingGuidanceBasis,
     description:
-      'BUDGET when the month has an overall limit, otherwise BALANCE (balances.available).',
+      'Which figure limits the amount left to spend: BUDGET when the overall limit does, BALANCE (balances.available) when the month has no overall limit or less money is available than the limit leaves.',
   })
   basis!: SpendingGuidanceBasis;
 
   @ApiProperty({
     example: '1000.00',
     description:
-      'BUDGET: overall limit minus expenses.total (completed and planned, each counted once). BALANCE: balances.available. Never below 0.',
+      'The lower of overall limit minus expenses.total and balances.available, which each count a commitment once. Never below 0.',
   })
   remaining!: string;
 
