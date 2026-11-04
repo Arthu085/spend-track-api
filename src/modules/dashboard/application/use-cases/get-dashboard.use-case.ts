@@ -20,6 +20,15 @@ import {
   type InvoiceStatement,
 } from '@modules/credit-cards';
 import {
+  INVESTMENT_MOVEMENT_REPOSITORY,
+  INVESTMENT_REPOSITORY,
+  InvestmentMovementType,
+  InvestmentValues,
+  type InvestmentMovementRepository,
+  type InvestmentRepository,
+  type InvestmentWithValue,
+} from '@modules/investments';
+import {
   DefaultMonth,
   SpendingPerspective,
   USER_PREFERENCES_REPOSITORY,
@@ -104,6 +113,13 @@ export interface DashboardBudget {
   categories: DashboardBudgetCategory[];
 }
 
+export interface DashboardInvestments {
+  totalValue: number;
+  contributions: DashboardAmounts;
+  withdrawals: DashboardAmounts;
+  items: InvestmentWithValue[];
+}
+
 export interface DashboardSummary {
   period: MonthPeriod;
   perspective: SpendingPerspective;
@@ -116,6 +132,7 @@ export interface DashboardSummary {
   upcomingCount: number;
   creditCards: DashboardCreditCards;
   budget: DashboardBudget | null;
+  investments: DashboardInvestments;
   spendingGuidance: SpendingGuidance;
 }
 
@@ -190,6 +207,11 @@ export class GetDashboardUseCase {
     private readonly creditCardStatements: CreditCardStatements,
     @Inject(BUDGET_REPOSITORY)
     private readonly budgetRepository: BudgetRepository,
+    @Inject(INVESTMENT_REPOSITORY)
+    private readonly investmentRepository: InvestmentRepository,
+    @Inject(INVESTMENT_MOVEMENT_REPOSITORY)
+    private readonly movementRepository: InvestmentMovementRepository,
+    private readonly investmentValues: InvestmentValues,
   ) {}
 
   async execute(input: GetDashboardInput): Promise<DashboardSummary> {
@@ -284,6 +306,7 @@ export class GetDashboardUseCase {
       budget: storedBudget
         ? budgetOf(storedBudget, expenses, expensesByCategory)
         : null,
+      investments: await this.investments(input.ownerId, range),
       spendingGuidance: spendingGuidance({
         totalLimit: storedBudget?.totalLimit ?? null,
         spent: expenses.total,
@@ -314,17 +337,64 @@ export class GetDashboardUseCase {
       return [];
     }
 
+    const accountIds = accounts.map((account) => account.id);
+
+    const plannedFilter = {
+      state: TransactionState.PLANNED,
+      until: period.endDate,
+    };
+
     const planned = await this.transactionRepository.sumBalanceChanges(
       ownerId,
-      accounts.map((account) => account.id),
-      { state: TransactionState.PLANNED, until: period.endDate },
+      accountIds,
+      plannedFilter,
+    );
+
+    const plannedMovements = await this.movementRepository.sumAccountChanges(
+      ownerId,
+      accountIds,
+      plannedFilter,
     );
 
     return accounts.map((account) => ({
       account,
       actualBalance: account.currentBalance,
-      projectedBalance: account.currentBalance + (planned.get(account.id) ?? 0),
+      projectedBalance:
+        account.currentBalance +
+        (planned.get(account.id) ?? 0) +
+        (plannedMovements.get(account.id) ?? 0),
     }));
+  }
+
+  private async investments(
+    ownerId: number,
+    range: { from: string; to: string },
+  ): Promise<DashboardInvestments> {
+    const items = await this.investmentValues.withValues(
+      await this.investmentRepository.findAllByOwner(ownerId, {
+        status: RecordStatus.ACTIVE,
+      }),
+    );
+
+    const totals = await this.movementRepository.sumByTypeAndState(
+      ownerId,
+      range,
+    );
+
+    return {
+      totalValue: sumMoney(items.map(({ value }) => value.current)),
+      contributions: amountsOf(
+        totals.filter(
+          (entry) => entry.type === InvestmentMovementType.CONTRIBUTION,
+        ),
+      ),
+      withdrawals: amountsOf(
+        totals.filter(
+          (entry) => entry.type === InvestmentMovementType.WITHDRAWAL,
+        ),
+      ),
+      items,
+    };
   }
 
   private async creditCards(

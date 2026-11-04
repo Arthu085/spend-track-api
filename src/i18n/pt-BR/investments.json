@@ -1,0 +1,21 @@
+{
+  "errors": {
+    "not_found": "Investimento não encontrado",
+    "inactive": "Investimento arquivado",
+    "has_history": "Este investimento tem movimentações e não pode ser excluído; arquive-o",
+    "movement_not_found": "Movimentação do investimento não encontrada",
+    "movement_state_transition": "Esta movimentação não pode passar para o estado solicitado",
+    "insufficient_value": "Isso deixaria o investimento com valor negativo",
+    "valuation_unchanged": "O novo valor é igual ao valor atual"
+  },
+  "type": {
+    "investment": "Investimento",
+    "reserve": "Reserva",
+    "goal": "Meta"
+  },
+  "movement_type": {
+    "contribution": "Aporte",
+    "withdrawal": "Resgate",
+    "valuation": "Atualização de valor"
+  }
+}

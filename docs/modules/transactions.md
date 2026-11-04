@@ -11,13 +11,14 @@ payloads are in Swagger; this document covers the rules behind them.
 
 - `index.ts`: `TransactionEntity` with `TransactionRecurrenceLink`, `TransactionType`,
   `TransactionState`, and `TRANSACTION_REPOSITORY`/`TransactionRepository` with its summary types and
-  `RecurrenceOccurrenceFilters`, consumed by `dashboard` and `recurrences`.
+  `RecurrenceOccurrenceFilters`, consumed by `dashboard` and `recurrences`; `investments` reuses
+  `TransactionState` for its movements.
 - `presentation.ts`: `TransactionAccountResponseDto`, `transactionTypeLabel`, and
-  `transactionStateLabel`, used by the dashboard and recurrence responses, and
+  `transactionStateLabel`, used by the dashboard, recurrence, and investment responses, and
   `TransactionCategoryRefResponseDto`, the shared amount, description, and notes fields,
-  `AllowedOnlyWhen`, `isPresent`, and `isProvided`, reused by the credit card and recurrence DTOs,
-  and `POSITIVE_MONEY_PATTERN`, reused by the budget limits; `TransactionCategoryRefResponseDto` is
-  also used by the budget response.
+  `AllowedOnlyWhen`, `isPresent`, and `isProvided`, reused by the credit card, recurrence, and
+  investment DTOs, and `POSITIVE_MONEY_PATTERN`, reused by the budget limits and investment targets;
+  `TransactionCategoryRefResponseDto` is also used by the budget response.
 - `transactions.module.ts`: `TransactionsModule`. It imports `AccountsModule` and
   `TransactionCategoriesModule`; neither imports it back.
 

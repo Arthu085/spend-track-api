@@ -2,10 +2,11 @@
 
 > Location: `src/modules/dashboard/` · Rules: [financial data ownership](../conventions.md#financial-data-ownership)
 > · Related: [`accounts.md`](accounts.md), [`preferences.md`](preferences.md),
-> [`transactions.md`](transactions.md), [`credit-cards.md`](credit-cards.md), [`budgets.md`](budgets.md)
+> [`transactions.md`](transactions.md), [`credit-cards.md`](credit-cards.md), [`budgets.md`](budgets.md),
+> [`investments.md`](investments.md)
 
 `GET /dashboard` returns the caller's monthly financial summary. It owns no table: it reads the
-caller's accounts, preferences, transactions, credit cards, planned recurring card charges, and budgets through their modules' ports. Routes and payloads are
+caller's accounts, preferences, transactions, credit cards, planned recurring card charges, budgets, and investments through their modules' ports. Routes and payloads are
 in Swagger; this document covers the rules behind them.
 
 ## Period
@@ -22,8 +23,8 @@ in Swagger; this document covers the rules behind them.
 - Every figure comes from the caller's own records; nothing is cached or stored.
 - `accounts[].actualBalance` is the account's `currentBalance` (every completed transaction, any
   date). `accounts[].projectedBalance` adds the effect of every planned transaction touching the
-  account dated up to the end of the period, overdue ones from earlier months included, since they
-  are still expected. A transfer between an active and an inactive account applies each side to its
+  account dated up to the end of the period, and of every planned investment contribution or
+  withdrawal on it, overdue ones from earlier months included, since they are still expected. A transfer between an active and an inactive account applies each side to its
   own account, so only the active side shows.
 - `balances.actual` and `balances.projected` sum the **active** accounts; inactive accounts are
   excluded. `balances.available` is `projected` minus `creditCards.outstanding` and minus
@@ -66,6 +67,13 @@ in Swagger; this document covers the rules behind them.
   `balances.available`. Category limits are never reserved on top of the overall limit. `remaining`
   is never below 0, and `dailyAllowance` is `remaining / period.remainingDays` rounded down to the
   cent, or `null` for a past month (no remaining days).
+- `investments.items` lists the active investments, reserves, and goals by name with their
+  `currentValue` and target `progress` ([`investments.md`](investments.md#investments)), and
+  `investments.totalValue` sums their values. It is shown next to the balances, never added to them.
+- `investments.contributions` and `investments.withdrawals` cover movements dated inside the period,
+  of investments of any status: `completed`, `pending` (planned), and `total`. They are never income
+  or expenses; planned ones already move `balances.projected`, so they lower `balances.available`
+  and the balance-based daily allowance exactly once.
 - Sums use integer cents (`sumMoney`) and are returned as decimal strings, so totals always equal the
   sum of the listed accounts.
 

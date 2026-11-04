@@ -14,6 +14,7 @@ import { AuthorizationModule } from '@modules/authorization/authorization.module
 import { BudgetsModule } from '@modules/budgets/budgets.module';
 import { TransactionCategoriesModule } from '@modules/transaction-categories/transaction-categories.module';
 import { DashboardModule } from '@modules/dashboard/dashboard.module';
+import { InvestmentsModule } from '@modules/investments/investments.module';
 import { PreferencesModule } from '@modules/preferences/preferences.module';
 import { TransactionsModule } from '@modules/transactions/transactions.module';
 import { CreditCardsModule } from '@modules/credit-cards/credit-cards.module';
@@ -38,6 +39,7 @@ import { UsersModule } from '@modules/users/users.module';
     CreditCardsModule,
     RecurrencesModule,
     BudgetsModule,
+    InvestmentsModule,
     DashboardModule,
     CoreHealthModule,
     CoreI18nModule,
