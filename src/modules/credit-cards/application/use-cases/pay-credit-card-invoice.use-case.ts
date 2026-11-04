@@ -1,6 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
-import { ACCOUNT_REPOSITORY, type AccountRepository } from '@modules/accounts';
+import {
+  ACCOUNT_REPOSITORY,
+  assertNotBeforeOpening,
+  type AccountRepository,
+} from '@modules/accounts';
 import {
   TRANSACTION_MANAGER,
   type TransactionManagerPort,
@@ -69,6 +73,10 @@ export class PayCreditCardInvoiceUseCase {
         input.ownerId,
       );
 
+      const paidOn = input.paidOn ?? financeToday();
+
+      assertNotBeforeOpening([account], [paidOn]);
+
       const { outstanding } = await this.statements.ofInvoice(invoice);
 
       if (input.amount > outstanding) {
@@ -82,7 +90,7 @@ export class PayCreditCardInvoiceUseCase {
           invoice,
           account,
           amount: input.amount,
-          paidOn: input.paidOn ?? financeToday(),
+          paidOn,
         }),
       );
     });

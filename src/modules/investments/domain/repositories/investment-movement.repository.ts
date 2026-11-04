@@ -53,6 +53,10 @@ export interface InvestmentMovementRepository {
     range: MovementDateRange,
   ): Promise<InvestmentMovementTotal[]>;
   existsForAccount(ownerId: number, accountId: number): Promise<boolean>;
+  findEarliestDateForAccount(
+    ownerId: number,
+    accountId: number,
+  ): Promise<string | null>;
   existsForInvestment(ownerId: number, investmentId: number): Promise<boolean>;
   create(movement: InvestmentMovementEntity): Promise<InvestmentMovementEntity>;
   update(movement: InvestmentMovementEntity): Promise<InvestmentMovementEntity>;

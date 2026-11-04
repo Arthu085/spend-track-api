@@ -57,6 +57,10 @@ export interface RecurrenceCardChargeRepository {
     recurrenceId: number,
     occurrenceFrom?: string,
   ): Promise<RecurrenceCardChargeEntity[]>;
+  findOccurrenceDatesFrom(
+    recurrenceId: number,
+    from: string,
+  ): Promise<string[]>;
   sumPlannedByCategory(
     ownerId: number,
     query: PlannedCardChargeQuery,

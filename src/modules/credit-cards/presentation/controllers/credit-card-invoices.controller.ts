@@ -59,7 +59,7 @@ export class CreditCardInvoicesController {
     .errorResponse(HttpStatus.CONFLICT, 'Account is inactive.')
     .errorResponse(
       HttpStatus.UNPROCESSABLE_ENTITY,
-      'Amount exceeds the invoice outstanding.',
+      'Amount exceeds the invoice outstanding, or paidOn is before the opening balance date of the account.',
     )
     .body(PayCreditCardInvoiceDto)
     .response(CreditCardPaymentResponseDto, HttpStatus.CREATED)

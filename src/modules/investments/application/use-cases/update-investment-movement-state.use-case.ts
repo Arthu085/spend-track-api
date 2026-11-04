@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   ACCOUNT_REPOSITORY,
   InactiveAccountError,
+  assertNotBeforeOpening,
   type AccountRepository,
 } from '@modules/accounts';
 import { TransactionState } from '@modules/transactions';
@@ -99,6 +100,8 @@ export class UpdateInvestmentMovementStateUseCase {
     if (movement.account) {
       assertRecordActive(movement.account, new InactiveAccountError());
     }
+
+    assertNotBeforeOpening([movement.account], [movement.date, completedOn]);
 
     return completed;
   }

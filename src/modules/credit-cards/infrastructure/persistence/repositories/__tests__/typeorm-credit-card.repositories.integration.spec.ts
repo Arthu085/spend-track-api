@@ -329,7 +329,7 @@ describe('credit card repositories (integration)', () => {
       cards.findByUuidForOwner(f.card.uuid, f.ownerId),
     ).resolves.toMatchObject({ isDefault: false });
 
-    await expect(cards.hasPurchases(f.ownerId, f.card.id)).resolves.toBe(false);
+    await expect(cards.hasHistory(f.ownerId, f.card.id)).resolves.toBe(false);
     await cards.softDelete(f.card);
     await expect(
       cards.findByUuidForOwner(f.card.uuid, f.ownerId),
@@ -476,7 +476,7 @@ describe('credit card repositories (integration)', () => {
       older.uuid,
     ]);
     expect(october.total).toBe(2);
-    await expect(cards.hasPurchases(f.ownerId, f.card.id)).resolves.toBe(true);
+    await expect(cards.hasHistory(f.ownerId, f.card.id)).resolves.toBe(true);
   });
 
   it('updates the details of a purchase', async () => {

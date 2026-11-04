@@ -35,4 +35,14 @@ export class InvestmentMovementLedger implements AccountLedger, OnModuleInit {
   hasEntries(ownerId: number, accountId: number): Promise<boolean> {
     return this.movementRepository.existsForAccount(ownerId, accountId);
   }
+
+  earliestEntryDate(
+    ownerId: number,
+    accountId: number,
+  ): Promise<string | null> {
+    return this.movementRepository.findEarliestDateForAccount(
+      ownerId,
+      accountId,
+    );
+  }
 }

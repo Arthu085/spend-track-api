@@ -190,6 +190,22 @@ export class TypeOrmTransactionRepository
     return rows.map((row) => TransactionMapper.toDomain(row));
   }
 
+  async findRecurrenceDatesFrom(
+    ownerId: number,
+    recurrenceId: number,
+    from: string,
+  ): Promise<string[]> {
+    const rows = await this.repository
+      .createQueryBuilder('transaction')
+      .select('CAST(transaction.recurrenceDate AS text)', 'date')
+      .where('transaction.userId = :ownerId', { ownerId })
+      .andWhere('transaction.recurrenceId = :recurrenceId', { recurrenceId })
+      .andWhere('transaction.recurrenceDate >= :from', { from })
+      .getRawMany<{ date: string }>();
+
+    return rows.map(({ date }) => date);
+  }
+
   async findPlannedUntil(
     ownerId: number,
     until: string,
@@ -264,6 +280,31 @@ export class TypeOrmTransactionRepository
         { accountId },
       )
       .getExists();
+  }
+
+  async findEarliestDateForAccount(
+    ownerId: number,
+    accountId: number,
+  ): Promise<string | null> {
+    const row = await this.repository
+      .createQueryBuilder('transaction')
+      .select(
+        'MIN(LEAST(transaction.date, COALESCE(transaction.completedOn, transaction.date)))::text',
+        'earliest',
+      )
+      .where('transaction.userId = :ownerId', { ownerId })
+      .andWhere('transaction.state IN (:...states)', { states: COUNTED_STATES })
+      .andWhere(
+        new Brackets((either) =>
+          either
+            .where('transaction.accountId = :accountId')
+            .orWhere('transaction.destinationAccountId = :accountId'),
+        ),
+        { accountId },
+      )
+      .getRawOne<{ earliest: string | null }>();
+
+    return row?.earliest ?? null;
   }
 
   async sumByTypeAndState(

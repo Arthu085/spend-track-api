@@ -2,7 +2,9 @@
   "errors": {
     "not_found": "Conta não encontrada",
     "inactive": "Conta inativa",
-    "has_history": "Esta conta possui transações e não pode ser excluída; desative-a"
+    "has_history": "Esta conta possui transações e não pode ser excluída; desative-a",
+    "operation_before_opening": "Esta data é anterior à data do saldo inicial da conta. Escolha uma data posterior ou antecipe a data do saldo inicial",
+    "opening_after_operations": "A data do saldo inicial não pode ser posterior à primeira operação desta conta"
   },
   "type": {
     "checking": "Conta corrente",

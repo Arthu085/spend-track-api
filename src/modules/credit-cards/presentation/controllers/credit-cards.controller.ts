@@ -215,12 +215,12 @@ export class CreditCardsController {
     .tags('credit-cards')
     .summary('Soft-delete one of your credit cards')
     .description(
-      `A card with purchases cannot be deleted: archive it instead to keep its history. ${OWNERSHIP_NOTE}`,
+      `A card with purchases or invoice payments cannot be deleted: archive it instead to keep its history. ${OWNERSHIP_NOTE}`,
     )
     .errorResponse(HttpStatus.NOT_FOUND, 'Credit card not found.')
     .errorResponse(
       HttpStatus.CONFLICT,
-      'Credit card has purchases; archive it instead.',
+      'Credit card has purchases or invoice payments; archive it instead.',
     )
     .build())
   async remove(

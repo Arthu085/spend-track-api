@@ -47,6 +47,9 @@ or `categoryUuid` simply match nothing for a foreign or unknown uuid.
   (`TransferSameAccountError`, `422`), and is null otherwise.
 - `category` is required for income and expenses and must have the same kind
   (`TransactionCategoryKindMismatchError`, `422`); transfers have none.
+- `date` and `completedOn` cannot be before the opening date of either account, on creation, on
+  completion, and on updates that change the date or an account
+  ([`accounts.md`](accounts.md#opening-balance)).
 - A reference that does not fit the type (a category on a transfer, a destination on an expense)
   answers `InvalidTransactionReferencesError` (`422`). The create DTO already rejects the common
   cases with a `400`.

@@ -35,4 +35,14 @@ export class TransactionAccountLedger implements AccountLedger, OnModuleInit {
   hasEntries(ownerId: number, accountId: number): Promise<boolean> {
     return this.transactionRepository.existsForAccount(ownerId, accountId);
   }
+
+  earliestEntryDate(
+    ownerId: number,
+    accountId: number,
+  ): Promise<string | null> {
+    return this.transactionRepository.findEarliestDateForAccount(
+      ownerId,
+      accountId,
+    );
+  }
 }

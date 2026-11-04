@@ -428,8 +428,9 @@ export class GetDashboardUseCase {
     const invoices = statements
       .filter(
         ({ invoice, outstanding }) =>
-          invoice.referenceMonth === period.startDate ||
-          (invoice.referenceMonth < period.startDate && outstanding > 0),
+          invoice.card.deletedAt === null &&
+          (invoice.referenceMonth === period.startDate ||
+            (invoice.referenceMonth < period.startDate && outstanding > 0)),
       )
       .sort(
         (left, right) =>

@@ -34,7 +34,7 @@ export class DeleteCreditCardUseCase {
         input.ownerId,
       );
 
-      if (await this.cardRepository.hasPurchases(input.ownerId, card.id)) {
+      if (await this.cardRepository.hasHistory(input.ownerId, card.id)) {
         throw new CreditCardHasHistoryError();
       }
 

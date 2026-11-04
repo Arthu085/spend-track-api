@@ -107,7 +107,7 @@ export class RecurrencesController {
     )
     .errorResponse(
       HttpStatus.UNPROCESSABLE_ENTITY,
-      'Card on an income, category kind mismatch, or end date before start date.',
+      'Card on an income, category kind mismatch, end date before start date, or start date before the opening balance date of the account.',
     )
     .body(CreateRecurrenceDto)
     .response(RecurrenceResponseDto, HttpStatus.CREATED)
@@ -153,7 +153,7 @@ export class RecurrencesController {
     )
     .errorResponse(
       HttpStatus.UNPROCESSABLE_ENTITY,
-      'Account on a card recurrence, or category kind mismatch.',
+      'Account on a card recurrence, category kind mismatch, or a moved occurrence dated before the opening balance date of the new account.',
     )
     .body(UpdateRecurrenceDto)
     .response(RecurrenceResponseDto)

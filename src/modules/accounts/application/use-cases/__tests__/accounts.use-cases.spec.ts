@@ -6,6 +6,7 @@ import type { AccountEntity } from '../../../domain/entities/account.entity';
 import { AccountType } from '../../../domain/enums/account-type.enum';
 import { AccountNotFoundError } from '../../../domain/errors/account-not-found.error';
 import { AccountHasHistoryError } from '../../../domain/errors/account-has-history.error';
+import { AccountOpeningAfterOperationsError } from '../../../domain/errors/account-opening-after-operations.error';
 import { InactiveAccountError } from '../../../domain/errors/inactive-account.error';
 import type { AccountRepository } from '../../../domain/repositories/account.repository';
 import type { AccountLedger } from '../../ports/account-ledger.port';
@@ -21,10 +22,15 @@ const transactionManager: TransactionManagerPort = {
   runInSavepoint: <T>(work: () => Promise<T>): Promise<T> => work(),
 };
 
-function buildLedger(changes = new Map<number, number>(), hasEntries = false) {
+function buildLedger(
+  changes = new Map<number, number>(),
+  hasEntries = false,
+  earliestEntryDate: string | null = null,
+) {
   const ledger = {
     balanceChanges: jest.fn().mockResolvedValue(changes),
     hasEntries: jest.fn().mockResolvedValue(hasEntries),
+    earliestEntryDate: jest.fn().mockResolvedValue(earliestEntryDate),
   };
 
   return { ledger, port: mockOf<AccountLedger>(ledger) };
@@ -216,6 +222,58 @@ describe('accounts use-cases', () => {
         isDefault: false,
       });
       expect(calls).toEqual(['lock', 'update']);
+    });
+
+    it('moves the opening date earlier without consulting the ledgers', async () => {
+      const { port } = buildRepository();
+      const { ledger, port: ledgerPort } = buildLedger(new Map(), true);
+
+      const updated = await new UpdateAccountUseCase(
+        port,
+        transactionManager,
+        ledgerPort,
+      ).execute({
+        uuid: 'account-uuid',
+        ownerId: 1,
+        openingBalanceDate: '2025-06-01',
+      });
+
+      expect(updated.openingBalanceDate).toBe('2025-06-01');
+      expect(ledger.earliestEntryDate).not.toHaveBeenCalled();
+    });
+
+    it('moves the opening date later up to the earliest operation', async () => {
+      const { port } = buildRepository();
+
+      const updated = await new UpdateAccountUseCase(
+        port,
+        transactionManager,
+        buildLedger(new Map(), true, '2026-03-10').port,
+      ).execute({
+        uuid: 'account-uuid',
+        ownerId: 1,
+        openingBalanceDate: '2026-03-10',
+      });
+
+      expect(updated.openingBalanceDate).toBe('2026-03-10');
+    });
+
+    it('rejects an opening date after the earliest operation', async () => {
+      const { port, repository } = buildRepository();
+
+      await expect(
+        new UpdateAccountUseCase(
+          port,
+          transactionManager,
+          buildLedger(new Map(), true, '2026-03-10').port,
+        ).execute({
+          uuid: 'account-uuid',
+          ownerId: 1,
+          openingBalanceDate: '2026-03-11',
+        }),
+      ).rejects.toBeInstanceOf(AccountOpeningAfterOperationsError);
+
+      expect(repository.update).not.toHaveBeenCalled();
     });
 
     it('clears the previous default when the account becomes the default', async () => {

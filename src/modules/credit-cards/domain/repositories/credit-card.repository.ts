@@ -24,7 +24,7 @@ export interface CreditCardRepository {
     uuid: string,
     ownerId: number,
   ): Promise<CreditCardEntity | null>;
-  hasPurchases(ownerId: number, cardId: number): Promise<boolean>;
+  hasHistory(ownerId: number, cardId: number): Promise<boolean>;
   lockOwnerCards(ownerId: number): Promise<void>;
   clearDefault(ownerId: number): Promise<void>;
   create(card: CreditCardEntity): Promise<CreditCardEntity>;

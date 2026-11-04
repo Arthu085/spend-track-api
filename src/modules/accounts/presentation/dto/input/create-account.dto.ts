@@ -18,7 +18,7 @@ export class CreateAccountDto {
   @MoneyField({
     example: '1500.00',
     description:
-      'Balance on openingBalanceDate as a decimal string in BRL; may be negative.',
+      'Balance on openingBalanceDate as a decimal string in BRL; may be negative. Operations on the account cannot be dated before openingBalanceDate.',
   })
   openingBalance!: string;
 

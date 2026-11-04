@@ -36,4 +36,14 @@ export class CreditCardPaymentLedger implements AccountLedger, OnModuleInit {
   hasEntries(ownerId: number, accountId: number): Promise<boolean> {
     return this.paymentRepository.existsForAccount(ownerId, accountId);
   }
+
+  earliestEntryDate(
+    ownerId: number,
+    accountId: number,
+  ): Promise<string | null> {
+    return this.paymentRepository.findEarliestDateForAccount(
+      ownerId,
+      accountId,
+    );
+  }
 }

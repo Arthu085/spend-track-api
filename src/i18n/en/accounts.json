@@ -2,7 +2,9 @@
   "errors": {
     "not_found": "Account not found",
     "inactive": "Account is inactive",
-    "has_history": "This account has transactions and cannot be deleted; deactivate it instead"
+    "has_history": "This account has transactions and cannot be deleted; deactivate it instead",
+    "operation_before_opening": "This date is before the account's opening balance date. Choose a later date or move the opening balance date earlier",
+    "opening_after_operations": "The opening balance date cannot be after the earliest operation on this account"
   },
   "type": {
     "checking": "Checking account",

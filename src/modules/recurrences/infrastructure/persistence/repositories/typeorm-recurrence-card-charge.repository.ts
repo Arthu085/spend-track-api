@@ -104,6 +104,20 @@ export class TypeOrmRecurrenceCardChargeRepository
     return rows.map((row) => RecurrenceCardChargeMapper.toDomain(row));
   }
 
+  async findOccurrenceDatesFrom(
+    recurrenceId: number,
+    from: string,
+  ): Promise<string[]> {
+    const rows = await this.repository
+      .createQueryBuilder('charge')
+      .select('CAST(charge.occurrenceDate AS text)', 'date')
+      .where('charge.recurrenceId = :recurrenceId', { recurrenceId })
+      .andWhere('charge.occurrenceDate >= :from', { from })
+      .getRawMany<{ date: string }>();
+
+    return rows.map(({ date }) => date);
+  }
+
   async sumPlannedByCategory(
     ownerId: number,
     query: PlannedCardChargeQuery,
@@ -115,6 +129,8 @@ export class TypeOrmRecurrenceCardChargeRepository
 
     const rows = await this.repository
       .createQueryBuilder('charge')
+      .innerJoin('charge.recurrence', 'recurrence')
+      .innerJoin('recurrence.creditCard', 'card')
       .select('charge.categoryId', 'categoryId')
       .addSelect('SUM(charge.amount)::text', 'total')
       .where('charge.userId = :ownerId', { ownerId })
@@ -161,7 +177,7 @@ export class TypeOrmRecurrenceCardChargeRepository
     const due = { ownerId, invoiceMonth, planned: TransactionState.PLANNED };
 
     const dueCondition =
-      'charge.userId = :ownerId AND charge.state = :planned AND charge.invoiceMonth <= :invoiceMonth AND charge.deletedAt IS NULL';
+      'charge.userId = :ownerId AND charge.state = :planned AND charge.invoiceMonth <= :invoiceMonth AND charge.deletedAt IS NULL AND card.deletedAt IS NULL';
 
     const [rows, count] = await this.repository
       .createQueryBuilder('charge')
@@ -178,6 +194,8 @@ export class TypeOrmRecurrenceCardChargeRepository
     const sum = await this.repository
       .createQueryBuilder('charge')
       .withDeleted()
+      .innerJoin('charge.recurrence', 'recurrence')
+      .innerJoin('recurrence.creditCard', 'card')
       .select('COALESCE(SUM(charge.amount), 0)::text', 'total')
       .where(dueCondition, due)
       .getRawOne<{ total: string }>();

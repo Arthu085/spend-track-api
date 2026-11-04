@@ -122,12 +122,14 @@ export class TypeOrmRecurrenceRepository
       .andWhere(
         new Brackets((either) =>
           either
-            .where('account.status = :active AND account.deletedAt IS NULL')
+            .where(
+              'account.status = :activeAccount AND account.deletedAt IS NULL',
+            )
             .orWhere(
-              'creditCard.status = :active AND creditCard.deletedAt IS NULL',
+              'creditCard.status = :activeCard AND creditCard.deletedAt IS NULL',
             ),
         ),
-        { active: RecordStatus.ACTIVE },
+        { activeAccount: RecordStatus.ACTIVE, activeCard: RecordStatus.ACTIVE },
       )
       .andWhere('recurrence.startDate <= :through', { through })
       .andWhere(

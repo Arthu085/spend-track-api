@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import type { AccountRepository } from '@modules/accounts';
 import {
   InactiveCreditCardError,
@@ -89,6 +90,7 @@ function setup(stored: RecurrenceEntity | null = buildRecurrence()) {
 
   const charges = {
     findPlannedByRecurrence: jest.fn().mockResolvedValue([]),
+    findOccurrenceDatesFrom: jest.fn().mockResolvedValue([]),
     findByUuidForRecurrence: jest.fn().mockResolvedValue(null),
     create: jest.fn((charge: RecurrenceCardChargeEntity) =>
       Promise.resolve(charge),
@@ -101,6 +103,7 @@ function setup(stored: RecurrenceEntity | null = buildRecurrence()) {
 
   const transactions = {
     findPlannedByRecurrence: jest.fn().mockResolvedValue([]),
+    findRecurrenceDatesFrom: jest.fn().mockResolvedValue([]),
     findByUuidForOwnerForUpdate: jest.fn().mockResolvedValue(null),
     create: jest.fn((transaction: TransactionEntity) =>
       Promise.resolve(transaction),
@@ -363,6 +366,42 @@ describe('recurrence use-cases', () => {
       await generateDue.execute('2026-12-01');
 
       expect(transactions.create).not.toHaveBeenCalled();
+    });
+
+    it('logs a failing recurrence and still extends the ones after it', async () => {
+      const error = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+      const { generateDue, recurrences } = setup();
+
+      recurrences.findDueForGeneration.mockResolvedValue(
+        ['a', 'bad', 'c'].map((uuid) => ({ uuid, ownerId: 1 })),
+      );
+      recurrences.findByUuidForOwnerForUpdate.mockImplementation(
+        (uuid: string) =>
+          uuid === 'bad'
+            ? Promise.reject(new Error('boom'))
+            : Promise.resolve(
+                buildRecurrence({
+                  uuid,
+                  account,
+                  generatedThrough: '2027-10-31',
+                }),
+              ),
+      );
+
+      await expect(generateDue.execute('2026-12-01')).resolves.toBe(2);
+
+      expect(
+        recurrences.update.mock.calls.map(([recurrence]) => recurrence.uuid),
+      ).toEqual(['a', 'c']);
+      expect(error).toHaveBeenCalledTimes(1);
+      expect(error).toHaveBeenCalledWith(
+        expect.objectContaining({
+          msg: 'Recurrence occurrence generation failed',
+          recurrenceUuid: 'bad',
+        }),
+      );
+
+      error.mockRestore();
     });
 
     it('skips recurrences whose account is archived', async () => {
