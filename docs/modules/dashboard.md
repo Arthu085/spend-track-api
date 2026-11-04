@@ -55,8 +55,10 @@ in Swagger; this document covers the rules behind them.
   `creditCards.invoices` lists the invoices whose reference month is the period plus earlier ones
   still outstanding, by due date, then card name, and `creditCards.outstanding` sums what is still
   owed on them; later invoices wait for their own month.
-- A deleted card has no purchase or payment left ([`credit-cards.md`](credit-cards.md#cards)), so its
-  invoices and planned charges are left out of every figure, even though its recurrences stay readable.
+- A card with a purchase or payment cannot be deleted ([`credit-cards.md`](credit-cards.md#cards)),
+  but a card deleted before payments blocked deletion can still hold a live payment, which keeps
+  lowering its account's balance. Apart from that, a deleted card's invoices and planned charges are
+  left out of every figure, even though its recurrences stay readable.
 - `creditCards.plannedDue` sums the planned recurring card charges expected on those same invoice
   months, including ones an earlier month left unconfirmed. `creditCards.plannedCharges` lists the
   first 10 of them, oldest first, with `overdue` marking dates before today, and

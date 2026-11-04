@@ -93,7 +93,9 @@ and filtered as `ENDED` whatever its stored state. An ended recurrence rejects e
 - Occurrences are generated up to the last day of the twelfth month after the current one, never past
   `endDate`, only while the recurrence is `ACTIVE` and its account or card is active and not deleted.
   Dates before the account's opening date are skipped, never rejected, so generation does not fail
-  on a recurrence older than that date.
+  on a recurrence older than that date. A skipped date does not come back if the opening date later
+  moves earlier, because `generated_through` has already passed it. A later pause and resume can only
+  bring back dates from that day on.
 - `generated_through` records the last date already generated, and only pausing moves it back.
   Generation only creates dates after it, and skips dates that already have a live occurrence, so an
   occurrence that was canceled, confirmed, or moved is never recreated.
