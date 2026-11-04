@@ -108,6 +108,15 @@ export class RecurrenceOccurrences {
     occurrence: OwnedOccurrence,
     schedule: OccurrenceSchedule,
   ): Promise<RecurrenceOccurrence> {
+    const currentDate =
+      occurrence.kind === 'transaction'
+        ? occurrence.transaction.date
+        : occurrence.charge.date;
+
+    if (schedule.date !== undefined && schedule.date !== currentDate) {
+      recurrence.assertOccurrenceWithinEnd(schedule.date);
+    }
+
     if (occurrence.kind === 'transaction') {
       const { transaction } = occurrence;
 

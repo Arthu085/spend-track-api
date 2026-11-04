@@ -64,6 +64,10 @@ export class UpdateTransactionUseCase {
 
       const date = input.date ?? transaction.date;
 
+      if (date !== transaction.date) {
+        transaction.assertWithinRecurrenceEnd(date);
+      }
+
       const account =
         (await this.changedAccount(
           input.accountUuid,

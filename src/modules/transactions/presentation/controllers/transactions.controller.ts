@@ -139,7 +139,7 @@ export class TransactionsController {
     .tags('transactions')
     .summary('Update one of your transactions')
     .description(
-      `Partial update; the type and state never change here. A planned transaction accepts every field; a completed one only description, categoryUuid, and notes (changing amount, date, or accounts answers 409); a canceled one nothing. ${REFERENCES_NOTE} ${OWNERSHIP_NOTE}`,
+      `Partial update; the type and state never change here. A planned transaction accepts every field; a completed one only description, categoryUuid, and notes (changing amount, date, or accounts answers 409); a canceled one nothing. A planned occurrence of a recurrence cannot move past the end date of that recurrence. ${REFERENCES_NOTE} ${OWNERSHIP_NOTE}`,
     )
     .errorResponse(
       HttpStatus.NOT_FOUND,
@@ -151,7 +151,7 @@ export class TransactionsController {
     )
     .errorResponse(
       HttpStatus.UNPROCESSABLE_ENTITY,
-      'The date is before the opening balance date of an account, account or category does not match the transaction type, or a transfer uses the same account twice.',
+      'The date is before the opening balance date of an account or past the end date of the recurrence of the occurrence, account or category does not match the transaction type, or a transfer uses the same account twice.',
     )
     .body(UpdateTransactionDto)
     .response(TransactionResponseDto)

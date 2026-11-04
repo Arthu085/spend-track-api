@@ -15,7 +15,8 @@ export class RecurrenceOccurrenceResponseDto {
     type: String,
     format: 'date',
     example: '2026-11-15',
-    description: 'Scheduled date in the recurrence; never changes.',
+    description:
+      'Original scheduled date in the recurrence; never changes, and decides whether ending the recurrence removes a planned occurrence.',
   })
   occurrenceDate!: string;
 
@@ -24,7 +25,7 @@ export class RecurrenceOccurrenceResponseDto {
     format: 'date',
     example: '2026-11-15',
     description:
-      'Current date: the edited planned date, or the purchase date once a card charge is confirmed.',
+      'Current date: the expected date of a planned occurrence, which may have been edited up to the end date of the recurrence, or the purchase date once a card charge is confirmed. A confirmed account occurrence keeps its expected date here and has its actual date in completedOn.',
   })
   date!: string;
 
@@ -46,7 +47,7 @@ export class RecurrenceOccurrenceResponseDto {
     nullable: true,
     example: null,
     description:
-      'Payment or receipt date of an account occurrence, purchase date of a confirmed card charge.',
+      'Actual payment or receipt date of an account occurrence, purchase date of a confirmed card charge; may be after the end date of the recurrence.',
   })
   completedOn!: string | null;
 

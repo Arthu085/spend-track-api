@@ -15,7 +15,7 @@ export class RecurrenceOccurrenceScheduleDto {
     example: '2026-11-16',
     required: false,
     description:
-      'Edit: new date of the planned occurrence. Confirmation: payment or receipt date of an account occurrence (default today), purchase date of a card charge (default its date).',
+      'Edit: new expected date of the planned occurrence, not past the end date of the recurrence. Confirmation: actual payment or receipt date of an account occurrence (default today), actual purchase date of a card charge (default its date); either may be after the end date of the recurrence.',
   })
   date?: string;
 }

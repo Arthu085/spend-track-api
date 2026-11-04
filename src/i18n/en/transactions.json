@@ -6,7 +6,8 @@
     "not_deletable": "Only planned transactions can be deleted; cancel a completed transaction instead",
     "category_kind_mismatch": "The category does not match the transaction type",
     "transfer_same_account": "A transfer needs two different accounts",
-    "invalid_references": "The accounts and category do not match the transaction type"
+    "invalid_references": "The accounts and category do not match the transaction type",
+    "occurrence_after_recurrence_end": "A planned occurrence cannot be moved past the end date of its recurrence"
   },
   "type": {
     "income": "Income",

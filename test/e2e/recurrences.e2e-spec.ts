@@ -456,8 +456,13 @@ describe('Recurrences (e2e)', () => {
       .send({})
       .expect(200);
 
-    expect(dataOf<RecurrenceShape>(ended.body).state).toBe('ENDED');
-    expect(await occurrencesOf(recurrence.uuid)).toHaveLength(0);
+    expect(dataOf<RecurrenceShape>(ended.body)).toMatchObject({
+      state: 'ENDED',
+      endDate: today,
+    });
+    expect(
+      (await occurrencesOf(recurrence.uuid)).map((o) => o.occurrenceDate),
+    ).toEqual([today]);
 
     await owner
       .patch(`/api/recurrences/${recurrence.uuid}`)
@@ -616,6 +621,151 @@ describe('Recurrences (e2e)', () => {
       });
     });
 
+    it('keeps planned occurrences up to today and the history when ended as a whole', async () => {
+      const created = await createRecurrence({
+        description: `${kind} ended as a whole`,
+        startDate: threeMonthsAgo,
+        ...target(),
+      });
+
+      const [toConfirm, toCancel] = await occurrencesOf(created.uuid);
+
+      await owner
+        .put(`${occurrencePath(created.uuid, toConfirm.uuid)}/confirmation`)
+        .send({ date: toConfirm.occurrenceDate })
+        .expect(200);
+
+      await owner
+        .put(`${occurrencePath(created.uuid, toCancel.uuid)}/cancellation`)
+        .expect(200);
+
+      const ended = await owner
+        .put(`/api/recurrences/${created.uuid}/end`)
+        .send({})
+        .expect(200);
+
+      expect(dataOf<RecurrenceShape>(ended.body)).toMatchObject({
+        state: 'ENDED',
+        endDate: today,
+        nextOccurrenceDate: null,
+      });
+
+      const kept = await occurrencesOf(created.uuid);
+
+      expect(kept.every((o) => o.occurrenceDate <= today)).toBe(true);
+      expect(kept[0]).toMatchObject({
+        uuid: toConfirm.uuid,
+        state: 'COMPLETED',
+      });
+      expect(kept[1]).toMatchObject({ uuid: toCancel.uuid, state: 'CANCELED' });
+
+      const planned = kept.filter((o) => o.state === 'PLANNED');
+
+      expect(planned.length).toBeGreaterThanOrEqual(1);
+
+      await owner
+        .patch(occurrencePath(created.uuid, planned[0].uuid))
+        .send({ date: addDaysToDate(today, 1) })
+        .expect(422);
+
+      await owner
+        .put(`${occurrencePath(created.uuid, planned[0].uuid)}/confirmation`)
+        .send({})
+        .expect(200);
+    });
+
+    it('removes every planned occurrence with a cut on the start date, keeping the history', async () => {
+      const created = await createRecurrence({
+        description: `${kind} cut at the start`,
+        startDate: threeMonthsAgo,
+        ...target(),
+      });
+
+      const [toConfirm, toCancel] = await occurrencesOf(created.uuid);
+
+      await owner
+        .put(`${occurrencePath(created.uuid, toConfirm.uuid)}/confirmation`)
+        .send({ date: toConfirm.occurrenceDate })
+        .expect(200);
+
+      await owner
+        .put(`${occurrencePath(created.uuid, toCancel.uuid)}/cancellation`)
+        .expect(200);
+
+      const ended = await owner
+        .put(`/api/recurrences/${created.uuid}/end`)
+        .send({ from: threeMonthsAgo })
+        .expect(200);
+
+      expect(dataOf<RecurrenceShape>(ended.body).state).toBe('ENDED');
+      expect(
+        (await occurrencesOf(created.uuid)).map(({ uuid, state }) => [
+          uuid,
+          state,
+        ]),
+      ).toEqual([
+        [toConfirm.uuid, 'COMPLETED'],
+        [toCancel.uuid, 'CANCELED'],
+      ]);
+    });
+
+    it('refuses to reschedule past the end date and never changes the scheduled date', async () => {
+      const ended = await endedToday('rescheduled');
+      const [occurrence] = await occurrencesOf(ended.uuid);
+      const path = occurrencePath(ended.uuid, occurrence.uuid);
+
+      await owner.patch(path).send({ date: today }).expect(422);
+
+      const moved = await owner
+        .patch(path)
+        .send({ date: yesterday })
+        .expect(200);
+
+      expect(dataOf<OccurrenceShape>(moved.body)).toMatchObject({
+        occurrenceDate: occurrence.occurrenceDate,
+        date: yesterday,
+        state: 'PLANNED',
+      });
+    });
+
+    it('confirms an old occurrence on a date after the end date', async () => {
+      const ended = await endedToday('confirmed late');
+      const [occurrence] = await occurrencesOf(ended.uuid);
+
+      const confirmed = await owner
+        .put(`${occurrencePath(ended.uuid, occurrence.uuid)}/confirmation`)
+        .send({ date: today })
+        .expect(200);
+
+      expect(dataOf<OccurrenceShape>(confirmed.body)).toMatchObject({
+        occurrenceDate: occurrence.occurrenceDate,
+        state: 'COMPLETED',
+        completedOn: today,
+      });
+    });
+
+    it('applies the end date before the recurrence has ended too', async () => {
+      const endDate = addMonthsToDate(today, 2);
+
+      const recurrence = await createRecurrence({
+        description: `${kind} ending soon`,
+        startDate: today,
+        endDate,
+        ...target(),
+      });
+
+      expect(recurrence.state).toBe('ACTIVE');
+
+      const [occurrence] = await occurrencesOf(recurrence.uuid);
+      const path = occurrencePath(recurrence.uuid, occurrence.uuid);
+
+      await owner
+        .patch(path)
+        .send({ date: addDaysToDate(endDate, 1) })
+        .expect(422);
+      await owner.patch(path).send({ date: endDate }).expect(200);
+    });
+
     it('generates nothing when created past its end date, not even from the daily job', async () => {
       const recurrence = await createRecurrence({
         description: `${kind} already over`,
@@ -634,6 +784,114 @@ describe('Recurrences (e2e)', () => {
 
       expect(await occurrencesOf(recurrence.uuid)).toHaveLength(0);
     });
+  });
+
+  it('applies an invoice-month cutoff that already passed like any other end date', async () => {
+    const cutMonth = firstDayOf(thisMonth);
+
+    const created = await createRecurrence({
+      description: 'Ended from an invoice',
+      amount: '19.90',
+      startDate: addMonthsToDate(today, -3),
+      accountUuid: undefined,
+      creditCardUuid: wallet.card,
+      categoryUuid: wallet.subscriptions,
+    });
+
+    const [toConfirm] = await occurrencesOf(created.uuid);
+
+    const confirmed = await owner
+      .put(
+        `/api/recurrences/${created.uuid}/occurrences/${toConfirm.uuid}/confirmation`,
+      )
+      .send({ date: toConfirm.occurrenceDate })
+      .expect(200);
+
+    const { purchaseUuid } = dataOf<OccurrenceShape>(confirmed.body);
+
+    const ended = dataOf<RecurrenceShape>(
+      (
+        await owner
+          .put(`/api/recurrences/${created.uuid}/end`)
+          .send({ fromInvoiceMonth: cutMonth })
+          .expect(200)
+      ).body,
+    );
+
+    expect(ended.state).toBe('ENDED');
+
+    const endDate = ended.endDate!;
+    const kept = await occurrencesOf(created.uuid);
+
+    expect(kept[0]).toMatchObject({ uuid: toConfirm.uuid, state: 'COMPLETED' });
+    expect(kept.every((o) => o.occurrenceDate <= endDate)).toBe(true);
+    expect(kept.every((o) => o.invoiceMonth! < cutMonth)).toBe(true);
+
+    await owner.get(`/api/credit-card-purchases/${purchaseUuid}`).expect(200);
+
+    const [, toMove] = kept;
+    const path = `/api/recurrences/${created.uuid}/occurrences/${toMove.uuid}`;
+
+    await owner
+      .patch(path)
+      .send({ date: addDaysToDate(endDate, 1) })
+      .expect(422);
+
+    const moved = await owner.patch(path).send({ date: endDate }).expect(200);
+
+    expect(dataOf<OccurrenceShape>(moved.body).invoiceMonth! < cutMonth).toBe(
+      true,
+    );
+
+    const late = await owner
+      .put(`${path}/confirmation`)
+      .send({ date: today })
+      .expect(200);
+
+    expect(dataOf<OccurrenceShape>(late.body)).toMatchObject({
+      occurrenceDate: toMove.occurrenceDate,
+      date: today,
+      completedOn: today,
+      state: 'COMPLETED',
+    });
+    expect(dataOf<OccurrenceShape>(late.body).invoiceMonth! >= cutMonth).toBe(
+      true,
+    );
+  });
+
+  it('refuses a transactions route that moves an occurrence past the end date', async () => {
+    const created = await createRecurrence({
+      description: 'Ended, moved through transactions',
+      startDate: addMonthsToDate(today, -3),
+    });
+
+    await owner
+      .put(`/api/recurrences/${created.uuid}/end`)
+      .send({ from: today })
+      .expect(200);
+
+    const [occurrence] = await occurrencesOf(created.uuid);
+
+    await owner
+      .patch(`/api/transactions/${occurrence.uuid}`)
+      .send({ date: today })
+      .expect(422);
+
+    const moved = await owner
+      .patch(`/api/transactions/${occurrence.uuid}`)
+      .send({ date: addDaysToDate(today, -1) })
+      .expect(200);
+
+    expect(dataOf<TransactionShape>(moved.body).recurrence).toMatchObject({
+      occurrenceDate: occurrence.occurrenceDate,
+    });
+
+    const completed = await owner
+      .put(`/api/transactions/${occurrence.uuid}/state`)
+      .send({ state: 'COMPLETED', completedOn: today })
+      .expect(200);
+
+    expect(dataOf<TransactionShape>(completed.body).state).toBe('COMPLETED');
   });
 
   it('lets the transactions routes manage a planned occurrence of an ended recurrence', async () => {

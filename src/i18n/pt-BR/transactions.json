@@ -6,7 +6,8 @@
     "not_deletable": "Somente transações previstas podem ser excluídas; cancele uma transação concluída",
     "category_kind_mismatch": "A categoria não corresponde ao tipo da transação",
     "transfer_same_account": "Uma transferência precisa de duas contas diferentes",
-    "invalid_references": "As contas e a categoria não correspondem ao tipo da transação"
+    "invalid_references": "As contas e a categoria não correspondem ao tipo da transação",
+    "occurrence_after_recurrence_end": "Uma ocorrência prevista não pode ser movida para depois da data final da sua recorrência"
   },
   "type": {
     "income": "Receita",

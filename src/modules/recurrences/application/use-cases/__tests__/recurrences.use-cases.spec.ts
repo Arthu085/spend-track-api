@@ -8,6 +8,7 @@ import {
 } from '@modules/credit-cards';
 import type { TransactionCategoryRepository } from '@modules/transaction-categories';
 import {
+  OccurrenceAfterRecurrenceEndError,
   TransactionState,
   TransactionType,
   type TransactionEntity,
@@ -511,6 +512,7 @@ describe('recurrence use-cases', () => {
           id: 1,
           uuid: 'recurrence-uuid',
           occurrenceDate: '2026-12-15',
+          endDate: null,
         },
       });
 
@@ -643,21 +645,65 @@ describe('recurrence use-cases', () => {
       );
     });
 
-    it('removes every planned occurrence when ending the whole recurrence', async () => {
-      const { end, transactions } = setup();
+    it.each([
+      ['account', { account }],
+      ['card', { account: null, creditCard: card }],
+    ])(
+      'keeps the planned %s occurrences up to today when ending the whole recurrence',
+      async (_target, target) => {
+        const { end, charges, transactions } = setup(
+          buildRecurrence({ ...target, startDate: '2026-08-15' }),
+        );
+
+        const ended = await end.execute({
+          uuid: 'recurrence-uuid',
+          ownerId: 1,
+        });
+
+        expect(ended).toMatchObject({
+          state: RecurrenceState.ENDED,
+          endDate: '2026-11-03',
+        });
+
+        if (ended.isCardRecurrence) {
+          expect(charges.findPlannedByRecurrence).toHaveBeenCalledWith(
+            1,
+            '2026-11-04',
+          );
+        } else {
+          expect(transactions.findPlannedByRecurrence).toHaveBeenCalledWith(
+            1,
+            1,
+            '2026-11-04',
+          );
+        }
+      },
+    );
+
+    it('removes every planned occurrence with a cut on or before the start date', async () => {
+      const { end, transactions } = setup(
+        buildRecurrence({ account, startDate: '2026-08-15' }),
+      );
 
       transactions.findPlannedByRecurrence.mockResolvedValue([
         buildTransaction({ uuid: 'a' }),
         buildTransaction({ uuid: 'b' }),
       ]);
 
-      const ended = await end.execute({ uuid: 'recurrence-uuid', ownerId: 1 });
+      const ended = await end.execute({
+        uuid: 'recurrence-uuid',
+        ownerId: 1,
+        from: '2026-08-15',
+      });
 
-      expect(ended.state).toBe(RecurrenceState.ENDED);
+      expect(ended).toMatchObject({
+        state: RecurrenceState.ENDED,
+        endDate: null,
+      });
       expect(transactions.findPlannedByRecurrence).toHaveBeenCalledWith(
         1,
         1,
-        undefined,
+        '2026-08-15',
       );
       expect(transactions.softDelete).toHaveBeenCalledTimes(2);
     });
@@ -727,6 +773,7 @@ describe('recurrence use-cases', () => {
           id: 1,
           uuid: 'recurrence-uuid',
           occurrenceDate: '2026-11-15',
+          endDate: null,
         },
         date: '2026-11-15',
         amount: 150000,
@@ -760,7 +807,12 @@ describe('recurrence use-cases', () => {
 
       transactions.findByUuidForOwnerForUpdate.mockResolvedValue(
         occurrence({
-          recurrence: { id: 99, uuid: 'other', occurrenceDate: '2026-11-15' },
+          recurrence: {
+            id: 99,
+            uuid: 'other',
+            occurrenceDate: '2026-11-15',
+            endDate: null,
+          },
         }),
       );
 
@@ -871,6 +923,137 @@ describe('recurrence use-cases', () => {
       ).resolves.toMatchObject({ state: TransactionState.CANCELED });
     });
 
+    describe('dates against the end of the recurrence', () => {
+      const input = {
+        uuid: 'recurrence-uuid',
+        occurrenceUuid: 'occurrence',
+        ownerId: 1,
+      };
+
+      const scheduledAt = (date: string) => ({
+        date,
+        recurrence: {
+          id: 1,
+          uuid: 'recurrence-uuid',
+          occurrenceDate: '2026-10-15',
+          endDate: '2026-11-02',
+        },
+      });
+
+      function onAccount(date = '2026-10-15') {
+        const context = setup(
+          buildRecurrence({ account, endDate: '2026-11-02' }),
+        );
+
+        context.transactions.findByUuidForOwnerForUpdate.mockResolvedValue(
+          occurrence(scheduledAt(date)),
+        );
+
+        return context;
+      }
+
+      function onCard(date = '2026-10-15') {
+        const context = setup(cardRecurrence({ endDate: '2026-11-02' }));
+
+        context.charges.findByUuidForRecurrence.mockResolvedValue(
+          buildRecurrenceCardCharge({
+            category,
+            occurrenceDate: '2026-10-15',
+            date,
+            invoiceMonth: '2026-11-01',
+          }),
+        );
+
+        return context;
+      }
+
+      it.each([
+        ['account', onAccount],
+        ['card', onCard],
+      ])(
+        'moves a planned %s occurrence up to the end date and never past it',
+        async (_target, context) => {
+          await expect(
+            context().updateOccurrence.execute({
+              ...input,
+              date: '2026-11-03',
+            }),
+          ).rejects.toThrow(OccurrenceAfterRecurrenceEndError);
+
+          await expect(
+            context().updateOccurrence.execute({
+              ...input,
+              date: '2026-11-02',
+            }),
+          ).resolves.toMatchObject({
+            date: '2026-11-02',
+            occurrenceDate: '2026-10-15',
+          });
+        },
+      );
+
+      it.each([
+        ['account', onAccount],
+        ['card', onCard],
+      ])(
+        'still edits a planned %s occurrence already dated past the end when its date stays',
+        async (_target, context) => {
+          await expect(
+            context('2026-12-01').updateOccurrence.execute({
+              ...input,
+              amount: 7000,
+              date: '2026-12-01',
+            }),
+          ).resolves.toMatchObject({ amount: 7000, date: '2026-12-01' });
+        },
+      );
+
+      it('confirms an old account occurrence on a later payment date, keeping its scheduled dates', async () => {
+        await expect(
+          onAccount().confirm.execute({ ...input, date: '2026-12-20' }),
+        ).resolves.toMatchObject({
+          state: TransactionState.COMPLETED,
+          occurrenceDate: '2026-10-15',
+          date: '2026-10-15',
+          completedOn: '2026-12-20',
+        });
+      });
+
+      it('confirms an old card charge on a later purchase date, keeping its scheduled date', async () => {
+        const { confirm, createPurchase } = onCard();
+
+        createPurchase.recordPlannedCharge.mockResolvedValue(
+          buildCreditCardPurchase({
+            id: 9,
+            uuid: 'purchase',
+            installments: [
+              {
+                number: 1,
+                amount: 5590,
+                date: '2026-12-20',
+                invoice: buildCreditCardInvoice({
+                  referenceMonth: '2027-01-01',
+                }),
+              },
+            ],
+          }),
+        );
+
+        await expect(
+          confirm.execute({ ...input, date: '2026-12-20' }),
+        ).resolves.toMatchObject({
+          state: TransactionState.COMPLETED,
+          occurrenceDate: '2026-10-15',
+          date: '2026-12-20',
+          completedOn: '2026-12-20',
+          invoiceMonth: '2027-01-01',
+        });
+        expect(createPurchase.recordPlannedCharge).toHaveBeenCalledWith(
+          expect.objectContaining({ purchaseDate: '2026-12-20' }),
+        );
+      });
+    });
+
     describe.each([
       ['ended as a whole', { state: RecurrenceState.ENDED }],
       ['past its end date', { endDate: '2026-11-02' }],
@@ -891,6 +1074,7 @@ describe('recurrence use-cases', () => {
               id: 1,
               uuid: 'recurrence-uuid',
               occurrenceDate: '2026-10-15',
+              endDate: null,
             },
           }),
         );

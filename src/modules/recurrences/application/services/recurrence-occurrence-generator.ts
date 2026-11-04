@@ -144,6 +144,7 @@ export class RecurrenceOccurrenceGenerator {
           id: recurrence.id,
           uuid: recurrence.uuid,
           occurrenceDate: date,
+          endDate: recurrence.endDate,
         },
       }),
     );

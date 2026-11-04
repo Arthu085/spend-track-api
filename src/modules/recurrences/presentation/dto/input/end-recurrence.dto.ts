@@ -10,7 +10,8 @@ export class EndRecurrenceDto {
   @DateOnlyField({
     example: '2026-12-01',
     required: false,
-    description: 'No occurrence on or after this date.',
+    description:
+      'No occurrence scheduled on or after this date. Without from or fromInvoiceMonth the whole recurrence ends now and keeps the planned occurrences scheduled up to today.',
   })
   from?: string;
 

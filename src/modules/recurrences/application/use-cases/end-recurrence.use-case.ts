@@ -6,7 +6,6 @@ import {
 } from '@shared/application/ports';
 import { addDaysToDate, financeToday } from '@shared/domain/calendar';
 import { RecurrenceEntity } from '../../domain/entities/recurrence.entity';
-import { RecurrenceState } from '../../domain/enums/recurrence-state.enum';
 import { RecurrenceInvoiceEndNotApplicableError } from '../../domain/errors/recurrence-invoice-end-not-applicable.error';
 import {
   RECURRENCE_REPOSITORY,
@@ -49,15 +48,15 @@ export class EndRecurrenceUseCase {
 
       recurrence.assertChangeable(today);
 
+      const cut = await this.cutOf(recurrence, input);
+
       const ended = await this.recurrenceRepository.update(
-        recurrence.endBefore(await this.cutOf(recurrence, input), today),
+        recurrence.endBefore(cut, today),
       );
 
       await this.occurrences.removePlanned(
         ended,
-        ended.state === RecurrenceState.ENDED || ended.endDate === null
-          ? undefined
-          : addDaysToDate(ended.endDate, 1),
+        cut ?? addDaysToDate(today, 1),
       );
 
       return this.generator.generate(ended, today);

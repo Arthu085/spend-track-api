@@ -44,7 +44,8 @@ export class RecurrenceResponseDto {
     format: 'date',
     nullable: true,
     example: null,
-    description: 'Last date an occurrence may fall on; null when open-ended.',
+    description:
+      'Effective end: the last date an occurrence may be scheduled on, set to today when the recurrence is ended as a whole; null when open-ended, or when it ended before any scheduled date. Actual completion dates may be later.',
   })
   endDate!: string | null;
 

@@ -76,13 +76,13 @@ export class RecurrenceOccurrencesController {
     .tags('recurrences')
     .summary('Change the amount or date of one planned occurrence')
     .description(
-      `Only this occurrence changes; the recurrence and its other occurrences stay. ${ENDED_RECURRENCE_NOTE} ${OWNERSHIP_NOTE}`,
+      `Only this occurrence changes; the recurrence and its other occurrences stay. date is the expected date and cannot move past the recurrence's end date; occurrenceDate never changes. ${ENDED_RECURRENCE_NOTE} ${OWNERSHIP_NOTE}`,
     )
     .errorResponse(HttpStatus.NOT_FOUND, 'Recurrence or occurrence not found.')
     .errorResponse(HttpStatus.CONFLICT, 'Occurrence is not planned.')
     .errorResponse(
       HttpStatus.UNPROCESSABLE_ENTITY,
-      'The date is before the opening balance date of the account.',
+      'The date is before the opening balance date of the account or past the end date of the recurrence.',
     )
     .body(RecurrenceOccurrenceScheduleDto)
     .response(RecurrenceOccurrenceResponseDto)
@@ -112,7 +112,7 @@ export class RecurrenceOccurrencesController {
     .tags('recurrences')
     .summary('Confirm that a planned occurrence actually happened')
     .description(
-      `The amount and date may differ from the template. An account occurrence becomes a completed transaction paid or received on date (default today) and changes the balance once. A card charge becomes a single-installment purchase dated date (default its planned date) on the matching invoice. ${ENDED_RECURRENCE_NOTE} ${OWNERSHIP_NOTE}`,
+      `The amount and date may differ from the template. An account occurrence becomes a completed transaction paid or received on date (default today) and changes the balance once. A card charge becomes a single-installment purchase dated date (default its planned date) on the matching invoice. The date records when it actually happened, so it may be after the recurrence's end date; occurrenceDate never changes. ${ENDED_RECURRENCE_NOTE} ${OWNERSHIP_NOTE}`,
     )
     .errorResponse(HttpStatus.NOT_FOUND, 'Recurrence or occurrence not found.')
     .errorResponse(

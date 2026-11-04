@@ -219,7 +219,7 @@ export class RecurrencesController {
     .tags('recurrences')
     .summary('End a recurrence from a date or an invoice month')
     .description(
-      `from: no occurrence on or after that date. fromInvoiceMonth (card recurrences): no charge on that invoice or later, so earlier invoices stay unchanged. Without either, or with a cut on or before the start date, the whole recurrence ends and every planned occurrence is removed. Otherwise only planned occurrences scheduled after the new end date are removed; those up to it stay editable, confirmable, and cancelable through the occurrence routes, even once the recurrence is ENDED. Completed and canceled occurrences always stay. Ending is final: an ended recurrence generates nothing more and its template no longer changes. ${OWNERSHIP_NOTE}`,
+      `from: no occurrence on or after that date. fromInvoiceMonth (card recurrences): no charge on that invoice or later, so earlier invoices stay unchanged. Without either, the whole recurrence ends now and today becomes its effective end date. A cut on or before the start date also ends it now, with no scheduled date left to keep. Planned occurrences scheduled (occurrenceDate) after the effective end are removed; those up to it stay editable, confirmable, and cancelable through the occurrence routes, even once the recurrence is ENDED. Completed and canceled occurrences always stay. Ending is final: an ended recurrence generates nothing more and its template no longer changes. ${OWNERSHIP_NOTE}`,
     )
     .errorResponse(HttpStatus.NOT_FOUND, 'Recurrence not found.')
     .errorResponse(HttpStatus.CONFLICT, 'Recurrence already ended.')

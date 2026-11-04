@@ -74,14 +74,18 @@ Pausing, resuming, and ending work as follows:
     `RecurrenceInvoiceEndNotApplicableError`, `422`): no charge on that invoice or later. The cut is
     the first purchase date that would go to that invoice, from the stored invoice when it exists,
     otherwise from the card's current days;
-  - neither, or a cut on or before `startDate`: the whole recurrence ends now (`state = ENDED`) and
-    every planned occurrence is soft-deleted.
+  - neither: the whole recurrence ends now (`state = ENDED`) and today becomes `endDate`, or the
+    earlier `endDate` it already had. A recurrence that has not started keeps its `endDate`;
+  - a cut on or before `startDate`: it also ends now (`state = ENDED`), and no scheduled date is left
+    to keep.
 
-  With a new end date, planned occurrences scheduled after it (by `occurrenceDate`, so a moved
-  occurrence follows its original schedule) are soft-deleted, and those up to it are kept. Completed
-  and canceled ones, and every card purchase created by a confirmation, are always kept. Canceling
-  Netflix from the December invoice therefore keeps the November charge, which can still be
-  confirmed, edited, or canceled, and generates nothing from December on.
+  Every form follows the same rule, for account transactions and card charges alike: planned
+  occurrences scheduled after the effective end are soft-deleted, and those up to it are kept.
+  "Scheduled" means `occurrenceDate`, so a planned occurrence moved before the recurrence ended
+  follows its original schedule. Completed and canceled occurrences, and every card purchase created
+  by a confirmation, are always kept. Canceling Netflix from the December invoice therefore keeps the
+  November charge, which can still be confirmed, edited, or canceled, and generates nothing from
+  December on.
 
 ## Occurrences
 
@@ -94,6 +98,11 @@ Pausing, resuming, and ending work as follows:
   it. Each of these requires a planned occurrence (`RecurrenceOccurrenceNotPlannedError`, `409`), and
   none of them depends on the state of the recurrence, so they keep working once it is `ENDED`. They
   change only the occurrence, never the template.
+- An occurrence has three dates. `occurrenceDate` is its original place in the schedule and never
+  changes. `date` is its expected date while planned. `PATCH` cannot move it past the recurrence's
+  `endDate`, through the transactions routes either (`OccurrenceAfterRecurrenceEndError`, `422`).
+  `completedOn` is when it actually happened, so a confirmation may be dated after `endDate`. A
+  confirmed card charge also takes that date as its `date`, because it is the purchase date.
 - Confirming an account occurrence completes its transaction with `completedOn = date` (default
   today), keeps its scheduled `date`, and requires an active account. Neither date, nor a date set
   through `PATCH`, can be before the account's opening date. Confirming a card charge

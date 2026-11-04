@@ -18,6 +18,7 @@ import { mockOf } from '@test/support/mocks/mock-of';
 import type { TransactionEntity } from '../../../domain/entities/transaction.entity';
 import { TransactionState } from '../../../domain/enums/transaction-state.enum';
 import { TransactionType } from '../../../domain/enums/transaction-type.enum';
+import { OccurrenceAfterRecurrenceEndError } from '../../../domain/errors/occurrence-after-recurrence-end.error';
 import { TransactionNotDeletableError } from '../../../domain/errors/transaction-not-deletable.error';
 import { TransactionNotEditableError } from '../../../domain/errors/transaction-not-editable.error';
 import { TransactionNotFoundError } from '../../../domain/errors/transaction-not-found.error';
@@ -293,6 +294,45 @@ describe('transactions use-cases', () => {
         'lock-transaction',
         'update',
       ]);
+    });
+
+    describe('on a planned occurrence of a recurrence', () => {
+      const recurring = (date: string) =>
+        buildTransaction({
+          account: source,
+          category: groceries,
+          date,
+          recurrence: {
+            id: 6,
+            uuid: 'recurrence-uuid',
+            occurrenceDate: '2026-10-15',
+            endDate: '2026-11-02',
+          },
+        });
+
+      it('moves the date up to the end of the recurrence, keeping its scheduled date', async () => {
+        const updated = await update(setup(recurring('2026-10-15')), {
+          date: '2026-11-02',
+        });
+
+        expect(updated.date).toBe('2026-11-02');
+        expect(updated.recurrence?.occurrenceDate).toBe('2026-10-15');
+      });
+
+      it('refuses a date past the end of the recurrence', async () => {
+        await expect(
+          update(setup(recurring('2026-10-15')), { date: '2026-11-03' }),
+        ).rejects.toThrow(OccurrenceAfterRecurrenceEndError);
+      });
+
+      it('accepts other changes when the date stays, even past the end', async () => {
+        await expect(
+          update(setup(recurring('2026-12-01')), {
+            amount: 100,
+            date: '2026-12-01',
+          }),
+        ).resolves.toMatchObject({ amount: 100, date: '2026-12-01' });
+      });
     });
 
     it('clears the notes with null', async () => {

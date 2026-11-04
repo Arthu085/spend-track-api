@@ -193,6 +193,35 @@ describe('recurrence card charge repository (integration)', () => {
     ]);
   });
 
+  it('selects planned charges by their scheduled date, which a reschedule never changes', async () => {
+    const ownerId = await insertUser();
+    const category = await createCategory(ownerId);
+    const visa = await createCard(ownerId, 'Visa');
+    const recurrence = await createRecurrence(visa, category);
+    const moved = await createCharge(recurrence, category, '2026-11-15');
+    const after = await createCharge(recurrence, category, '2026-12-15');
+
+    const rescheduled = await charges.update(
+      moved.rescheduled({
+        amount: moved.amount,
+        date: '2027-01-20',
+        invoiceMonth: '2027-02-01',
+      }),
+    );
+
+    expect(rescheduled).toMatchObject({
+      occurrenceDate: '2026-11-15',
+      date: '2027-01-20',
+    });
+
+    const fromCut = await charges.findPlannedByRecurrence(
+      recurrence.id,
+      '2026-12-01',
+    );
+
+    expect(fromCut.map(({ uuid }) => uuid)).toEqual([after.uuid]);
+  });
+
   it('finds the planned charges of every recurrence of the card, oldest first', async () => {
     const ownerId = await insertUser();
     const category = await createCategory(ownerId);
