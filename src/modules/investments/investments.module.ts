@@ -7,6 +7,7 @@ import { CreateInvestmentMovementUseCase } from './application/use-cases/create-
 import { CreateInvestmentValuationUseCase } from './application/use-cases/create-investment-valuation.use-case';
 import { CreateInvestmentUseCase } from './application/use-cases/create-investment.use-case';
 import { DeleteInvestmentUseCase } from './application/use-cases/delete-investment.use-case';
+import { GetInvestmentPendingOperationsUseCase } from './application/use-cases/get-investment-pending-operations.use-case';
 import { GetInvestmentUseCase } from './application/use-cases/get-investment.use-case';
 import { ListInvestmentMovementsUseCase } from './application/use-cases/list-investment-movements.use-case';
 import { ListInvestmentsUseCase } from './application/use-cases/list-investments.use-case';
@@ -41,6 +42,7 @@ import { InvestmentsController } from './presentation/controllers/investments.co
     InvestmentMovementLedger,
     ListInvestmentsUseCase,
     GetInvestmentUseCase,
+    GetInvestmentPendingOperationsUseCase,
     CreateInvestmentUseCase,
     UpdateInvestmentUseCase,
     UpdateInvestmentStatusUseCase,

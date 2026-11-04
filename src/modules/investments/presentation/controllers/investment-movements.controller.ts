@@ -151,7 +151,7 @@ export class InvestmentMovementsController {
     .errorResponse(HttpStatus.NOT_FOUND, 'Investment or movement not found.')
     .errorResponse(
       HttpStatus.CONFLICT,
-      'Invalid state transition, archived investment, or inactive account.',
+      'Invalid state transition or inactive account.',
     )
     .errorResponse(
       HttpStatus.UNPROCESSABLE_ENTITY,

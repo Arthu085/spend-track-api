@@ -752,6 +752,10 @@ describe('MVP acceptance scenarios (e2e)', () => {
         (a) => a.get(`/api/credit-cards/${owner.card}/invoices`),
       ],
       [
+        'GET card pending operations',
+        (a) => a.get(`/api/credit-cards/${owner.card}/pending-operations`),
+      ],
+      [
         'PATCH card',
         (a) => a.patch(`/api/credit-cards/${owner.card}`).send({ name: 'X' }),
       ],
@@ -847,6 +851,10 @@ describe('MVP acceptance scenarios (e2e)', () => {
           ),
       ],
       ['GET investment', (a) => a.get(`/api/investments/${investment}`)],
+      [
+        'GET investment pending operations',
+        (a) => a.get(`/api/investments/${investment}/pending-operations`),
+      ],
       [
         'PATCH investment',
         (a) => a.patch(`/api/investments/${investment}`).send({ name: 'X' }),

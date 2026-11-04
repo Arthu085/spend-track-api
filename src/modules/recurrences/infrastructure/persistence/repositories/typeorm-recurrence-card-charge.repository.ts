@@ -104,6 +104,29 @@ export class TypeOrmRecurrenceCardChargeRepository
     return rows.map((row) => RecurrenceCardChargeMapper.toDomain(row));
   }
 
+  async findPlannedByCard(
+    ownerId: number,
+    cardId: number,
+  ): Promise<RecurrenceCardChargeEntity[]> {
+    const rows = await this.repository
+      .createQueryBuilder('charge')
+      .withDeleted()
+      .innerJoinAndSelect('charge.category', 'category')
+      .leftJoinAndSelect('charge.creditCardPurchase', 'purchase')
+      .innerJoin('charge.recurrence', 'recurrence')
+      .where('charge.userId = :ownerId', { ownerId })
+      .andWhere('recurrence.creditCardId = :cardId', { cardId })
+      .andWhere('charge.state = :planned', {
+        planned: TransactionState.PLANNED,
+      })
+      .andWhere('charge.deletedAt IS NULL')
+      .orderBy('charge.date', 'ASC')
+      .addOrderBy('charge.id', 'ASC')
+      .getMany();
+
+    return rows.map((row) => RecurrenceCardChargeMapper.toDomain(row));
+  }
+
   async findOccurrenceDatesFrom(
     recurrenceId: number,
     from: string,

@@ -90,6 +90,7 @@ function setup(stored: RecurrenceEntity | null = buildRecurrence()) {
 
   const charges = {
     findPlannedByRecurrence: jest.fn().mockResolvedValue([]),
+    findPlannedByCard: jest.fn().mockResolvedValue([]),
     findOccurrenceDatesFrom: jest.fn().mockResolvedValue([]),
     findByUuidForRecurrence: jest.fn().mockResolvedValue(null),
     create: jest.fn((charge: RecurrenceCardChargeEntity) =>
@@ -121,7 +122,7 @@ function setup(stored: RecurrenceEntity | null = buildRecurrence()) {
     lastDateBefore: jest.fn().mockResolvedValue('2026-11-04'),
   };
 
-  const createPurchase = { execute: jest.fn() };
+  const createPurchase = { recordPlannedCharge: jest.fn() };
 
   const accountRepository = mockOf<AccountRepository>({
     lockOwnerAccounts: jest.fn(() => {
@@ -673,7 +674,7 @@ describe('recurrence use-cases', () => {
       charges.findByUuidForRecurrence.mockResolvedValue(
         buildRecurrenceCardCharge({ category }),
       );
-      createPurchase.execute.mockResolvedValue(
+      createPurchase.recordPlannedCharge.mockResolvedValue(
         buildCreditCardPurchase({
           id: 9,
           uuid: 'purchase',
@@ -695,7 +696,7 @@ describe('recurrence use-cases', () => {
         amount: 5990,
       });
 
-      expect(createPurchase.execute).toHaveBeenCalledWith({
+      expect(createPurchase.recordPlannedCharge).toHaveBeenCalledWith({
         ownerId: 1,
         cardUuid: 'card',
         categoryUuid: 'category',

@@ -3,6 +3,7 @@
     "not_found": "Investimento não encontrado",
     "inactive": "Investimento arquivado",
     "has_history": "Este investimento tem movimentações e não pode ser excluído; arquive-o",
+    "pending_operations_decision_required": "Este investimento tem movimentações previstas; escolha entre mantê-las ou cancelá-las antes de arquivá-lo",
     "movement_not_found": "Movimentação do investimento não encontrada",
     "movement_state_transition": "Esta movimentação não pode passar para o estado solicitado",
     "insufficient_value": "Isso deixaria o investimento com valor negativo",

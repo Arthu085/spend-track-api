@@ -7,10 +7,12 @@ import {
   Translator,
   type Translate,
 } from '@shared/presentation/decorators';
+import { PendingOperationsResponseDto } from '@shared/presentation/dto';
 import type { AuthenticatedUser } from '@shared/presentation/http';
 import { ParseUuidParamPipe } from '@shared/presentation/pipes';
 import { CreateInvestmentUseCase } from '../../application/use-cases/create-investment.use-case';
 import { DeleteInvestmentUseCase } from '../../application/use-cases/delete-investment.use-case';
+import { GetInvestmentPendingOperationsUseCase } from '../../application/use-cases/get-investment-pending-operations.use-case';
 import { GetInvestmentUseCase } from '../../application/use-cases/get-investment.use-case';
 import { ListInvestmentsUseCase } from '../../application/use-cases/list-investments.use-case';
 import { UpdateInvestmentStatusUseCase } from '../../application/use-cases/update-investment-status.use-case';
@@ -33,6 +35,7 @@ export class InvestmentsController {
   constructor(
     private readonly listInvestments: ListInvestmentsUseCase,
     private readonly getInvestment: GetInvestmentUseCase,
+    private readonly getInvestmentPendingOperations: GetInvestmentPendingOperationsUseCase,
     private readonly createInvestment: CreateInvestmentUseCase,
     private readonly updateInvestment: UpdateInvestmentUseCase,
     private readonly updateInvestmentStatus: UpdateInvestmentStatusUseCase,
@@ -86,6 +89,26 @@ export class InvestmentsController {
     return InvestmentResponseDto.fromDomain(
       await this.getInvestment.execute(uuid, actor.id),
       translate,
+    );
+  }
+
+  @(endpoint()
+    .get(':uuid/pending-operations')
+    .successMessage('success.ok')
+    .tags('investments')
+    .summary('Summarize the planned movements of one of your investments')
+    .description(
+      `Count and total of its planned contributions and withdrawals, archived investments included. Completed and canceled movements never count. ${OWNERSHIP_NOTE}`,
+    )
+    .errorResponse(HttpStatus.NOT_FOUND, 'Investment not found.')
+    .response(PendingOperationsResponseDto)
+    .build())
+  async findPendingOperations(
+    @Param('uuid', ParseUuidParamPipe) uuid: string,
+    @CurrentActor() actor: AuthenticatedUser,
+  ): Promise<PendingOperationsResponseDto> {
+    return PendingOperationsResponseDto.fromSummary(
+      await this.getInvestmentPendingOperations.execute(uuid, actor.id),
     );
   }
 
@@ -158,9 +181,13 @@ export class InvestmentsController {
     .tags('investments')
     .summary('Archive or reactivate one of your investments')
     .description(
-      `Archiving (INACTIVE) keeps the investment with its movements and value but blocks new movements and confirmations; movements can still be canceled. ${OWNERSHIP_NOTE}`,
+      `Archiving (INACTIVE) keeps the investment with its movements and value but blocks new movements and valuations; existing planned movements can still be confirmed or canceled. An investment with planned movements also needs pendingOperations: KEEP leaves them planned and confirmable, CANCEL cancels them. ${OWNERSHIP_NOTE}`,
     )
     .errorResponse(HttpStatus.NOT_FOUND, 'Investment not found.')
+    .errorResponse(
+      HttpStatus.CONFLICT,
+      'Investment has planned movements and pendingOperations is missing.',
+    )
     .body(UpdateInvestmentStatusDto)
     .response(InvestmentResponseDto)
     .build())
@@ -174,6 +201,7 @@ export class InvestmentsController {
       uuid,
       ownerId: actor.id,
       status: dto.status,
+      pendingOperations: dto.pendingOperations,
     });
 
     return InvestmentResponseDto.fromDomain(investment, translate);

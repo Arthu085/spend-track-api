@@ -59,6 +59,10 @@ in Swagger; this document covers the rules behind them.
   but a card deleted before payments blocked deletion can still hold a live payment, which keeps
   lowering its account's balance. Apart from that, a deleted card's invoices and planned charges are
   left out of every figure, even though its recurrences stay readable.
+- An archived card or investment keeps counting: its invoices, the planned charges and movements kept
+  when it was archived, and their confirmations all stay in these figures, while the ones canceled
+  when it was archived leave them ([`credit-cards.md`](credit-cards.md#archiving-with-planned-operations),
+  [`investments.md`](investments.md#archiving-with-planned-movements)).
 - `creditCards.plannedDue` sums the planned recurring card charges expected on those same invoice
   months, including ones an earlier month left unconfirmed. `creditCards.plannedCharges` lists the
   first 10 of them, oldest first, with `overdue` marking dates before today, and

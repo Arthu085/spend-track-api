@@ -13,6 +13,8 @@ and payloads are in Swagger; this document covers the rules behind them.
 
 - `index.ts`: `RECURRENCE_CARD_CHARGE_REPOSITORY`/`RecurrenceCardChargeRepository` with
   `PlannedCardChargeTotal`, `PlannedCardCharge`, and `PlannedCardChargesDue`, consumed by `dashboard`.
+- `RecurrenceCardChargePendingOperations` registers into the credit card pending operations registry
+  ([`credit-cards.md`](credit-cards.md#archiving-with-planned-operations)).
 - `recurrences.module.ts`: `RecurrencesModule`. It imports `AccountsModule`, `CreditCardsModule`,
   `TransactionCategoriesModule`, and `TransactionsModule`; none of them imports it back.
 
@@ -83,6 +85,8 @@ and filtered as `ENDED` whatever its stored state. An ended recurrence rejects e
   creates a single-installment card purchase on `date` (default the charge date) with the charge's
   description and category and the recurrence's notes, following every purchase
   rule in [`credit-cards.md`](credit-cards.md#purchases-and-installments), and links it to the charge.
+  The card may be archived: charges kept when it was archived stay confirmable
+  ([`credit-cards.md`](credit-cards.md#archiving-with-planned-operations)).
 - Planned account occurrences are ordinary planned transactions: they appear in projections and the
   dashboard, and the transactions routes can also edit, complete, cancel, or delete them. A planned
   card charge is not on an invoice until it is confirmed; the dashboard counts it separately

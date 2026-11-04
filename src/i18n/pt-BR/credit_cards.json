@@ -3,6 +3,7 @@
     "card_not_found": "Cartão de crédito não encontrado",
     "card_inactive": "Cartão de crédito arquivado",
     "card_has_history": "Este cartão tem compras ou pagamentos de fatura e não pode ser excluído; arquive-o",
+    "pending_operations_decision_required": "Este cartão tem cobranças recorrentes previstas; escolha entre mantê-las ou cancelá-las antes de arquivá-lo",
     "invoice_not_found": "Fatura não encontrada",
     "purchase_not_found": "Compra não encontrada",
     "purchase_not_deletable": "Esta compra já está em uma fatura fechada ou tem estornos; registre um estorno",

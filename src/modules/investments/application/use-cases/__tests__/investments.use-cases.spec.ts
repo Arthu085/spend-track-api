@@ -6,6 +6,7 @@ import {
 import { TransactionState } from '@modules/transactions';
 import type { TransactionManagerPort } from '@shared/application/ports';
 import { RecordStatus } from '@shared/domain/enums/record-status.enum';
+import { PendingOperationsDecision } from '@shared/domain/pending-operations';
 import { buildAccount } from '@test/support/builders/account.builder';
 import {
   buildInvestment,
@@ -22,6 +23,7 @@ import { InvestmentInsufficientValueError } from '../../../domain/errors/investm
 import { InvestmentMovementNotFoundError } from '../../../domain/errors/investment-movement-not-found.error';
 import { InvestmentMovementStateTransitionError } from '../../../domain/errors/investment-movement-state-transition.error';
 import { InvestmentNotFoundError } from '../../../domain/errors/investment-not-found.error';
+import { InvestmentPendingOperationsDecisionRequiredError } from '../../../domain/errors/investment-pending-operations-decision-required.error';
 import { InvestmentValuationUnchangedError } from '../../../domain/errors/investment-valuation-unchanged.error';
 import type { InvestmentMovementRepository } from '../../../domain/repositories/investment-movement.repository';
 import type { InvestmentRepository } from '../../../domain/repositories/investment.repository';
@@ -30,6 +32,7 @@ import { CreateInvestmentMovementUseCase } from '../create-investment-movement.u
 import { CreateInvestmentValuationUseCase } from '../create-investment-valuation.use-case';
 import { CreateInvestmentUseCase } from '../create-investment.use-case';
 import { DeleteInvestmentUseCase } from '../delete-investment.use-case';
+import { GetInvestmentPendingOperationsUseCase } from '../get-investment-pending-operations.use-case';
 import { GetInvestmentUseCase } from '../get-investment.use-case';
 import { ListInvestmentMovementsUseCase } from '../list-investment-movements.use-case';
 import { ListInvestmentsUseCase } from '../list-investments.use-case';
@@ -81,6 +84,7 @@ function setup(options: SetupOptions = {}) {
     findPaginatedByInvestment: jest
       .fn()
       .mockResolvedValue({ items: [buildInvestmentMovement()], total: 1 }),
+    findPlannedByInvestment: jest.fn().mockResolvedValue([]),
     findByUuidForInvestment: jest
       .fn()
       .mockResolvedValue(
@@ -286,17 +290,147 @@ describe('Investment use-cases', () => {
   });
 
   describe('UpdateInvestmentStatusUseCase', () => {
-    it('archives and reactivates an investment', async () => {
-      const ctx = setup();
+    const plannedMovements = () => [
+      buildInvestmentMovement({
+        state: TransactionState.PLANNED,
+        completedOn: null,
+        amount: 1000,
+      }),
+      buildInvestmentMovement({
+        type: InvestmentMovementType.WITHDRAWAL,
+        state: TransactionState.PLANNED,
+        completedOn: null,
+        amount: 500,
+      }),
+    ];
 
-      const result = await new UpdateInvestmentStatusUseCase(
+    function updateStatus(
+      ctx: ReturnType<typeof setup>,
+      status: RecordStatus = RecordStatus.INACTIVE,
+      pendingOperations?: PendingOperationsDecision,
+    ) {
+      return new UpdateInvestmentStatusUseCase(
         ctx.investmentRepository,
         transactionManager,
         ctx.values,
-      ).execute({ uuid: 'x', ownerId: 9, status: RecordStatus.INACTIVE });
+        ctx.movementRepository,
+      ).execute({ uuid: 'x', ownerId: 9, status, pendingOperations });
+    }
+
+    it('archives and reactivates an investment', async () => {
+      const ctx = setup();
+
+      const result = await updateStatus(ctx);
 
       expect(ctx.calls).toEqual(['lock-investments']);
       expect(result.investment.status).toBe(RecordStatus.INACTIVE);
+    });
+
+    it('asks for a decision and changes nothing without one', async () => {
+      const ctx = setup();
+
+      ctx.movements.findPlannedByInvestment.mockResolvedValue(
+        plannedMovements(),
+      );
+
+      await expect(updateStatus(ctx)).rejects.toThrow(
+        InvestmentPendingOperationsDecisionRequiredError,
+      );
+      expect(ctx.investments.update).not.toHaveBeenCalled();
+      expect(ctx.movements.update).not.toHaveBeenCalled();
+    });
+
+    it('keeps planned movements when asked, without touching them', async () => {
+      const ctx = setup();
+
+      ctx.movements.findPlannedByInvestment.mockResolvedValue(
+        plannedMovements(),
+      );
+
+      const result = await updateStatus(
+        ctx,
+        RecordStatus.INACTIVE,
+        PendingOperationsDecision.KEEP,
+      );
+
+      expect(result.investment.status).toBe(RecordStatus.INACTIVE);
+      expect(ctx.movements.update).not.toHaveBeenCalled();
+    });
+
+    it('cancels planned movements when asked and leaves the others alone', async () => {
+      const ctx = setup();
+
+      ctx.movements.findPlannedByInvestment.mockResolvedValue(
+        plannedMovements(),
+      );
+
+      const result = await updateStatus(
+        ctx,
+        RecordStatus.INACTIVE,
+        PendingOperationsDecision.CANCEL,
+      );
+
+      expect(ctx.movements.findPlannedByInvestment).toHaveBeenCalledWith(9, 5);
+      expect(result.investment.status).toBe(RecordStatus.INACTIVE);
+      expect(ctx.movements.update).toHaveBeenCalledTimes(2);
+      expect(ctx.movements.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          state: TransactionState.CANCELED,
+          canceledAt: expect.any(Date) as Date,
+        }),
+      );
+    });
+
+    it('needs no decision and cancels nothing when the status does not move to archived', async () => {
+      const ctx = setup({
+        investment: buildInvestment({ status: RecordStatus.INACTIVE }),
+      });
+
+      ctx.movements.findPlannedByInvestment.mockResolvedValue(
+        plannedMovements(),
+      );
+
+      await updateStatus(ctx);
+      await updateStatus(
+        ctx,
+        RecordStatus.ACTIVE,
+        PendingOperationsDecision.CANCEL,
+      );
+
+      expect(ctx.movements.findPlannedByInvestment).not.toHaveBeenCalled();
+      expect(ctx.movements.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('GetInvestmentPendingOperationsUseCase', () => {
+    function pendingOperations(ctx: ReturnType<typeof setup>) {
+      return new GetInvestmentPendingOperationsUseCase(
+        ctx.investmentRepository,
+        ctx.movementRepository,
+      );
+    }
+
+    it('summarizes the planned movements of an owned investment, archived or not', async () => {
+      const ctx = setup({
+        investment: buildInvestment({ id: 5, status: RecordStatus.INACTIVE }),
+      });
+
+      ctx.movements.findPlannedByInvestment.mockResolvedValue([
+        buildInvestmentMovement({ amount: 1000 }),
+        buildInvestmentMovement({ amount: 500 }),
+      ]);
+
+      await expect(pendingOperations(ctx).execute('x', 9)).resolves.toEqual({
+        count: 2,
+        total: 1500,
+      });
+      expect(ctx.movements.findPlannedByInvestment).toHaveBeenCalledWith(9, 5);
+    });
+
+    it('answers not found for a foreign investment', async () => {
+      await expect(
+        pendingOperations(setup({ investment: null })).execute('x', 9),
+      ).rejects.toThrow(InvestmentNotFoundError);
     });
   });
 
@@ -529,28 +663,30 @@ describe('Investment use-cases', () => {
       ).rejects.toThrow(InvestmentMovementNotFoundError);
     });
 
-    it('rejects confirming twice, or on an archived investment or inactive account', async () => {
+    it('confirms a planned movement kept on an archived investment', async () => {
+      const ctx = setup({
+        investment: buildInvestment({ id: 5, status: RecordStatus.INACTIVE }),
+        movement: buildInvestmentMovement({
+          state: TransactionState.PLANNED,
+          completedOn: null,
+        }),
+      });
+
+      const movement = await changeState(ctx).execute({
+        ...input,
+        state: TransactionState.COMPLETED,
+      });
+
+      expect(movement.state).toBe(TransactionState.COMPLETED);
+    });
+
+    it('rejects confirming twice, or on an inactive account', async () => {
       await expect(
         changeState(setup()).execute({
           ...input,
           state: TransactionState.COMPLETED,
         }),
       ).rejects.toThrow(InvestmentMovementStateTransitionError);
-
-      const planned = () =>
-        buildInvestmentMovement({
-          state: TransactionState.PLANNED,
-          completedOn: null,
-        });
-
-      await expect(
-        changeState(
-          setup({
-            movement: planned(),
-            investment: buildInvestment({ status: RecordStatus.INACTIVE }),
-          }),
-        ).execute({ ...input, state: TransactionState.COMPLETED }),
-      ).rejects.toThrow(InactiveInvestmentError);
 
       await expect(
         changeState(

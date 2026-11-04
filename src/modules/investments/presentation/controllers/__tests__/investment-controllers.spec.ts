@@ -3,6 +3,7 @@ import { validate } from 'class-validator';
 import { TransactionState } from '@modules/transactions';
 import { PaginatedResult } from '@shared/application/dto';
 import { RecordStatus } from '@shared/domain/enums/record-status.enum';
+import { PendingOperationsDecision } from '@shared/domain/pending-operations';
 import type { Translate } from '@shared/presentation/decorators';
 import { PaginationQueryDto } from '@shared/presentation/dto';
 import type { AuthenticatedUser } from '@shared/presentation/http';
@@ -16,6 +17,7 @@ import type { CreateInvestmentMovementUseCase } from '../../../application/use-c
 import type { CreateInvestmentValuationUseCase } from '../../../application/use-cases/create-investment-valuation.use-case';
 import type { CreateInvestmentUseCase } from '../../../application/use-cases/create-investment.use-case';
 import type { DeleteInvestmentUseCase } from '../../../application/use-cases/delete-investment.use-case';
+import type { GetInvestmentPendingOperationsUseCase } from '../../../application/use-cases/get-investment-pending-operations.use-case';
 import type { GetInvestmentUseCase } from '../../../application/use-cases/get-investment.use-case';
 import type { ListInvestmentMovementsUseCase } from '../../../application/use-cases/list-investment-movements.use-case';
 import type { ListInvestmentsUseCase } from '../../../application/use-cases/list-investments.use-case';
@@ -27,6 +29,7 @@ import { InvestmentType } from '../../../domain/enums/investment-type.enum';
 import { CreateInvestmentMovementDto } from '../../dto/input/create-investment-movement.dto';
 import { CreateInvestmentValuationDto } from '../../dto/input/create-investment-valuation.dto';
 import { CreateInvestmentDto } from '../../dto/input/create-investment.dto';
+import { UpdateInvestmentStatusDto } from '../../dto/input/update-investment-status.dto';
 import { UpdateInvestmentDto } from '../../dto/input/update-investment.dto';
 import { InvestmentMovementsController } from '../investment-movements.controller';
 import { InvestmentsController } from '../investments.controller';
@@ -61,6 +64,10 @@ async function errorsOf<T extends object>(
 describe('InvestmentsController', () => {
   const execute = jest.fn().mockResolvedValue(withValue);
 
+  const pendingOperationsExecute = jest
+    .fn()
+    .mockResolvedValue({ count: 2, total: 150000 });
+
   const controller = new InvestmentsController(
     mockOf<ListInvestmentsUseCase>({
       execute: jest
@@ -68,6 +75,9 @@ describe('InvestmentsController', () => {
         .mockResolvedValue(PaginatedResult.of([withValue], 1, 1, 20)),
     }),
     mockOf<GetInvestmentUseCase>({ execute }),
+    mockOf<GetInvestmentPendingOperationsUseCase>({
+      execute: pendingOperationsExecute,
+    }),
     mockOf<CreateInvestmentUseCase>({ execute }),
     mockOf<UpdateInvestmentUseCase>({ execute }),
     mockOf<UpdateInvestmentStatusUseCase>({ execute }),
@@ -75,6 +85,45 @@ describe('InvestmentsController', () => {
   );
 
   beforeEach(() => execute.mockClear());
+
+  it('serializes the planned movements with an exact total', async () => {
+    await expect(
+      controller.findPendingOperations('uuid', actor),
+    ).resolves.toEqual({ count: 2, total: '1500.00' });
+    expect(pendingOperationsExecute).toHaveBeenCalledWith('uuid', 41);
+  });
+
+  it('forwards the decision about planned movements', async () => {
+    await controller.updateStatus(
+      'uuid',
+      {
+        status: RecordStatus.INACTIVE,
+        pendingOperations: PendingOperationsDecision.KEEP,
+      },
+      actor,
+      translate,
+    );
+
+    expect(execute).toHaveBeenLastCalledWith({
+      uuid: 'uuid',
+      ownerId: 41,
+      status: RecordStatus.INACTIVE,
+      pendingOperations: PendingOperationsDecision.KEEP,
+    });
+  });
+
+  it('accepts only a known decision, and none when omitted', async () => {
+    const statusErrors = (pendingOperations?: unknown) =>
+      errorsOf(UpdateInvestmentStatusDto, {
+        status: RecordStatus.INACTIVE,
+        ...(pendingOperations === undefined ? {} : { pendingOperations }),
+      });
+
+    await expect(statusErrors()).resolves.toEqual([]);
+    await expect(statusErrors('CANCEL')).resolves.toEqual([]);
+    await expect(statusErrors('DROP')).resolves.toEqual(['pendingOperations']);
+    await expect(statusErrors(null)).resolves.toEqual(['pendingOperations']);
+  });
 
   it('serializes values, progress, and labels as decimal strings', async () => {
     const result = await controller.findOne('uuid', actor, translate);

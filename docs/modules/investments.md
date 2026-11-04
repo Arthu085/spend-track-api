@@ -39,11 +39,27 @@ investment, so a foreign record is a `404` (`InvestmentNotFoundError`,
 - With a target, `progress.remaining` is `targetAmount − currentValue` (never below 0) and
   `progress.percent` is the whole percentage reached, rounded down, above 100 once exceeded.
 - `PUT /investments/:uuid/status` archives (`INACTIVE`) or reactivates it. An archived investment
-  keeps its movements and value, rejects `GET /investments/:uuid`, `PATCH`, new movements,
-  valuations, and confirmations (`InactiveInvestmentError`, `409`), but its movements stay listable
-  and cancelable. `GET /investments` defaults to `ACTIVE` and orders by name.
+  keeps its movements and value and rejects `GET /investments/:uuid`, `PATCH`, new movements, and
+  valuations (`InactiveInvestmentError`, `409`), but its movements stay listable, confirmable, and
+  cancelable. `GET /investments` defaults to `ACTIVE` and orders by name.
 - `DELETE` soft-deletes an investment only while it has no movement, in any state; otherwise
   `InvestmentHasHistoryError` (`409`) and the user archives it instead.
+
+## Archiving with planned movements
+
+An investment's pending operations are its `PLANNED` movements. Completed and canceled movements are
+recorded history, and archiving never changes them.
+
+- `GET /investments/:uuid/pending-operations` returns their `count` and `total` (the sum of their
+  amounts, contributions and withdrawals alike), for an active or an archived investment.
+- Moving an investment from `ACTIVE` to `INACTIVE` requires `pendingOperations` when it has any;
+  otherwise `InvestmentPendingOperationsDecisionRequiredError` (`409`) and nothing changes. The body
+  is not read in any other transition, so re-archiving and reactivating ignore it.
+- `KEEP` leaves them planned. They keep moving the dashboard projection and can still be confirmed,
+  which changes the account balance and the value as usual and still needs an active account, or
+  canceled.
+- `CANCEL` moves them to `CANCELED` with `canceledAt` in the same transaction, so they stay listed as
+  history and stop counting.
 
 ## Movements
 
@@ -62,7 +78,7 @@ investment, so a foreign record is a `404` (`InvestmentNotFoundError`,
   `InvestmentMovementStateTransitionError` (`409`). There is no edit or delete: correct a movement
   by canceling it and recording a new one.
 - A movement created as `COMPLETED` defaults `completedOn` to its `date`; confirming later defaults
-  it to today in `America/Sao_Paulo` and needs an active investment and account.
+  it to today in `America/Sao_Paulo` and needs an active account.
 - `date` and `completedOn` cannot be before the account's opening date
   ([`accounts.md`](accounts.md#opening-balance)).
 - `POST /investments/:uuid/valuations` takes the new `value` (non-negative) and records the
@@ -89,7 +105,8 @@ Every movement write runs in one database transaction under the per-user account
 (`InvestmentRepository.lockOwnerInvestments`, a transaction-scoped advisory lock), the same order as
 every account write. Value checks therefore read a value no concurrent request is changing, and a
 movement is completed or canceled exactly once. Investment updates, status changes, and deletion
-take the investment lock.
+take the investment lock, which is also enough for archiving to cancel planned movements, since
+those change no balance or value.
 
 ## Configuration
 

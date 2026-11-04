@@ -15,8 +15,9 @@ payloads are in Swagger; this document covers the rules behind them.
 - `index.ts`: `CreditCardEntity`, `CreditCardInvoiceStatus`, `InvoiceStatement`,
   `CREDIT_CARD_PURCHASE_REPOSITORY`/`CreditCardPurchaseRepository` with `CategorySpendingTotal`, and
   `CreditCardStatements`, consumed by `dashboard`; `CREDIT_CARD_REPOSITORY`/`CreditCardRepository`,
-  `findOwnedCreditCard`, `InactiveCreditCardError`, `CreditCardInvoiceAssigner`, and
-  `CreateCreditCardPurchaseUseCase`, consumed by `recurrences`.
+  `findOwnedCreditCard`, `InactiveCreditCardError`, `CreditCardInvoiceAssigner`,
+  `CreateCreditCardPurchaseUseCase`, and
+  `CREDIT_CARD_PENDING_OPERATIONS`/`CreditCardPendingOperationsRegistry`, consumed by `recurrences`.
 - `presentation.ts`: `CreditCardInvoiceListResponseDto`, used by the dashboard response, and
   `CreditCardRefResponseDto`, used by the recurrence response.
 - `persistence.ts`: `CreditCardMapper`, used by the recurrence mapper.
@@ -45,12 +46,35 @@ owner-scoped lookups of their modules, so a foreign one answers that module's `4
 - `PUT /credit-cards/:uuid/status` archives (`INACTIVE`) or reactivates a card. An archived card
   rejects new purchases, `GET /credit-cards/:uuid`, and `PATCH` (`InactiveCreditCardError`, `409`),
   like inactive accounts, but keeps its purchases and invoices, which stay readable and payable. `GET /credit-cards` defaults to `ACTIVE`, puts the default card
-  first, then orders by name.
+  first, then orders by name. See [Archiving with planned operations](#archiving-with-planned-operations).
 - `DELETE` soft-deletes a card only while it has no purchase and no invoice payment, canceled or not;
   otherwise `CreditCardHasHistoryError` (`409`) and the user archives it instead. A payment can
   outlive its purchase as credit, which a deleted card could no longer use. Planned recurring charges
   do not block deletion: they stop counting ([`dashboard.md`](dashboard.md#figures)), and the
   recurrence generates nothing more.
+
+## Archiving with planned operations
+
+A card's pending operations are the planned recurring charges of its recurrences, whatever the state
+of those recurrences. `CreditCardPendingOperationSources` (`CREDIT_CARD_PENDING_OPERATIONS`) is the
+registry they are reached through, since `recurrences` depends on this module and not the reverse
+([`recurrences.md`](recurrences.md#occurrences)). Purchases, installments, invoices, refunds, and
+payments are recorded history: they are never pending, and archiving never changes them.
+
+- `GET /credit-cards/:uuid/pending-operations` returns their `count` and `total`, for an active or an
+  archived card.
+- Moving a card from `ACTIVE` to `INACTIVE` with `PUT /credit-cards/:uuid/status` requires
+  `pendingOperations` when it has any; otherwise `CreditCardPendingOperationsDecisionRequiredError`
+  (`409`) and nothing changes. The body is not read in any other transition, so re-archiving and
+  reactivating ignore it.
+- `KEEP` leaves the charges planned. They keep counting in the dashboard
+  ([`dashboard.md`](dashboard.md#figures)), and each one can still be confirmed, edited, or canceled.
+  Confirming one creates its purchase on the archived card through `recordPlannedCharge`, the only
+  way to add a purchase to it, and it can then be paid like any other invoice.
+- `CANCEL` moves the charges to `CANCELED` with `canceledAt` in the same transaction, so they stay
+  listed as history, stop counting, and are not generated again, including after the card is
+  reactivated. It does not end their recurrences, which generate nothing while the card is archived
+  and resume from `generated_through` once it is reactivated.
 
 ## Invoice cycle
 
@@ -134,7 +158,8 @@ adds the charges (with installment number and count), refunds, and payments.
 
 Every write runs in one database transaction under the per-user card lock
 (`CreditCardRepository.lockOwnerCards`, a transaction-scoped advisory lock), so concurrent requests
-never create the same invoice twice, overpay an invoice, or over-refund a purchase. Paying and
+never create the same invoice twice, overpay an invoice, or over-refund a purchase. Every write of a
+planned charge holds that lock too, so archiving cancels them without any further lock. Paying and
 canceling a payment take the per-user account lock first, then the card lock, the same order as
 every account write.
 

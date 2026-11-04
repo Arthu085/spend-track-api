@@ -24,6 +24,7 @@ import { CreditCardInvoiceAssigner } from '../services/credit-card-invoice-assig
 import {
   findActiveCreditCard,
   findActiveExpenseCategory,
+  findOwnedCreditCard,
 } from '../services/credit-card-references';
 
 export interface CreateCreditCardPurchaseInput {
@@ -54,6 +55,19 @@ export class CreateCreditCardPurchaseUseCase {
   async execute(
     input: CreateCreditCardPurchaseInput,
   ): Promise<CreditCardPurchaseEntity> {
+    return this.record(input, findActiveCreditCard);
+  }
+
+  async recordPlannedCharge(
+    input: CreateCreditCardPurchaseInput,
+  ): Promise<CreditCardPurchaseEntity> {
+    return this.record(input, findOwnedCreditCard);
+  }
+
+  private async record(
+    input: CreateCreditCardPurchaseInput,
+    findCard: typeof findOwnedCreditCard,
+  ): Promise<CreditCardPurchaseEntity> {
     if (input.amount < input.installmentCount) {
       throw new CreditCardInstallmentsExceedAmountError();
     }
@@ -61,7 +75,7 @@ export class CreateCreditCardPurchaseUseCase {
     return this.transactionManager.runInTransaction(async () => {
       await this.cardRepository.lockOwnerCards(input.ownerId);
 
-      const card = await findActiveCreditCard(
+      const card = await findCard(
         this.cardRepository,
         input.cardUuid,
         input.ownerId,

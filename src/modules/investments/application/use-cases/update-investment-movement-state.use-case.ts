@@ -12,9 +12,7 @@ import {
 } from '@shared/application/ports';
 import { financeToday } from '@shared/domain/calendar';
 import { assertRecordActive } from '@shared/domain/policies';
-import { InvestmentEntity } from '../../domain/entities/investment.entity';
 import { InvestmentMovementEntity } from '../../domain/entities/investment-movement.entity';
-import { InactiveInvestmentError } from '../../domain/errors/inactive-investment.error';
 import {
   INVESTMENT_MOVEMENT_REPOSITORY,
   type InvestmentMovementRepository,
@@ -72,11 +70,7 @@ export class UpdateInvestmentMovementStateUseCase {
 
       const changed =
         input.state === TransactionState.COMPLETED
-          ? this.complete(
-              investment,
-              movement,
-              input.completedOn ?? financeToday(),
-            )
+          ? this.complete(movement, input.completedOn ?? financeToday())
           : movement.cancel();
 
       await this.values.assertCanChangeBy(
@@ -89,13 +83,10 @@ export class UpdateInvestmentMovementStateUseCase {
   }
 
   private complete(
-    investment: InvestmentEntity,
     movement: InvestmentMovementEntity,
     completedOn: string,
   ): InvestmentMovementEntity {
     const completed = movement.complete(completedOn);
-
-    assertRecordActive(investment, new InactiveInvestmentError());
 
     if (movement.account) {
       assertRecordActive(movement.account, new InactiveAccountError());
