@@ -230,11 +230,85 @@ side by side, so the schema after a migration must work with **both** releases:
 A migration that cannot be backward-compatible requires stopping the old instances before migrating
 instead of rolling them over.
 
+### Historical settlements and recurring contributions cutover
+
+Migrations `1793896076380` (historical invoice settlements) and `1793897757086` (recurring investment
+contributions) preserve existing records: existing payments become `ACCOUNT`, existing investment
+movements become `ONE_TIME`, and existing account/card recurrences retain their categories, states,
+and generation cursors. They do not change account opening balances or historical payment amounts.
+
+**This release requires a maintenance cutover, not a rolling deployment.** Once new feature records
+exist, the previous API is incompatible even if the expanded schema is left in place: it counts
+historical settlements as bank-account outflows, and it cannot read contribution recurrences with
+null categories. The general rolling-deployment and failed-deployment rollback examples below do
+not apply after those writes.
+
+1. Enable maintenance mode, drain requests, and stop every old API replica, recurrence scheduler,
+   and other writer. Keep writers stopped throughout the migration and verification. A disabled
+   client alone does not stop API requests or scheduled jobs.
+2. Take a consistent PostgreSQL backup, retain the previous image and configuration, and record the
+   recovery point. Verify that the backup restores to a separate database. Record account opening
+   and current balances, invoice paid/outstanding amounts, and recurrence/movement counts for
+   comparison after deployment.
+3. Run `migration:run:prod` exactly once from the new API image. Pending migrations run in one
+   transaction; a failure must abort the deployment. Never run migrations concurrently.
+4. Start only the new API image. Before admitting financial traffic, verify readiness, preserved
+   account and invoice figures, existing payment sources, and existing movement kinds. The migration
+   integration suite exercises a populated previous schema and both pending migrations in the same
+   transaction.
+5. Deploy the matching client after the API. Reopen traffic only after validating ordinary invoice
+   payments, a historical settlement that leaves the account balance unchanged, and the recurrence
+   lifecycle on a controlled account. Those feature writes cross the rollback boundary below.
+
+Before considering either an application or schema rollback, stop all writers again and run this
+read-only preflight against the migrated database:
+
+```sql
+SELECT count(*) AS historical_settlements
+FROM credit_card_payments
+WHERE source = 'HISTORICAL_SETTLEMENT';
+
+SELECT count(*) AS contribution_recurrences
+FROM recurrences
+WHERE type::text = 'INVESTMENT_CONTRIBUTION';
+
+SELECT count(*) AS recurring_contribution_movements
+FROM investment_movements
+WHERE contribution_kind <> 'ONE_TIME'
+   OR recurrence_id IS NOT NULL;
+```
+
+These counts deliberately include canceled, ended, archived, and soft-deleted rows. Their financial
+meaning and history must survive recovery. **If any count is nonzero, do not restart the previous API
+or run either migration's `down()`.** The historical migration's rollback drops `source` without
+refusing settlements, silently losing their balance semantics. The contribution migration's
+rollback rejects contribution recurrences (even ended or soft-deleted ones) when restoring the
+non-null category and old type enum; PostgreSQL rolls back that failed revert only when it runs in
+a transaction. Never use `--transaction none`, remove migration-history rows, or delete financial
+records to force a revert.
+
+If all counts are zero and no feature records were created, a deliberate schema rollback can run
+`npm run typeorm:prod -- migration:revert --transaction all` from the new image, once for each of
+these two migrations in reverse order. Verify preserved financial figures and the migration table
+before restarting the previous API and matching client. The integration suite checks this populated
+no-feature round trip. An empty preflight is necessary, not permission to revert unrelated later
+migrations: inspect the actual pending rollback order first.
+
+After the rollback boundary, prefer a forward fix with the new schema and compatible API. If that
+is impossible, keep maintenance mode enabled and restore the complete pre-deployment backup or a
+verified point-in-time recovery into a separate database. Reconcile and deliberately replay every
+financial operation after that recovery point before switching traffic; restoring loses those
+writes unless they are reconciled. Verify account balances, opening dates, invoice settlements,
+investment movements, and recurrence history together. Do not restore selected tables or relabel
+historical settlements as ordinary payments.
+
 ## Deployment
 
 A provider-independent sequence; each step maps to the platform's equivalent (a Kubernetes `Job` and
 `Deployment`, an ECS task and service, ...). `scripts/smoke-test-prod-image.sh` runs steps 2–9
 against disposable containers and is the executable reference.
+Follow the [financial feature cutover](#historical-settlements-and-recurring-contributions-cutover)
+instead when applying migrations `1793896076380` and `1793897757086`.
 
 1. **Build an immutable image** tagged with the commit (never only `latest`) and push it:
    `docker build --target prod -t "registry.example.com/api:$TAG" .`
@@ -291,6 +365,10 @@ in place and remove the new container. With more replicas, repeat one instance a
 
 ### Failed deployments
 
+The [financial feature rollback boundary](#historical-settlements-and-recurring-contributions-cutover)
+takes precedence over application rollback after historical settlements or contribution recurrences
+have been recorded.
+
 - **Migration failed:** its transaction rolled back, so the schema and running release are unchanged.
   Fix the migration in a new image; never edit a migration already applied anywhere.
 - **New instances never become ready:** they receive no traffic. Read their logs (configuration
@@ -302,6 +380,8 @@ in place and remove the new container. With more replicas, repeat one instance a
 
 **Rolling back the application does not roll back the database.** The previous image then runs
 against the newer schema, which works only when the migration was backward-compatible.
+For historical settlements and recurring contributions, follow the
+[release-specific preflight and recovery procedure](#historical-settlements-and-recurring-contributions-cutover).
 
 Reverting the schema is a separate, deliberate step: run
 `npm run typeorm:prod -- migration:revert` from the **newer** image (the older one lacks the
