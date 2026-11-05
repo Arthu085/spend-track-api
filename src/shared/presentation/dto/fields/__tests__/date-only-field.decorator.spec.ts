@@ -1,14 +1,28 @@
+import { DECORATORS } from '@nestjs/swagger';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { DateOnlyField } from '../date-only-field.decorator';
 
 class DateOnlyFieldTestDto {
-  @DateOnlyField({ example: '2026-01-31' })
+  @DateOnlyField({ example: '2026-01-31', description: 'Reference date' })
   date!: string;
+}
+
+class OptionalDateOnlyFieldTestDto {
+  @DateOnlyField({ example: '2026-01-31', required: false })
+  date?: string;
 }
 
 async function errorsFor(date: unknown) {
   return validate(plainToInstance(DateOnlyFieldTestDto, { date }));
+}
+
+function swaggerMetadataOf(target: object): Record<string, unknown> {
+  return Reflect.getMetadata(
+    DECORATORS.API_MODEL_PROPERTIES,
+    target,
+    'date',
+  ) as Record<string, unknown>;
 }
 
 describe('DateOnlyField', () => {
@@ -33,4 +47,29 @@ describe('DateOnlyField', () => {
       expect(errors[0].constraints).toHaveProperty('matches');
     },
   );
+
+  it.each([20260131, null, undefined, true])(
+    'rejects the non-string value %p without throwing',
+    async (date) => {
+      const errors = await errorsFor(date);
+
+      expect(errors[0].constraints).toHaveProperty('isString');
+    },
+  );
+
+  it('documents a required date-format string in Swagger', () => {
+    expect(swaggerMetadataOf(DateOnlyFieldTestDto.prototype)).toMatchObject({
+      type: String,
+      format: 'date',
+      example: '2026-01-31',
+      required: true,
+      description: 'Reference date',
+    });
+  });
+
+  it('documents an optional field when required is false', () => {
+    expect(
+      swaggerMetadataOf(OptionalDateOnlyFieldTestDto.prototype),
+    ).toMatchObject({ required: false });
+  });
 });

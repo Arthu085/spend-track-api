@@ -4,8 +4,28 @@ import globalSetup from '../e2e/global-setup';
 import globalTeardown from '../e2e/global-teardown';
 import { ADMIN_CREDENTIALS, USER_CREDENTIALS } from '../e2e/helpers/auth-agent';
 
+const DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 5;
+
 let app: NestExpressApplication | undefined;
 let shutdownTask: Promise<void> | undefined;
+
+function readAccessTokenTtlSeconds(): number {
+  const configured = process.env.FRONTEND_FIXTURE_ACCESS_TOKEN_TTL_SECONDS;
+
+  if (configured === undefined) {
+    return DEFAULT_ACCESS_TOKEN_TTL_SECONDS;
+  }
+
+  const seconds = Number(configured);
+
+  if (!Number.isInteger(seconds) || seconds <= 0) {
+    throw new Error(
+      'FRONTEND_FIXTURE_ACCESS_TOKEN_TTL_SECONDS must be a positive integer.',
+    );
+  }
+
+  return seconds;
+}
 
 async function start(): Promise<void> {
   if (!process.send) {
@@ -14,12 +34,14 @@ async function start(): Promise<void> {
     );
   }
 
+  const accessTokenTtlSeconds = readAccessTokenTtlSeconds();
+
   await globalSetup();
   await import('../e2e/setup-env.js');
 
   process.env.CORS_ORIGINS = 'http://localhost:5173';
   process.env.APP_WEB_URL = 'http://localhost:5173';
-  process.env.JWT_ACCESS_TTL = '5s';
+  process.env.JWT_ACCESS_TTL = `${accessTokenTtlSeconds}s`;
   process.env.COOKIE_SECURE = 'false';
   process.env.COOKIE_SAMESITE = 'lax';
   process.env.COOKIE_DOMAIN = '';
@@ -44,6 +66,7 @@ async function start(): Promise<void> {
       baseURL: `${address.origin}/api`,
       admin: ADMIN_CREDENTIALS,
       user: USER_CREDENTIALS,
+      accessTokenTtlMs: accessTokenTtlSeconds * 1000,
     });
   }
 }

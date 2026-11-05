@@ -81,26 +81,41 @@ jobs:
       - uses: actions/checkout@v4
         with:
           path: spend-track-api
+          persist-credentials: false
 
       # A coordinated contract change uses one branch name in both repositories;
       # otherwise the suite runs against the other repository's main.
+      # The token stays in this step and the next checkout, so dependency install and test code never receive it.
       - name: Resolve client ref
         id: other-ref
         env:
           BRANCH: ${{ github.head_ref || github.ref_name }}
-          REPOSITORY_URL: https://github.com/${{ github.repository_owner }}/spend-track-client
+          GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN || github.token }}
+          GIT_TERMINAL_PROMPT: '0'
+          REPOSITORY: ${{ github.repository_owner }}/spend-track-client
         run: |
-          if git ls-remote --exit-code --heads "$REPOSITORY_URL" "refs/heads/$BRANCH" > /dev/null; then
-            echo "ref=$BRANCH" >> "$GITHUB_OUTPUT"
-          else
-            echo "ref=main" >> "$GITHUB_OUTPUT"
-          fi
+          status=0
+          git -c credential.helper= -c 'credential.helper=!gh auth git-credential' \
+            ls-remote --exit-code --heads "https://github.com/$REPOSITORY" "refs/heads/$BRANCH" > /dev/null || status=$?
+
+          case "$status" in
+            0) ref="$BRANCH" ;;
+            2) ref=main ;;
+            *)
+              echo "::error::Cannot read $REPOSITORY. A private repository requires the CROSS_REPO_TOKEN Actions secret with Contents read access; see docs/infrastructure.md#ci."
+              exit 1
+              ;;
+          esac
+
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
 
       - uses: actions/checkout@v4
         with:
           repository: ${{ github.repository_owner }}/spend-track-client
           ref: ${{ steps.other-ref.outputs.ref }}
           path: spend-track-client
+          token: ${{ secrets.CROSS_REPO_TOKEN || github.token }}
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:

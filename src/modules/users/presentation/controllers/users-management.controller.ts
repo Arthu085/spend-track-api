@@ -65,6 +65,8 @@ export class UsersManagementController {
       email: query.email,
       role: query.role,
       status: query.status,
+      sortBy: query.sortBy,
+      sortOrder: query.sortOrder,
     });
 
     return result.map((user) =>

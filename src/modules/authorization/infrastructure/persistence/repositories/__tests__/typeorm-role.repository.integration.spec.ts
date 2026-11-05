@@ -80,6 +80,29 @@ describe('TypeOrmRoleRepository (integration)', () => {
     expect(found?.abilities[0].subject).toBe(Subject.USER);
   });
 
+  it('sorts roles ascending and descending while hydrating abilities', async () => {
+    const user = await insertRole(RoleEnum.USER);
+    const admin = await insertRole(RoleEnum.ADMIN);
+    const ability = await insertAbility(Action.READ, Subject.USER);
+    await dataSource
+      .getRepository(RoleOrmEntity)
+      .save({ id: user.id, abilities: [ability] });
+
+    const ascending = await repository.findAll({ sortBy: 'role' });
+
+    const descending = await repository.findAll({
+      sortBy: 'role',
+      sortOrder: 'DESC',
+    });
+
+    const tied = await repository.findAll({ sortBy: 'status' });
+
+    expect(ascending.map(({ uuid }) => uuid)).toEqual([admin.uuid, user.uuid]);
+    expect(descending.map(({ uuid }) => uuid)).toEqual([user.uuid, admin.uuid]);
+    expect(descending[0].abilities).toHaveLength(1);
+    expect(tied.map(({ uuid }) => uuid)).toEqual([admin.uuid, user.uuid]);
+  });
+
   it('findByUuids returns only matching roles, and [] for an empty input', async () => {
     const roleA = await insertRole(RoleEnum.ADMIN);
     await insertRole(RoleEnum.USER);

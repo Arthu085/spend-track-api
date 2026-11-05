@@ -1,3 +1,4 @@
+import { mockOf } from '@test/support/mocks/mock-of';
 import type { Repository } from 'typeorm';
 import { RecordStatus } from '@shared/domain/enums/record-status.enum';
 import { RoleEntity } from '../../../../domain/entities/role.entity';
@@ -42,6 +43,45 @@ describe('TypeOrmRoleRepository', () => {
     expect(find).toHaveBeenCalledWith({ relations: { abilities: true } });
     expect(result).toHaveLength(1);
     expect(result[0]).toBeInstanceOf(RoleEntity);
+  });
+
+  it.each([
+    ['role', 'name', 'ASC'],
+    ['status', 'status', 'DESC'],
+    ['createdAt', 'createdAt', 'ASC'],
+  ] as const)(
+    'findAll sorts %s and retains abilities',
+    async (sortBy, column, sortOrder) => {
+      const find = jest.fn().mockResolvedValue([]);
+
+      const adapter = new TypeOrmRoleRepository(
+        mockOf<Repository<RoleOrmEntity>>({ find }),
+      );
+
+      await adapter.findAll({ sortBy, sortOrder });
+
+      expect(find).toHaveBeenCalledWith({
+        relations: { abilities: true },
+        order: { [column]: sortOrder, id: 'DESC' },
+      });
+    },
+  );
+
+  it('findAll defaults explicit sorting to ascending and ignores an orphan direction', async () => {
+    const find = jest.fn().mockResolvedValue([]);
+
+    const adapter = new TypeOrmRoleRepository(
+      mockOf<Repository<RoleOrmEntity>>({ find }),
+    );
+
+    await adapter.findAll({ sortBy: 'role' });
+    expect(find).toHaveBeenLastCalledWith({
+      relations: { abilities: true },
+      order: { name: 'ASC', id: 'DESC' },
+    });
+
+    await adapter.findAll({ sortOrder: 'DESC' });
+    expect(find).toHaveBeenLastCalledWith({ relations: { abilities: true } });
   });
 
   it('findByUuid returns null when no row matches', async () => {

@@ -273,6 +273,15 @@ and only the masked recipient for notices; `SmtpUserNotifier` delivers through
   (`renderActionEmail`, `renderNoticeEmail`). `escapeHtml` applies to every HTML value, including
   `href` attributes.
 
+## Listing order
+
+`GET /users` accepts optional `sortBy` (`name`, `email`, `status`, `createdAt`) and
+`sortOrder` (`ASC`, `DESC`). An explicit field defaults to ascending order; a direction without a
+field leaves the default order unchanged. Omitting sorting preserves newest internal id first.
+Explicit sorting uses internal id descending to break ties before pagination, including when
+filtering by a role. Sorting uses stored values rather than translated labels. Invalid or repeated
+sorting parameters receive a localized validation error (`400`).
+
 ## Persistence notes
 
 - **Actor names are projections.** `creatorName`/`updaterName` are resolved at read time from the

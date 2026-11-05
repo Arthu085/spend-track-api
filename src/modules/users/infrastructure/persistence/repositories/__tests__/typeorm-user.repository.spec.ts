@@ -1,3 +1,4 @@
+import { mockOf } from '@test/support/mocks/mock-of';
 import {
   QueryFailedError,
   type FindOperator,
@@ -80,6 +81,7 @@ interface QueryBuilderMock {
   qb: SelectQueryBuilder<ObjectLiteral>;
   leftJoinAndSelect: jest.Mock;
   orderBy: jest.Mock;
+  addOrderBy: jest.Mock;
   skip: jest.Mock;
   take: jest.Mock;
   andWhere: jest.Mock;
@@ -92,6 +94,7 @@ function buildQueryBuilderMock(
 ): QueryBuilderMock {
   const leftJoinAndSelect = jest.fn();
   const orderBy = jest.fn();
+  const addOrderBy = jest.fn();
   const skip = jest.fn();
   const take = jest.fn();
   const andWhere = jest.fn();
@@ -100,6 +103,7 @@ function buildQueryBuilderMock(
   const qb = {
     leftJoinAndSelect: leftJoinAndSelect.mockReturnThis(),
     orderBy: orderBy.mockReturnThis(),
+    addOrderBy: addOrderBy.mockReturnThis(),
     skip: skip.mockReturnThis(),
     take: take.mockReturnThis(),
     andWhere: andWhere.mockReturnThis(),
@@ -110,6 +114,7 @@ function buildQueryBuilderMock(
     qb,
     leftJoinAndSelect,
     orderBy,
+    addOrderBy,
     skip,
     take,
     andWhere,
@@ -143,6 +148,59 @@ describe('TypeOrmUserRepository', () => {
       expect(result.total).toBe(1);
       expect(result.items).toHaveLength(1);
       expect(result.items[0]).toBeInstanceOf(UserEntity);
+    });
+
+    it.each([
+      ['name', 'ASC', 'user.name'],
+      ['email', 'DESC', 'user.email'],
+      ['status', 'ASC', 'user.status'],
+      ['createdAt', 'DESC', 'user.createdAt'],
+    ] as const)(
+      'sorts by %s %s with a unique tie-breaker',
+      async (sortBy, sortOrder, column) => {
+        const { qb, orderBy, addOrderBy } = buildQueryBuilderMock([], 0);
+
+        const adapter = new TypeOrmUserRepository(
+          mockOf<Repository<UserOrmEntity>>({
+            createQueryBuilder: jest.fn().mockReturnValue(qb),
+          }),
+        );
+
+        await adapter.findAllPaginated(0, 20, undefined, { sortBy, sortOrder });
+
+        expect(orderBy).toHaveBeenLastCalledWith(column, sortOrder);
+        expect(addOrderBy).toHaveBeenCalledWith('user.id', 'DESC');
+      },
+    );
+
+    it('defaults an explicit sort field to ascending', async () => {
+      const { qb, orderBy } = buildQueryBuilderMock([], 0);
+
+      const adapter = new TypeOrmUserRepository(
+        mockOf<Repository<UserOrmEntity>>({
+          createQueryBuilder: jest.fn().mockReturnValue(qb),
+        }),
+      );
+
+      await adapter.findAllPaginated(0, 20, undefined, { sortBy: 'name' });
+
+      expect(orderBy).toHaveBeenLastCalledWith('user.name', 'ASC');
+    });
+
+    it('ignores a direction without a sort field', async () => {
+      const { qb, orderBy, addOrderBy } = buildQueryBuilderMock([], 0);
+
+      const adapter = new TypeOrmUserRepository(
+        mockOf<Repository<UserOrmEntity>>({
+          createQueryBuilder: jest.fn().mockReturnValue(qb),
+        }),
+      );
+
+      await adapter.findAllPaginated(0, 20, undefined, { sortOrder: 'ASC' });
+
+      expect(orderBy).toHaveBeenCalledTimes(1);
+      expect(orderBy).toHaveBeenCalledWith('user.id', 'DESC');
+      expect(addOrderBy).not.toHaveBeenCalled();
     });
 
     it('applies an ILIKE filter on user.name when a name filter is given', async () => {

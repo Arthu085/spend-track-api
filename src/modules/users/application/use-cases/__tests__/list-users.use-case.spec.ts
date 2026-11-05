@@ -1,3 +1,4 @@
+import { mockOf } from '@test/support/mocks/mock-of';
 import { RecordStatus } from '@shared/domain/enums/record-status.enum';
 import { PaginatedResult } from '@shared/application/dto';
 import type { UserEntity } from '../../../domain/entities/user.entity';
@@ -24,12 +25,17 @@ describe('ListUsersUseCase', () => {
 
     const result = await useCase.execute(input);
 
-    expect(findAllPaginated).toHaveBeenCalledWith(0, 20, {
-      name: undefined,
-      email: undefined,
-      role: undefined,
-      status: RecordStatus.ACTIVE,
-    });
+    expect(findAllPaginated).toHaveBeenCalledWith(
+      0,
+      20,
+      {
+        name: undefined,
+        email: undefined,
+        role: undefined,
+        status: RecordStatus.ACTIVE,
+      },
+      { sortBy: undefined, sortOrder: undefined },
+    );
     expect(result).toBeInstanceOf(PaginatedResult);
     expect(result.items).toBe(items);
     expect(result.total).toBe(1);
@@ -49,12 +55,17 @@ describe('ListUsersUseCase', () => {
 
     await useCase.execute(input);
 
-    expect(findAllPaginated).toHaveBeenCalledWith(0, 20, {
-      name: 'ali',
-      email: undefined,
-      role: undefined,
-      status: RecordStatus.ACTIVE,
-    });
+    expect(findAllPaginated).toHaveBeenCalledWith(
+      0,
+      20,
+      {
+        name: 'ali',
+        email: undefined,
+        role: undefined,
+        status: RecordStatus.ACTIVE,
+      },
+      { sortBy: undefined, sortOrder: undefined },
+    );
   });
 
   it('forwards a trimmed email filter to the repository', async () => {
@@ -69,12 +80,17 @@ describe('ListUsersUseCase', () => {
 
     await useCase.execute(input);
 
-    expect(findAllPaginated).toHaveBeenCalledWith(0, 20, {
-      name: undefined,
-      email: 'jane@example.com',
-      role: undefined,
-      status: RecordStatus.ACTIVE,
-    });
+    expect(findAllPaginated).toHaveBeenCalledWith(
+      0,
+      20,
+      {
+        name: undefined,
+        email: 'jane@example.com',
+        role: undefined,
+        status: RecordStatus.ACTIVE,
+      },
+      { sortBy: undefined, sortOrder: undefined },
+    );
   });
 
   it('treats a whitespace-only name as no filter', async () => {
@@ -89,12 +105,17 @@ describe('ListUsersUseCase', () => {
 
     await useCase.execute(input);
 
-    expect(findAllPaginated).toHaveBeenCalledWith(0, 20, {
-      name: undefined,
-      email: undefined,
-      role: undefined,
-      status: RecordStatus.ACTIVE,
-    });
+    expect(findAllPaginated).toHaveBeenCalledWith(
+      0,
+      20,
+      {
+        name: undefined,
+        email: undefined,
+        role: undefined,
+        status: RecordStatus.ACTIVE,
+      },
+      { sortBy: undefined, sortOrder: undefined },
+    );
   });
 
   it('treats a whitespace-only email as no filter', async () => {
@@ -109,12 +130,17 @@ describe('ListUsersUseCase', () => {
 
     await useCase.execute(input);
 
-    expect(findAllPaginated).toHaveBeenCalledWith(0, 20, {
-      name: undefined,
-      email: undefined,
-      role: undefined,
-      status: RecordStatus.ACTIVE,
-    });
+    expect(findAllPaginated).toHaveBeenCalledWith(
+      0,
+      20,
+      {
+        name: undefined,
+        email: undefined,
+        role: undefined,
+        status: RecordStatus.ACTIVE,
+      },
+      { sortBy: undefined, sortOrder: undefined },
+    );
   });
 
   it('passes the role filter through unchanged', async () => {
@@ -129,12 +155,17 @@ describe('ListUsersUseCase', () => {
 
     await useCase.execute(input);
 
-    expect(findAllPaginated).toHaveBeenCalledWith(0, 20, {
-      name: undefined,
-      email: undefined,
-      role: 'role-uuid',
-      status: RecordStatus.ACTIVE,
-    });
+    expect(findAllPaginated).toHaveBeenCalledWith(
+      0,
+      20,
+      {
+        name: undefined,
+        email: undefined,
+        role: 'role-uuid',
+        status: RecordStatus.ACTIVE,
+      },
+      { sortBy: undefined, sortOrder: undefined },
+    );
   });
 
   it('passes the status filter through unchanged', async () => {
@@ -149,12 +180,17 @@ describe('ListUsersUseCase', () => {
 
     await useCase.execute(input);
 
-    expect(findAllPaginated).toHaveBeenCalledWith(0, 20, {
-      name: undefined,
-      email: undefined,
-      role: undefined,
-      status: RecordStatus.INACTIVE,
-    });
+    expect(findAllPaginated).toHaveBeenCalledWith(
+      0,
+      20,
+      {
+        name: undefined,
+        email: undefined,
+        role: undefined,
+        status: RecordStatus.INACTIVE,
+      },
+      { sortBy: undefined, sortOrder: undefined },
+    );
   });
 
   it('combines all filters when several are set at once', async () => {
@@ -174,12 +210,17 @@ describe('ListUsersUseCase', () => {
 
     await useCase.execute(input);
 
-    expect(findAllPaginated).toHaveBeenCalledWith(0, 20, {
-      name: 'ali',
-      email: 'ali@example.com',
-      role: 'role-uuid',
-      status: RecordStatus.ACTIVE,
-    });
+    expect(findAllPaginated).toHaveBeenCalledWith(
+      0,
+      20,
+      {
+        name: 'ali',
+        email: 'ali@example.com',
+        role: 'role-uuid',
+        status: RecordStatus.ACTIVE,
+      },
+      { sortBy: undefined, sortOrder: undefined },
+    );
   });
 
   it('defaults status to ACTIVE and treats other omitted filters as no filter', async () => {
@@ -194,12 +235,44 @@ describe('ListUsersUseCase', () => {
 
     await useCase.execute(input);
 
-    expect(findAllPaginated).toHaveBeenCalledWith(0, 20, {
-      name: undefined,
-      email: undefined,
-      role: undefined,
-      status: RecordStatus.ACTIVE,
-    });
+    expect(findAllPaginated).toHaveBeenCalledWith(
+      0,
+      20,
+      {
+        name: undefined,
+        email: undefined,
+        role: undefined,
+        status: RecordStatus.ACTIVE,
+      },
+      { sortBy: undefined, sortOrder: undefined },
+    );
+  });
+
+  it('forwards optional sorting alongside filters and pagination', async () => {
+    const findAllPaginated = jest
+      .fn()
+      .mockResolvedValue({ items: [], total: 0 });
+
+    const useCase = new ListUsersUseCase(
+      mockOf<UserRepository>({ findAllPaginated }),
+    );
+
+    await useCase.execute(
+      buildInput({
+        page: 2,
+        limit: 10,
+        name: ' Ada ',
+        sortBy: 'name',
+        sortOrder: 'DESC',
+      }),
+    );
+
+    expect(findAllPaginated).toHaveBeenCalledWith(
+      10,
+      10,
+      expect.objectContaining({ name: 'Ada' }),
+      { sortBy: 'name', sortOrder: 'DESC' },
+    );
   });
 
   it('derives the repository offset from page and limit', async () => {
@@ -212,12 +285,17 @@ describe('ListUsersUseCase', () => {
 
     const result = await useCase.execute(buildInput({ page: 3, limit: 10 }));
 
-    expect(findAllPaginated).toHaveBeenCalledWith(20, 10, {
-      name: undefined,
-      email: undefined,
-      role: undefined,
-      status: RecordStatus.ACTIVE,
-    });
+    expect(findAllPaginated).toHaveBeenCalledWith(
+      20,
+      10,
+      {
+        name: undefined,
+        email: undefined,
+        role: undefined,
+        status: RecordStatus.ACTIVE,
+      },
+      { sortBy: undefined, sortOrder: undefined },
+    );
     expect(result.page).toBe(3);
     expect(result.limit).toBe(10);
     expect(result.total).toBe(45);

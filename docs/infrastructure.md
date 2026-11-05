@@ -532,6 +532,19 @@ jobs:
   coordinated contract change uses one branch name in both repositories. The client's CI runs the same
   suite against this repository.
 
+The integration job reads the client repository with the job's `github.token`, which is enough while
+that repository is public. If it becomes private, create a fine-grained personal access token or a
+GitHub App installation token limited to both repositories with `Contents` read-only access
+(`Metadata` read is implied), store it in both repositories as the `CROSS_REPO_TOKEN` Actions secret
+with `gh secret set CROSS_REPO_TOKEN --repo <owner>/<repo>`, and rotate it before it expires. Only the
+branch lookup and the checkout receive it, and the checkout does not persist it. Missing or
+insufficient credentials fail the job with an explicit error instead of skipping it, so a contract
+break cannot pass silently.
+
+`test/frontend/server.ts` issues access tokens that last 5 seconds and reports the lifetime to the
+suite, which waits for it in the refresh test. Set `FRONTEND_FIXTURE_ACCESS_TOKEN_TTL_SECONDS` to a
+positive integer to change it, for example on a slow machine where tokens expire during other tests.
+
 The smoke test uses disposable PostgreSQL and Mailpit containers and generated secrets. It checks
 that the image runs as non-root and ships compiled code, migrations, seeds, and translations without
 source or TypeScript tooling; that an insecure setting stops the container at boot; that migrations

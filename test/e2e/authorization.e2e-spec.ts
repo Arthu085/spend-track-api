@@ -95,6 +95,32 @@ describe('Authorization (Roles + Abilities) (e2e)', () => {
     await app.close();
   });
 
+  it('rejects invalid and repeated sorting parameters with localized validation', async () => {
+    for (const query of [
+      'sortBy=password',
+      'sortOrder=asc',
+      'sortBy=status&sortBy=createdAt',
+      'sortOrder=ASC&sortOrder=DESC',
+    ]) {
+      const response = await agent
+        .get(`/api/roles?${query}`)
+        .set('x-lang', 'en')
+        .expect(400);
+
+      const body = response.body as FlattenedValidationErrorBody;
+      const property = query.startsWith('sortBy') ? 'sortBy' : 'sortOrder';
+
+      expect(body.message).toEqual([
+        `The ${property} field has an invalid value`,
+      ]);
+    }
+
+    const response = await agent.get('/api/roles?sortBy=password').expect(400);
+    const body = response.body as FlattenedValidationErrorBody;
+
+    expect(body.message).toEqual(['O campo sortBy possui um valor inválido']);
+  });
+
   async function getRoleByName(name: 'ADMIN' | 'USER'): Promise<RoleListShape> {
     const response = await agent.get('/api/roles').expect(200);
 

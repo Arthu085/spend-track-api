@@ -1,5 +1,6 @@
 import { RecordStatus } from '@shared/domain/enums/record-status.enum';
 import { RoleEnum } from '@modules/authorization';
+import type { UserListSort } from './user-list-sort';
 import { UserEntity } from '../entities/user.entity';
 
 export const USER_REPOSITORY = Symbol('USER_REPOSITORY');
@@ -31,6 +32,7 @@ export interface UserRepository {
     offset: number,
     limit: number,
     filters?: UserListFilters,
+    sort?: UserListSort,
   ): Promise<PaginatedUsers>;
   findByUuid(uuid: string): Promise<UserEntity | null>;
   findAuthSubject(uuid: string): Promise<AuthSubject | null>;

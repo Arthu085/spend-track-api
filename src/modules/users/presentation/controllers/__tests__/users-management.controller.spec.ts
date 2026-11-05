@@ -134,6 +134,8 @@ describe('UsersManagementController', () => {
       email: undefined,
       role: undefined,
       status: undefined,
+      sortBy: undefined,
+      sortOrder: undefined,
     });
     expect(result).toBeInstanceOf(PaginatedResult);
     expect(result.items).toHaveLength(1);
@@ -174,6 +176,8 @@ describe('UsersManagementController', () => {
     query.email = 'ali@example.com';
     query.role = 'role-uuid';
     query.status = RecordStatus.ACTIVE;
+    query.sortBy = 'name';
+    query.sortOrder = 'DESC';
 
     const result = await controller.findAll(query, translate);
 
@@ -184,6 +188,8 @@ describe('UsersManagementController', () => {
       email: 'ali@example.com',
       role: 'role-uuid',
       status: RecordStatus.ACTIVE,
+      sortBy: 'name',
+      sortOrder: 'DESC',
     });
     expect(result).toBeInstanceOf(PaginatedResult);
     expect(result.items).toHaveLength(1);
