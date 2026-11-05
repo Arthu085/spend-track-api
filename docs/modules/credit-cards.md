@@ -154,13 +154,42 @@ adds the charges (with installment number and count), refunds, and payments.
   listed with `canceledAt`, stops counting toward `paid` and the account balance, and cannot be
   canceled again (`CreditCardPaymentAlreadyCanceledError`, `409`).
 
+## Historical settlements
+
+A card can hold purchases older than the account that paid them: an account opening on December 1
+with October and November invoices already paid. `openingBalance` already includes those payments
+([`accounts.md`](accounts.md#opening-balance)), so a normal payment would count the money twice and is
+rejected. A historical settlement records the fact without moving money.
+
+- `POST /credit-card-invoices/:uuid/historical-settlements` takes `accountUuid`, `amount`, and `paidOn`,
+  and stores a `credit_card_payments` row with `source = HISTORICAL_SETTLEMENT`. Normal payments are
+  `ACCOUNT`; `source` and `sourceLabel` are in every payment response, and `historicalPaid` in the
+  invoice detail sums the live settlements.
+- `paidOn` must be strictly before the account's `openingBalanceDate` and not after today; otherwise
+  `CreditCardHistoricalSettlementNotBeforeOpeningError` (`422`) points to a normal payment. The account
+  is the one whose opening balance includes the money. It may be archived, and its opening date never
+  changes.
+- It counts toward `paid` like any payment, so statements, partial payments, carried credit, status,
+  and later installments keep working as described in [Invoice statements](#invoice-statements). The
+  amount cannot exceed the outstanding (`CreditCardPaymentExceedsOutstandingError`, `422`).
+- `CreditCardPaymentLedger` leaves settlements out of `balanceChanges` and `earliestEntryDate`, since
+  they neither change the balance nor hold back moving the opening date later. `hasEntries` still
+  counts them as account history. `latestHistoricalEntryDate` keeps the opening date after them
+  ([`accounts.md`](accounts.md#opening-balance)).
+- The partial unique index `uq_credit_card_payments_historical_settlement` rejects a second live
+  settlement with the same invoice, date, and amount (`CreditCardHistoricalSettlementDuplicateError`,
+  `409`), so a repeated request cannot record it twice.
+- To correct one, cancel it with the payment cancellation route and record it again. It stays listed
+  with `canceledAt`, the invoice owes the amount again, no account balance changes, and both actions
+  are audited (`CreditCardPayment.recordHistoricalSettlement`, `CreditCardPayment.cancel`).
+
 ## Concurrency
 
 Every write runs in one database transaction under the per-user card lock
 (`CreditCardRepository.lockOwnerCards`, a transaction-scoped advisory lock), so concurrent requests
 never create the same invoice twice, overpay an invoice, or over-refund a purchase. Every write of a
 planned charge holds that lock too, so archiving cancels them without any further lock. Paying and
-canceling a payment take the per-user account lock first, then the card lock, the same order as
+canceling a payment or recording a historical settlement take the per-user account lock first, then the card lock, the same order as
 every account write.
 
 ## Configuration

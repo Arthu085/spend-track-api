@@ -19,6 +19,7 @@ export class CreditCardPaymentMapper {
       account: AccountMapper.toDomain(orm.account),
       amount: parseMoney(orm.amount),
       paidOn: orm.paidOn,
+      source: orm.source,
       canceledAt: orm.canceledAt,
       createdAt: orm.createdAt,
       updatedAt: orm.updatedAt,
@@ -41,6 +42,7 @@ export class CreditCardPaymentMapper {
     orm.accountId = domain.account.id;
     orm.amount = formatMoney(domain.amount);
     orm.paidOn = domain.paidOn;
+    orm.source = domain.source;
     orm.canceledAt = domain.canceledAt;
     orm.deletedAt = domain.deletedAt;
 

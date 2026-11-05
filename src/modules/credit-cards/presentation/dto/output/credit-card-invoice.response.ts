@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { TransactionCategoryRefResponseDto } from '@modules/transactions/presentation';
-import { formatMoney } from '@shared/domain/money';
+import { formatMoney, sumMoney } from '@shared/domain/money';
 import { translateOrFallback } from '@shared/presentation/http';
 import type { CreditCardInvoiceDetail } from '../../../application/use-cases/get-credit-card-invoice.use-case';
 import type { InvoiceStatement } from '../../../domain/billing/invoice-statement';
@@ -158,6 +158,13 @@ export class CreditCardInvoiceDetailResponseDto extends CreditCardInvoiceListRes
   })
   payments!: CreditCardPaymentResponseDto[];
 
+  @ApiProperty({
+    example: '0.00',
+    description:
+      'Part of paid recorded as historical settlements, which never changed an account balance.',
+  })
+  historicalPaid!: string;
+
   static fromDetail(
     { statement, entries }: CreditCardInvoiceDetail,
     translate: (key: string) => string,
@@ -172,7 +179,17 @@ export class CreditCardInvoiceDetailResponseDto extends CreditCardInvoiceListRes
       CreditCardRefundResponseDto.fromDomain(refund),
     );
     dto.payments = entries.payments.map((payment) =>
-      CreditCardPaymentResponseDto.fromDomain(payment),
+      CreditCardPaymentResponseDto.fromDomain(payment, translate),
+    );
+    dto.historicalPaid = formatMoney(
+      sumMoney(
+        entries.payments
+          .filter(
+            (payment) =>
+              payment.isHistoricalSettlement && payment.canceledAt === null,
+          )
+          .map((payment) => payment.amount),
+      ),
     );
 
     return dto;

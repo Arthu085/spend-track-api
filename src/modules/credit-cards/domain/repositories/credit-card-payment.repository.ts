@@ -18,6 +18,10 @@ export interface CreditCardPaymentRepository {
     ownerId: number,
     accountId: number,
   ): Promise<string | null>;
+  findLatestHistoricalDateForAccount(
+    ownerId: number,
+    accountId: number,
+  ): Promise<string | null>;
   create(payment: CreditCardPaymentEntity): Promise<CreditCardPaymentEntity>;
   update(payment: CreditCardPaymentEntity): Promise<CreditCardPaymentEntity>;
 }

@@ -769,6 +769,19 @@ describe('MVP acceptance scenarios (e2e)', () => {
       ['DELETE card', (a) => a.delete(`/api/credit-cards/${owner.card}`)],
       ['GET invoice', (a) => a.get(`/api/credit-card-invoices/${invoiceOf()}`)],
       [
+        'POST historical settlement',
+        (a) =>
+          a
+            .post(
+              `/api/credit-card-invoices/${invoiceOf()}/historical-settlements`,
+            )
+            .send({
+              accountUuid: owner.bank,
+              amount: '1.00',
+              paidOn: '2020-01-01',
+            }),
+      ],
+      [
         'PUT payment cancellation',
         (a) =>
           a.put(

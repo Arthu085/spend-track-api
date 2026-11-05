@@ -22,6 +22,7 @@ import { ListCreditCardInvoicesUseCase } from './application/use-cases/list-cred
 import { ListCreditCardPurchasesUseCase } from './application/use-cases/list-credit-card-purchases.use-case';
 import { ListCreditCardsUseCase } from './application/use-cases/list-credit-cards.use-case';
 import { PayCreditCardInvoiceUseCase } from './application/use-cases/pay-credit-card-invoice.use-case';
+import { RecordHistoricalSettlementUseCase } from './application/use-cases/record-historical-settlement.use-case';
 import { UpdateCreditCardPurchaseUseCase } from './application/use-cases/update-credit-card-purchase.use-case';
 import { UpdateCreditCardStatusUseCase } from './application/use-cases/update-credit-card-status.use-case';
 import { UpdateCreditCardUseCase } from './application/use-cases/update-credit-card.use-case';
@@ -98,6 +99,7 @@ import { CreditCardsController } from './presentation/controllers/credit-cards.c
     DeleteCreditCardUseCase,
     GetCreditCardInvoiceUseCase,
     PayCreditCardInvoiceUseCase,
+    RecordHistoricalSettlementUseCase,
     CancelCreditCardPaymentUseCase,
     ListCreditCardPurchasesUseCase,
     GetCreditCardPurchaseUseCase,

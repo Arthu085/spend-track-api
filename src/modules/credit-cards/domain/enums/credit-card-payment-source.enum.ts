@@ -1,0 +1,4 @@
+export enum CreditCardPaymentSource {
+  ACCOUNT = 'ACCOUNT',
+  HISTORICAL_SETTLEMENT = 'HISTORICAL_SETTLEMENT',
+}

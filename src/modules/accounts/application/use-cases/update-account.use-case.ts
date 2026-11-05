@@ -9,6 +9,7 @@ import {
   type AccountDetails,
 } from '../../domain/entities/account.entity';
 import { AccountOpeningAfterOperationsError } from '../../domain/errors/account-opening-after-operations.error';
+import { AccountOpeningNotAfterHistoricalEntriesError } from '../../domain/errors/account-opening-not-after-historical-entries.error';
 import { InactiveAccountError } from '../../domain/errors/inactive-account.error';
 import {
   ACCOUNT_REPOSITORY,
@@ -80,8 +81,14 @@ export class UpdateAccountUseCase {
   ): Promise<void> {
     if (
       !openingBalanceDate ||
-      openingBalanceDate <= account.openingBalanceDate
+      openingBalanceDate === account.openingBalanceDate
     ) {
+      return;
+    }
+
+    if (openingBalanceDate < account.openingBalanceDate) {
+      await this.assertAfterHistoricalEntries(account, openingBalanceDate);
+
       return;
     }
 
@@ -92,6 +99,20 @@ export class UpdateAccountUseCase {
 
     if (earliest !== null && openingBalanceDate > earliest) {
       throw new AccountOpeningAfterOperationsError();
+    }
+  }
+
+  private async assertAfterHistoricalEntries(
+    account: AccountEntity,
+    openingBalanceDate: string,
+  ): Promise<void> {
+    const latest = await this.accountLedger.latestHistoricalEntryDate(
+      account.ownerId,
+      account.id,
+    );
+
+    if (latest !== null && openingBalanceDate <= latest) {
+      throw new AccountOpeningNotAfterHistoricalEntriesError();
     }
   }
 }

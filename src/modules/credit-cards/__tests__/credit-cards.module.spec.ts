@@ -39,6 +39,11 @@ describe('CreditCardsModule routes', () => {
       ],
       [
         'CreditCardInvoicesController',
+        'POST /credit-card-invoices/:uuid/historical-settlements',
+        false,
+      ],
+      [
+        'CreditCardInvoicesController',
         'PUT /credit-card-invoices/:uuid/payments/:paymentUuid/cancellation',
         false,
       ],

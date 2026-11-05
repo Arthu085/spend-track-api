@@ -28,6 +28,8 @@ import type { ListCreditCardInvoicesUseCase } from '../../../application/use-cas
 import type { ListCreditCardPurchasesUseCase } from '../../../application/use-cases/list-credit-card-purchases.use-case';
 import type { ListCreditCardsUseCase } from '../../../application/use-cases/list-credit-cards.use-case';
 import type { PayCreditCardInvoiceUseCase } from '../../../application/use-cases/pay-credit-card-invoice.use-case';
+import type { RecordHistoricalSettlementUseCase } from '../../../application/use-cases/record-historical-settlement.use-case';
+import { CreditCardPaymentSource } from '../../../domain/enums/credit-card-payment-source.enum';
 import type { UpdateCreditCardPurchaseUseCase } from '../../../application/use-cases/update-credit-card-purchase.use-case';
 import type { UpdateCreditCardStatusUseCase } from '../../../application/use-cases/update-credit-card-status.use-case';
 import type { UpdateCreditCardUseCase } from '../../../application/use-cases/update-credit-card.use-case';
@@ -234,6 +236,7 @@ describe('CreditCardInvoicesController', () => {
       }),
     }),
     mockOf<PayCreditCardInvoiceUseCase>({ execute: payExecute }),
+    mockOf<RecordHistoricalSettlementUseCase>({}),
     mockOf<CancelCreditCardPaymentUseCase>({
       execute: jest
         .fn()
@@ -258,7 +261,14 @@ describe('CreditCardInvoicesController', () => {
         },
       ],
       refundEntries: [{ amount: '50.00', purchase: { description: 'Shoes' } }],
-      payments: [{ amount: '100.00', account: { uuid: 'account-uuid' } }],
+      payments: [
+        {
+          amount: '100.00',
+          account: { uuid: 'account-uuid' },
+          source: CreditCardPaymentSource.ACCOUNT,
+        },
+      ],
+      historicalPaid: '0.00',
     });
   });
 
@@ -267,6 +277,7 @@ describe('CreditCardInvoicesController', () => {
       'invoice-uuid',
       { accountUuid: 'account-uuid', amount: '99.90' },
       actor,
+      translate,
     );
 
     expect(payExecute).toHaveBeenCalledWith({
@@ -278,8 +289,54 @@ describe('CreditCardInvoicesController', () => {
     });
 
     await expect(
-      controller.cancelPayment('invoice-uuid', 'payment-uuid', actor),
+      controller.cancelPayment(
+        'invoice-uuid',
+        'payment-uuid',
+        actor,
+        translate,
+      ),
     ).resolves.toMatchObject({ canceledAt: new Date('2026-11-11') });
+  });
+});
+
+describe('CreditCardInvoicesController historical settlements', () => {
+  it('passes the settlement on and labels its source', async () => {
+    const execute = jest.fn().mockResolvedValue(
+      buildCreditCardPayment({
+        source: CreditCardPaymentSource.HISTORICAL_SETTLEMENT,
+      }),
+    );
+
+    const controller = new CreditCardInvoicesController(
+      mockOf<GetCreditCardInvoiceUseCase>({}),
+      mockOf<PayCreditCardInvoiceUseCase>({}),
+      mockOf<RecordHistoricalSettlementUseCase>({ execute }),
+      mockOf<CancelCreditCardPaymentUseCase>({}),
+    );
+
+    await expect(
+      controller.recordHistorical(
+        'invoice-uuid',
+        {
+          accountUuid: 'account-uuid',
+          amount: '99.90',
+          paidOn: '2026-10-12',
+        },
+        actor,
+        translate,
+      ),
+    ).resolves.toMatchObject({
+      source: CreditCardPaymentSource.HISTORICAL_SETTLEMENT,
+      sourceLabel: 't:credit_cards.payment_source.historical_settlement',
+    });
+
+    expect(execute).toHaveBeenCalledWith({
+      invoiceUuid: 'invoice-uuid',
+      ownerId: 41,
+      accountUuid: 'account-uuid',
+      amount: 9990,
+      paidOn: '2026-10-12',
+    });
   });
 });
 

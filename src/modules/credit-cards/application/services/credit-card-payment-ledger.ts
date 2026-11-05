@@ -46,4 +46,14 @@ export class CreditCardPaymentLedger implements AccountLedger, OnModuleInit {
       accountId,
     );
   }
+
+  latestHistoricalEntryDate(
+    ownerId: number,
+    accountId: number,
+  ): Promise<string | null> {
+    return this.paymentRepository.findLatestHistoricalDateForAccount(
+      ownerId,
+      accountId,
+    );
+  }
 }

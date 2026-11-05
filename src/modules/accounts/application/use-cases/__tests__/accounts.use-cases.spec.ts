@@ -6,6 +6,7 @@ import type { AccountEntity } from '../../../domain/entities/account.entity';
 import { AccountType } from '../../../domain/enums/account-type.enum';
 import { AccountNotFoundError } from '../../../domain/errors/account-not-found.error';
 import { AccountHasHistoryError } from '../../../domain/errors/account-has-history.error';
+import { AccountOpeningNotAfterHistoricalEntriesError } from '../../../domain/errors/account-opening-not-after-historical-entries.error';
 import { AccountOpeningAfterOperationsError } from '../../../domain/errors/account-opening-after-operations.error';
 import { InactiveAccountError } from '../../../domain/errors/inactive-account.error';
 import type { AccountRepository } from '../../../domain/repositories/account.repository';
@@ -26,11 +27,15 @@ function buildLedger(
   changes = new Map<number, number>(),
   hasEntries = false,
   earliestEntryDate: string | null = null,
+  latestHistoricalEntryDate: string | null = null,
 ) {
   const ledger = {
     balanceChanges: jest.fn().mockResolvedValue(changes),
     hasEntries: jest.fn().mockResolvedValue(hasEntries),
     earliestEntryDate: jest.fn().mockResolvedValue(earliestEntryDate),
+    latestHistoricalEntryDate: jest
+      .fn()
+      .mockResolvedValue(latestHistoricalEntryDate),
   };
 
   return { ledger, port: mockOf<AccountLedger>(ledger) };
@@ -240,6 +245,34 @@ describe('accounts use-cases', () => {
 
       expect(updated.openingBalanceDate).toBe('2025-06-01');
       expect(ledger.earliestEntryDate).not.toHaveBeenCalled();
+    });
+
+    it('rejects moving the opening date to or before a historical settlement', async () => {
+      const { port } = buildRepository();
+
+      await expect(
+        new UpdateAccountUseCase(
+          port,
+          transactionManager,
+          buildLedger(new Map(), true, null, '2025-01-10').port,
+        ).execute({
+          uuid: 'account-uuid',
+          ownerId: 1,
+          openingBalanceDate: '2025-01-10',
+        }),
+      ).rejects.toBeInstanceOf(AccountOpeningNotAfterHistoricalEntriesError);
+
+      await expect(
+        new UpdateAccountUseCase(
+          port,
+          transactionManager,
+          buildLedger(new Map(), true, null, '2025-01-10').port,
+        ).execute({
+          uuid: 'account-uuid',
+          ownerId: 1,
+          openingBalanceDate: '2025-01-11',
+        }),
+      ).resolves.toMatchObject({ openingBalanceDate: '2025-01-11' });
     });
 
     it('moves the opening date later up to the earliest operation', async () => {
