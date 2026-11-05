@@ -1,0 +1,4 @@
+export enum ConfirmationBlockedReason {
+  INACTIVE_ACCOUNT = 'INACTIVE_ACCOUNT',
+  BEFORE_ACCOUNT_OPENING = 'BEFORE_ACCOUNT_OPENING',
+}

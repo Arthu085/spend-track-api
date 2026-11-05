@@ -31,6 +31,29 @@ index on both keeps one live transaction per scheduled date, and `GET /transacti
 move past the end date of the recurrence (`OccurrenceAfterRecurrenceEndError`, `422`); the recurrence
 rules are in [`recurrences.md`](recurrences.md).
 
+## Bulk confirmation
+
+`TransactionConfirmationsController` confirms several planned transactions in one operation. Only
+`transactions` rows take part (`INCOME`, `EXPENSE`, `TRANSFER`, recurrence occurrences included);
+planned card charges and investment movements have their own confirmation rules
+([`recurrences.md`](recurrences.md#occurrences), [`investments.md`](investments.md#movements)).
+
+- `GET /transactions/pending-confirmations?until=` returns every planned transaction of the caller
+  dated up to `until`, oldest first, unpaginated, so the caller is not limited to a preview such as
+  the dashboard's `upcoming`. Each item is the transaction plus `overdue`, `future` (dated after today,
+  to be confirmed only by explicit selection), `confirmable`, `blockedReason` (`INACTIVE_ACCOUNT`,
+  `BEFORE_ACCOUNT_OPENING`, or `null`), and `earliestCompletedOn` (the latest opening date of its
+  accounts).
+- `POST /transactions/bulk-confirmation` takes 1 to 200 unique `{ uuid, completedOn? }` items, with
+  `completedOn` defaulting to today as in the state route, and answers `200` with `results` and
+  `confirmedCount`, `alreadyCompletedCount`, and `failedCount`.
+- It runs in one database transaction under the per-user account lock, each item in its own savepoint
+  through `UpdateTransactionStateUseCase`, so every completion rule applies. A `DomainError` (not found,
+  which includes another user's transaction; inactive account; date before an opening date; canceled)
+  rolls back only that item and reports `FAILED` with its localized `message`. Anything else aborts all
+  items with a `500`. An already completed transaction reports `ALREADY_COMPLETED` and stays unchanged,
+  so a repeated or concurrent request never confirms twice.
+
 ## Ownership
 
 Every route needs authentication but no ability and works only on the caller's transactions. Lookups

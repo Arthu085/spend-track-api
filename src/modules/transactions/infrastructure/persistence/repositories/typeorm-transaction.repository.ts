@@ -224,6 +224,22 @@ export class TypeOrmTransactionRepository
     return { items: rows.map((row) => TransactionMapper.toDomain(row)), total };
   }
 
+  async findAllPlannedUntil(
+    ownerId: number,
+    until: string,
+  ): Promise<TransactionEntity[]> {
+    const rows = await this.ownerQuery(ownerId)
+      .andWhere('transaction.state = :state', {
+        state: TransactionState.PLANNED,
+      })
+      .andWhere('transaction.date <= :until', { until })
+      .orderBy('transaction.date', 'ASC')
+      .addOrderBy('transaction.id', 'ASC')
+      .getMany();
+
+    return rows.map((row) => TransactionMapper.toDomain(row));
+  }
+
   async sumBalanceChanges(
     ownerId: number,
     accountIds: readonly number[],

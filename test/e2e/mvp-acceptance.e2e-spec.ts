@@ -906,6 +906,29 @@ describe('MVP acceptance scenarios (e2e)', () => {
       }
     });
 
+    it('never confirms or lists the transactions of another user in bulk', async () => {
+      for (const [, visitor] of visitors) {
+        const confirmation = await visitor
+          .post('/api/transactions/bulk-confirmation')
+          .send({ items: [{ uuid: transaction }] })
+          .expect(200);
+
+        expect(dataOf<{ failedCount: number }>(confirmation).failedCount).toBe(
+          1,
+        );
+
+        const pending = await visitor
+          .get('/api/transactions/pending-confirmations?until=2099-12-31')
+          .expect(200);
+
+        expect(
+          dataOf<{ items: Array<{ uuid: string }> }>(pending).items.map(
+            ({ uuid }) => uuid,
+          ),
+        ).not.toContain(transaction);
+      }
+    });
+
     it('refuses references to the records of another user in new records', async () => {
       for (const [, visitor] of visitors) {
         const own = uuidOf(

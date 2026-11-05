@@ -3,15 +3,18 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AccountsModule } from '@modules/accounts/accounts.module';
 import { TransactionCategoriesModule } from '@modules/transaction-categories/transaction-categories.module';
 import { TransactionAccountLedger } from './application/services/transaction-account-ledger';
+import { BulkConfirmTransactionsUseCase } from './application/use-cases/bulk-confirm-transactions.use-case';
 import { CreateTransactionUseCase } from './application/use-cases/create-transaction.use-case';
 import { DeleteTransactionUseCase } from './application/use-cases/delete-transaction.use-case';
 import { GetTransactionUseCase } from './application/use-cases/get-transaction.use-case';
+import { ListPendingConfirmationsUseCase } from './application/use-cases/list-pending-confirmations.use-case';
 import { ListTransactionsUseCase } from './application/use-cases/list-transactions.use-case';
 import { UpdateTransactionStateUseCase } from './application/use-cases/update-transaction-state.use-case';
 import { UpdateTransactionUseCase } from './application/use-cases/update-transaction.use-case';
 import { TRANSACTION_REPOSITORY } from './domain/repositories/transaction.repository';
 import { TransactionOrmEntity } from './infrastructure/persistence/entities/transaction.orm-entity';
 import { TypeOrmTransactionRepository } from './infrastructure/persistence/repositories/typeorm-transaction.repository';
+import { TransactionConfirmationsController } from './presentation/controllers/transaction-confirmations.controller';
 import { TransactionsController } from './presentation/controllers/transactions.controller';
 
 @Module({
@@ -20,7 +23,7 @@ import { TransactionsController } from './presentation/controllers/transactions.
     AccountsModule,
     TransactionCategoriesModule,
   ],
-  controllers: [TransactionsController],
+  controllers: [TransactionConfirmationsController, TransactionsController],
   providers: [
     {
       provide: TRANSACTION_REPOSITORY,
@@ -33,6 +36,8 @@ import { TransactionsController } from './presentation/controllers/transactions.
     UpdateTransactionUseCase,
     UpdateTransactionStateUseCase,
     DeleteTransactionUseCase,
+    ListPendingConfirmationsUseCase,
+    BulkConfirmTransactionsUseCase,
   ],
   exports: [TRANSACTION_REPOSITORY],
 })

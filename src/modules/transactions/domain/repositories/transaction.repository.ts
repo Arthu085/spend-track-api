@@ -81,6 +81,10 @@ export interface TransactionRepository {
     until: string,
     limit: number,
   ): Promise<PaginatedTransactions>;
+  findAllPlannedUntil(
+    ownerId: number,
+    until: string,
+  ): Promise<TransactionEntity[]>;
   sumBalanceChanges(
     ownerId: number,
     accountIds: readonly number[],
