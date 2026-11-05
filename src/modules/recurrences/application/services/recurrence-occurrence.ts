@@ -1,3 +1,4 @@
+import type { InvestmentMovementEntity } from '@modules/investments';
 import {
   TransactionState,
   type TransactionEntity,
@@ -14,6 +15,7 @@ export interface RecurrenceOccurrence {
   completedOn: string | null;
   transactionUuid: string | null;
   purchaseUuid: string | null;
+  movementUuid: string | null;
   invoiceMonth: string | null;
 }
 
@@ -30,6 +32,7 @@ export function occurrenceOfTransaction(
     completedOn: transaction.completedOn,
     transactionUuid: transaction.uuid,
     purchaseUuid: null,
+    movementUuid: null,
     invoiceMonth: null,
   };
 }
@@ -48,6 +51,26 @@ export function occurrenceOfCardCharge(
       charge.state === TransactionState.COMPLETED ? charge.date : null,
     transactionUuid: null,
     purchaseUuid: charge.purchase?.uuid ?? null,
+    movementUuid: null,
     invoiceMonth: charge.invoiceMonth,
+  };
+}
+
+export function occurrenceOfMovement(
+  movement: InvestmentMovementEntity,
+  description: string,
+): RecurrenceOccurrence {
+  return {
+    uuid: movement.uuid,
+    occurrenceDate: movement.recurrence?.occurrenceDate ?? movement.date,
+    date: movement.date,
+    amount: movement.amount,
+    description,
+    state: movement.state,
+    completedOn: movement.completedOn,
+    transactionUuid: null,
+    purchaseUuid: null,
+    movementUuid: movement.uuid,
+    invoiceMonth: null,
   };
 }

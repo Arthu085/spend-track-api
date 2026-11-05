@@ -1,6 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { assertNotBeforeOpening, type AccountEntity } from '@modules/accounts';
 import { CreditCardInvoiceAssigner } from '@modules/credit-cards';
+import {
+  INVESTMENT_MOVEMENT_REPOSITORY,
+  type InvestmentMovementEntity,
+  type InvestmentMovementRepository,
+} from '@modules/investments';
 import type { TransactionCategoryEntity } from '@modules/transaction-categories';
 import {
   TRANSACTION_REPOSITORY,
@@ -19,6 +24,7 @@ import {
 } from '../../domain/repositories/recurrence-card-charge.repository';
 import {
   occurrenceOfCardCharge,
+  occurrenceOfMovement,
   occurrenceOfTransaction,
   type RecurrenceOccurrence,
 } from './recurrence-occurrence';
@@ -26,9 +32,14 @@ import {
 export interface PlannedOccurrenceChanges {
   description: string;
   amount: number;
-  category: TransactionCategoryEntity;
+  category: TransactionCategoryEntity | null;
   account: AccountEntity | null;
   notes: string | null;
+}
+
+export interface PlannedMovementChanges {
+  amount?: number;
+  account?: AccountEntity | null;
 }
 
 export interface OccurrenceSchedule {
@@ -38,11 +49,26 @@ export interface OccurrenceSchedule {
 
 export type OwnedOccurrence =
   | { kind: 'transaction'; transaction: TransactionEntity }
-  | { kind: 'cardCharge'; charge: RecurrenceCardChargeEntity };
+  | { kind: 'cardCharge'; charge: RecurrenceCardChargeEntity }
+  | { kind: 'movement'; movement: InvestmentMovementEntity };
 
 export interface PaginatedOccurrences {
   items: RecurrenceOccurrence[];
   total: number;
+}
+
+function plannableOf(occurrence: OwnedOccurrence): {
+  state: TransactionState;
+  date: string;
+} {
+  switch (occurrence.kind) {
+    case 'transaction':
+      return occurrence.transaction;
+    case 'cardCharge':
+      return occurrence.charge;
+    case 'movement':
+      return occurrence.movement;
+  }
 }
 
 @Injectable()
@@ -53,6 +79,8 @@ export class RecurrenceOccurrences {
     @Inject(RECURRENCE_CARD_CHARGE_REPOSITORY)
     private readonly chargeRepository: RecurrenceCardChargeRepository,
     private readonly invoiceAssigner: CreditCardInvoiceAssigner,
+    @Inject(INVESTMENT_MOVEMENT_REPOSITORY)
+    private readonly movementRepository: InvestmentMovementRepository,
   ) {}
 
   async list(
@@ -73,6 +101,24 @@ export class RecurrenceOccurrences {
       return { items: items.map(occurrenceOfCardCharge), total };
     }
 
+    if (recurrence.isInvestmentContribution) {
+      const { items, total } =
+        await this.movementRepository.findPaginatedMandatoryByRecurrence(
+          recurrence.ownerId,
+          recurrence.id,
+          offset,
+          limit,
+          filters,
+        );
+
+      return {
+        items: items.map((movement) =>
+          occurrenceOfMovement(movement, recurrence.description),
+        ),
+        total,
+      };
+    }
+
     const { items, total } =
       await this.transactionRepository.findPaginatedByRecurrence(
         recurrence.ownerId,
@@ -91,12 +137,7 @@ export class RecurrenceOccurrences {
   ): Promise<OwnedOccurrence> {
     const occurrence = await this.lock(recurrence, uuid);
 
-    const state =
-      occurrence.kind === 'transaction'
-        ? occurrence.transaction.state
-        : occurrence.charge.state;
-
-    if (state !== TransactionState.PLANNED) {
+    if (plannableOf(occurrence).state !== TransactionState.PLANNED) {
       throw new RecurrenceOccurrenceNotPlannedError();
     }
 
@@ -108,10 +149,7 @@ export class RecurrenceOccurrences {
     occurrence: OwnedOccurrence,
     schedule: OccurrenceSchedule,
   ): Promise<RecurrenceOccurrence> {
-    const currentDate =
-      occurrence.kind === 'transaction'
-        ? occurrence.transaction.date
-        : occurrence.charge.date;
+    const currentDate = plannableOf(occurrence).date;
 
     if (schedule.date !== undefined && schedule.date !== currentDate) {
       recurrence.assertOccurrenceWithinEnd(schedule.date);
@@ -139,6 +177,10 @@ export class RecurrenceOccurrences {
       );
     }
 
+    if (occurrence.kind === 'movement') {
+      return this.rescheduleMovement(recurrence, occurrence.movement, schedule);
+    }
+
     const { charge } = occurrence;
     const date = schedule.date ?? charge.date;
 
@@ -153,16 +195,27 @@ export class RecurrenceOccurrences {
     );
   }
 
-  async cancel(occurrence: OwnedOccurrence): Promise<RecurrenceOccurrence> {
-    return occurrence.kind === 'transaction'
-      ? occurrenceOfTransaction(
+  async cancel(
+    recurrence: RecurrenceEntity,
+    occurrence: OwnedOccurrence,
+  ): Promise<RecurrenceOccurrence> {
+    switch (occurrence.kind) {
+      case 'transaction':
+        return occurrenceOfTransaction(
           await this.transactionRepository.update(
             occurrence.transaction.cancel(),
           ),
-        )
-      : occurrenceOfCardCharge(
+        );
+      case 'cardCharge':
+        return occurrenceOfCardCharge(
           await this.chargeRepository.update(occurrence.charge.cancel()),
         );
+      case 'movement':
+        return occurrenceOfMovement(
+          await this.movementRepository.update(occurrence.movement.cancel()),
+          recurrence.description,
+        );
+    }
   }
 
   async updatePlanned(
@@ -179,7 +232,7 @@ export class RecurrenceOccurrences {
           charge.withDetails({
             description: changes.description,
             amount: changes.amount,
-            category: changes.category,
+            category: recurrence.categoryOrFail(),
           }),
         );
       }
@@ -209,6 +262,40 @@ export class RecurrenceOccurrences {
     }
   }
 
+  async updatePlannedMovements(
+    recurrence: RecurrenceEntity,
+    occurrenceFrom: string | undefined,
+    changes: PlannedMovementChanges,
+  ): Promise<void> {
+    if (changes.amount === undefined && !changes.account) {
+      return;
+    }
+
+    for (const movement of await this.movementRepository.findPlannedMandatoryByRecurrence(
+      recurrence.ownerId,
+      recurrence.id,
+      occurrenceFrom,
+    )) {
+      const account = changes.account ?? movement.account;
+
+      if (!account) {
+        throw new Error('Contributions have an account');
+      }
+
+      if (account.id !== movement.account?.id) {
+        assertNotBeforeOpening([account], [movement.date]);
+      }
+
+      await this.movementRepository.update(
+        movement.withPlannedDetails({
+          amount: changes.amount ?? movement.amount,
+          date: movement.date,
+          account,
+        }),
+      );
+    }
+  }
+
   async removePlanned(
     recurrence: RecurrenceEntity,
     occurrenceFrom?: string,
@@ -219,6 +306,18 @@ export class RecurrenceOccurrences {
         occurrenceFrom,
       )) {
         await this.chargeRepository.softDelete(charge);
+      }
+
+      return;
+    }
+
+    if (recurrence.isInvestmentContribution) {
+      for (const movement of await this.movementRepository.findPlannedMandatoryByRecurrence(
+        recurrence.ownerId,
+        recurrence.id,
+        occurrenceFrom,
+      )) {
+        await this.movementRepository.softDelete(movement);
       }
 
       return;
@@ -260,6 +359,20 @@ export class RecurrenceOccurrences {
       return { kind: 'cardCharge', charge };
     }
 
+    if (recurrence.isInvestmentContribution) {
+      const movement =
+        await this.movementRepository.findMandatoryByUuidForRecurrence(
+          uuid,
+          recurrence.id,
+        );
+
+      if (!movement) {
+        throw new RecurrenceOccurrenceNotFoundError();
+      }
+
+      return { kind: 'movement', movement };
+    }
+
     const transaction =
       await this.transactionRepository.findByUuidForOwnerForUpdate(
         uuid,
@@ -271,6 +384,31 @@ export class RecurrenceOccurrences {
     }
 
     return { kind: 'transaction', transaction };
+  }
+
+  private async rescheduleMovement(
+    recurrence: RecurrenceEntity,
+    movement: InvestmentMovementEntity,
+    schedule: OccurrenceSchedule,
+  ): Promise<RecurrenceOccurrence> {
+    if (!movement.account) {
+      throw new Error('Contributions have an account');
+    }
+
+    if (schedule.date !== undefined && schedule.date !== movement.date) {
+      assertNotBeforeOpening([movement.account], [schedule.date]);
+    }
+
+    return occurrenceOfMovement(
+      await this.movementRepository.update(
+        movement.withPlannedDetails({
+          amount: schedule.amount ?? movement.amount,
+          date: schedule.date ?? movement.date,
+          account: movement.account,
+        }),
+      ),
+      recurrence.description,
+    );
   }
 
   private plannedTransactions(

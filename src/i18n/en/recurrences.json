@@ -5,10 +5,15 @@
     "recurrence_ended": "This recurrence has ended and can no longer be changed",
     "state_transition": "This recurrence cannot move to that state",
     "occurrence_not_planned": "Only planned occurrences can be changed, confirmed, or skipped",
-    "invalid_target": "A recurrence needs exactly one account or credit card, and a card only for expenses",
-    "category_kind_mismatch": "The category kind must match the recurrence type",
+    "invalid_target": "A recurrence needs exactly one account or credit card, and a card only for expenses; an investment contribution needs an investment and an account",
+    "category_kind_mismatch": "The category kind must match the recurrence type, and an investment contribution has no category",
     "end_before_start": "The end date cannot be before the start date",
-    "invoice_end_not_applicable": "Only credit card recurrences can end from an invoice month"
+    "invoice_end_not_applicable": "Only credit card recurrences can end from an invoice month",
+    "invalid_saving_strategy": "A saving strategy is only available on a monthly investment contribution, with a retained balance of zero or more",
+    "saving_plan_month_closed": "Additional contributions cannot be recorded for a month that has passed",
+    "saving_plan_not_active": "This recurrence must be active and use the remaining surplus strategy to accept an additional contribution",
+    "additional_contribution_outside_month": "The date must be inside the selected month",
+    "completed_additional_contribution_in_future": "A completed contribution cannot be dated in the future. Record it as planned instead"
   },
   "frequency": {
     "weekly": "Weekly",
@@ -19,5 +24,12 @@
     "active": "Active",
     "paused": "Paused",
     "ended": "Ended"
+  },
+  "type": {
+    "investment_contribution": "Investment contribution"
+  },
+  "additional_contribution": {
+    "none": "None",
+    "remaining_surplus": "Remaining surplus"
   }
 }

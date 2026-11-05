@@ -14,6 +14,12 @@ import {
   type CreditCardRepository,
 } from '@modules/credit-cards';
 import {
+  INVESTMENT_REPOSITORY,
+  findActiveInvestment,
+  type InvestmentEntity,
+  type InvestmentRepository,
+} from '@modules/investments';
+import {
   InactiveTransactionCategoryError,
   TRANSACTION_CATEGORY_REPOSITORY,
   findVisibleTransactionCategory,
@@ -39,11 +45,14 @@ export class RecurrenceReferences {
     private readonly cardRepository: CreditCardRepository,
     @Inject(TRANSACTION_CATEGORY_REPOSITORY)
     private readonly categoryRepository: TransactionCategoryRepository,
+    @Inject(INVESTMENT_REPOSITORY)
+    private readonly investmentRepository: InvestmentRepository,
   ) {}
 
   async lockOwnerFinances(ownerId: number): Promise<void> {
     await this.accountRepository.lockOwnerAccounts(ownerId);
     await this.cardRepository.lockOwnerCards(ownerId);
+    await this.investmentRepository.lockOwnerInvestments(ownerId);
   }
 
   async findRecurrence(
@@ -100,6 +109,10 @@ export class RecurrenceReferences {
     assertRecordActive(category, new InactiveTransactionCategoryError());
 
     return category;
+  }
+
+  activeInvestment(uuid: string, ownerId: number): Promise<InvestmentEntity> {
+    return findActiveInvestment(this.investmentRepository, uuid, ownerId);
   }
 
   private orNotFound(recurrence: RecurrenceEntity | null): RecurrenceEntity {

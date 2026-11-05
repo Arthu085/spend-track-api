@@ -2,21 +2,25 @@
 
 > Location: `src/modules/recurrences/` · Rules: [financial data ownership](../conventions.md#financial-data-ownership)
 > and [HTTP](../conventions.md#http) · Related: [`transactions.md`](transactions.md),
-> [`credit-cards.md`](credit-cards.md), [`dashboard.md`](dashboard.md)
+> [`credit-cards.md`](credit-cards.md), [`investments.md`](investments.md), [`dashboard.md`](dashboard.md)
 
-Recurring income, expenses, and card charges in `recurrences`, with their future occurrences
-projected ahead of time. Account occurrences are planned `transactions`; card occurrences are
-planned charges in `recurrence_card_charges` that become card purchases only when confirmed. Routes
-and payloads are in Swagger; this document covers the rules behind them.
+Recurring income, expenses, card charges, and investment contributions in `recurrences`, with their
+future occurrences projected ahead of time. Account occurrences are planned `transactions`; card
+occurrences are planned charges in `recurrence_card_charges` that become card purchases only when
+confirmed; contribution occurrences are planned `MANDATORY` `investment_movements`. Routes and
+payloads are in Swagger; this document covers the rules behind them.
 
 ## Public API
 
 - `index.ts`: `RECURRENCE_CARD_CHARGE_REPOSITORY`/`RecurrenceCardChargeRepository` with
-  `PlannedCardChargeTotal`, `PlannedCardCharge`, and `PlannedCardChargesDue`, consumed by `dashboard`.
+  `PlannedCardChargeTotal`, `PlannedCardCharge`, and `PlannedCardChargesDue`, and `SavingPlans` with
+  `SavingPlan`, consumed by `dashboard`.
+- `presentation.ts`: `SavingPlanResponseDto`, used by the dashboard response.
 - `RecurrenceCardChargePendingOperations` registers into the credit card pending operations registry
   ([`credit-cards.md`](credit-cards.md#archiving-with-planned-operations)).
 - `recurrences.module.ts`: `RecurrencesModule`. It imports `AccountsModule`, `CreditCardsModule`,
-  `TransactionCategoriesModule`, and `TransactionsModule`; none of them imports it back.
+  `InvestmentsModule`, `TransactionCategoriesModule`, and `TransactionsModule`; none of them imports
+  it back.
 
 ## Ownership
 
@@ -24,27 +28,34 @@ Every route needs authentication but no ability and works only on the caller's r
 filter by `user_id`, so a foreign recurrence is a `404` (`RecurrenceNotFoundError`) for everyone,
 including admins. Occurrences are looked up inside their owned recurrence
 (`RecurrenceOccurrenceNotFoundError`, `404`), and accounts, cards, and categories resolve through the
-owner-scoped lookups of their modules.
+owner-scoped lookups of their modules. So does the investment of a contribution.
 
 ## Template
 
-- A recurrence has a `type` (`INCOME` or `EXPENSE`), a description, an amount, a category of the
-  same kind (`RecurrenceCategoryKindMismatchError`, `422`), optional notes, a `frequency` (`WEEKLY`,
+- A recurrence has a `type` (`INCOME`, `EXPENSE`, or `INVESTMENT_CONTRIBUTION`), a description, an
+  amount, a category of the same kind (`RecurrenceCategoryKindMismatchError`, `422`; a contribution
+  has none), optional notes, a `frequency` (`WEEKLY`,
   `MONTHLY`, `YEARLY`), a `startDate`, and an optional `endDate` not before it
   (`RecurrenceEndBeforeStartError`, `422`).
 - Its target is exactly one account or, for expenses only, one credit card
   (`InvalidRecurrenceTargetError`, `422`). The account, card, and category must be active when set.
   An account recurrence cannot start before the account's opening date
   ([`accounts.md`](accounts.md#opening-balance)).
+- `INVESTMENT_CONTRIBUTION` needs `investmentUuid` and `accountUuid`, both active, and forbids
+  `categoryUuid` and `creditCardUuid`. The investment never changes afterward.
 - Occurrence `n` falls `n` weeks, months, or years after `startDate`. Monthly and yearly dates are
   shifted from the start date and clamped to the end of short months, so a recurrence starting on
   January 31 falls on February 28 and then March 31.
 - `PATCH /recurrences/:uuid` changes `description`, `amount`, `categoryUuid`, `notes`, and, for
   account recurrences, `accountUuid`. `scope` decides which planned occurrences follow the new
-  values: `FUTURE` those dated on or after `from` (default today), `ALL` every planned one. Moving a
+  values: `FUTURE` those dated on or after `from` (default today), `ALL` every planned one. On an
+  investment contribution only a sent `amount` or `accountUuid` reaches them, and each keeps whichever
+  of the two was not sent, so a change per occurrence survives a `PATCH` of the other field or of
+  `description`, `notes`, or `savingStrategy`. Moving a
   planned occurrence to an account that opens after its date is rejected. Completed and canceled
   occurrences never change. `type`, `frequency`, `startDate`, the card, and `endDate`
-  never change through `PATCH`.
+  never change through `PATCH`. For a contribution, `PATCH` also takes `savingStrategy`
+  ([Saving plans](#saving-plans)); sending `categoryUuid` is `RecurrenceCategoryKindMismatchError`.
 
 ## State
 
@@ -116,10 +127,85 @@ Pausing, resuming, and ending work as follows:
   edit, complete, cancel, or delete them. A planned card charge is not on an invoice until it is
   confirmed; the dashboard counts it separately ([`dashboard.md`](dashboard.md#figures)).
 
+## Investment contributions
+
+- A contribution occurrence is one `investment_movements` row of kind `MANDATORY`, always generated
+  as `PLANNED`, linked by `recurrence_id` and `recurrence_date`
+  ([`investments.md`](investments.md#contribution-kinds)). It lowers the projected balance while
+  planned, moves money only once confirmed, and is never income or an expense.
+- `PATCH`, `PUT .../confirmation`, and `PUT .../cancellation` follow the rules above. Confirming sets
+  `completedOn = date` (default today), keeps the scheduled `date`, needs an active account, checks
+  the value through `InvestmentValues`, and also works on an archived investment. The occurrence
+  carries `movementUuid`, and `PUT /investments/:uuid/movements/:movementUuid/state` can also complete
+  or cancel it.
+- Pausing, ending, and the `PATCH` scope only touch planned `MANDATORY` rows of that recurrence, by
+  soft delete when removing. A planned `ADDITIONAL` row is an explicit user decision and stays.
+- Archiving the investment with `KEEP` leaves planned rows confirmable and stops generation.
+  With `CANCEL` the rows stay `CANCELED` and their dates are never generated again, even after
+  reactivating it.
+
+## Saving plans
+
+`savingStrategy` (`minimumRetainedBalance` ≥ 0 and `additionalContribution`: `NONE` or
+`REMAINING_SURPLUS`) is optional and only valid on a `MONTHLY` `INVESTMENT_CONTRIBUTION`; otherwise
+`InvalidSavingStrategyError` (`422`). The mandatory contribution is the recurrence `amount`. `PATCH`
+sets or clears it and never changes existing movements.
+
+`GET /recurrences/saving-plans?year=&month=` returns one plan per recurrence with a strategy, reported
+as `ACTIVE`, whose investment and account are active and not deleted, for a month from the month of
+`startDate` through the month of `endDate`. `SavingPlans` reads primitive balances and
+`savingPlanOf` computes everything else; nothing derived is stored, so it never depends on
+`balances.available` and a suggestion never changes a dashboard balance. For a month ending on `E`:
+
+| Figure                      | Value                                                                                            |
+| --------------------------- | ------------------------------------------------------------------------------------------------ |
+| `actualBalance`             | The account's current balance                                                                    |
+| `plannedTransactions`       | Net planned transactions on the account dated up to `E`                                          |
+| `mandatory.planned`         | This recurrence's planned `MANDATORY` rows on its account dated up to `E`, overdue ones included |
+| `otherInvestmentMovements`  | Net planned movements on the account dated up to `E`, with `mandatory.planned` added back        |
+| `cardObligations`           | `creditCards.outstanding + creditCards.plannedDue` of the dashboard for the month                |
+| `balanceBeforeContribution` | `actualBalance + plannedTransactions + otherInvestmentMovements − cardObligations`               |
+| `distributable`             | `balanceBeforeContribution − minimumRetainedBalance`                                             |
+| `shortfall`                 | `max(mandatory.planned − distributable, 0)`                                                      |
+| `suggestedAdditional`       | `max(distributable − mandatory.planned, 0)` when an additional contribution can be accepted      |
+
+- Adding `mandatory.planned` back is the double-count guard: this recurrence's own mandatory rows
+  leave the balance, while other investments and its own planned `ADDITIONAL` row still reduce it.
+- A planned row left on a former account, by a `FUTURE` scope that did not reach it, does not draw
+  from the current account, so the plan does not count or list it. It stays in the occurrences.
+- Cards are not linked to accounts, so all card obligations are charged against this account: a
+  conservative estimate, exposed so the UI can say so. The invoice selection is shared with the
+  dashboard through `statementsDueInMonth`.
+- Suggestions on a shared account overlap: each plan offers the same surplus until one of them is
+  accepted. Accepting one, even as `PLANNED`, lowers the others through `otherInvestmentMovements`,
+  so they must never be added together.
+- `canAcceptAdditional` is true with `REMAINING_SURPLUS`, for the current or a later month, and while
+  the month has no live additional contribution. Only then is `suggestedAdditional` above 0.
+
+`POST /recurrences/:uuid/additional-contributions` records what the user accepts; nothing is created
+automatically. `amount` may differ from the suggestion. The movement is `ADDITIONAL`, with
+`suggestedAmount` and `retainedMinimum` as an immutable snapshot, so later changes to the strategy
+never rewrite history.
+
+- `date` must be inside the month (`AdditionalContributionOutsideMonthError`, `422`), defaults to today
+  in the current month and to the first day of a later one, and cannot be before the account's
+  opening date.
+- `COMPLETED` needs a date up to today (`CompletedAdditionalContributionInFutureError`, `422`), since
+  it moves the money now. `PLANNED` may be dated in the future.
+- A month before the current one is `SavingPlanMonthClosedError` (`422`).
+- The recurrence must be `ACTIVE` with `REMAINING_SURPLUS`, and the month within the months of
+  `startDate` and `endDate` (`SavingPlanNotActiveError`, `409`, also for a month before `startDate`
+  that has already passed). Its investment and account must be active and not deleted
+  (`InactiveInvestmentError`, `InactiveAccountError`, `409`).
+- One live contribution per recurrence and month: a repeat is
+  `AdditionalContributionAlreadyExistsError` (`409`), also from a partial unique index. Canceling it
+  through the investment movement state route frees the month.
+
 ## Generation
 
 - Occurrences are generated up to the last day of the twelfth month after the current one, never past
-  `endDate`, only while the recurrence is `ACTIVE` and its account or card is active and not deleted.
+  `endDate`, only while the recurrence is `ACTIVE`, its account or card is active and not deleted, and,
+  for a contribution, its investment is too.
   Generation goes by the reported state: once `endDate` has passed it creates nothing, even for dates
   up to `endDate` that `generated_through` never reached, for example because the card was archived
   until then or because the recurrence was created with an `endDate` already in the past.
@@ -131,8 +217,9 @@ Pausing, resuming, and ending work as follows:
   Generation only creates dates after it, and skips dates that already have a live occurrence, so an
   occurrence that was canceled, confirmed, or moved is never recreated.
 - Partial unique indexes on `(recurrence_id, recurrence_date)` in `transactions` and
-  `(recurrence_id, occurrence_date)` in `recurrence_card_charges` (live rows only) reject a duplicate
-  occurrence even if generation were wrong.
+  `investment_movements` (`MANDATORY` rows) and `(recurrence_id, occurrence_date)` in
+  `recurrence_card_charges` (live rows only) reject a duplicate occurrence even if generation were
+  wrong.
 - Creating, resuming, or ending a recurrence generates immediately, unless it is already `ENDED`.
   `RecurrenceGenerationScheduler` runs daily at 01:00 `America/Sao_Paulo` and extends up to 500 due
   recurrences per run, oldest first, each in its own transaction. A recurrence past its `endDate` is
@@ -144,7 +231,8 @@ Pausing, resuming, and ending work as follows:
 ## Concurrency
 
 Every write runs in one database transaction under the per-user account lock, then the per-user card
-lock (the order every account and card write uses), then locks the recurrence row
+lock, then the per-user investment lock (the order every write across them uses), then locks the
+recurrence row
 (`FOR NO KEY UPDATE`) and re-reads it. The scheduler takes the same locks for each recurrence, so it
 is safe on several replicas and never generates an occurrence twice.
 

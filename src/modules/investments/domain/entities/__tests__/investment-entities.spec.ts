@@ -2,6 +2,7 @@ import { TransactionState } from '@modules/transactions';
 import { RecordStatus } from '@shared/domain/enums/record-status.enum';
 import { buildAccount } from '@test/support/builders/account.builder';
 import { buildInvestmentMovement } from '@test/support/builders/investment.builder';
+import { ContributionKind } from '../../enums/contribution-kind.enum';
 import { InvestmentMovementType } from '../../enums/investment-movement-type.enum';
 import { InvestmentType } from '../../enums/investment-type.enum';
 import { InvestmentMovementStateTransitionError } from '../../errors/investment-movement-state-transition.error';
@@ -126,5 +127,109 @@ describe('InvestmentMovementEntity', () => {
     expect(() => canceled.cancel()).toThrow(
       InvestmentMovementStateTransitionError,
     );
+  });
+});
+
+describe('InvestmentMovementEntity contribution kinds', () => {
+  const shared = {
+    uuid: 'new',
+    ownerId: 3,
+    investmentId: 7,
+    account: buildAccount(),
+    amount: 70000,
+    date: '2026-11-15',
+    recurrence: { id: 9, uuid: 'recurrence' },
+  };
+
+  it('marks transfers and valuations as one-time, with no recurrence', () => {
+    const transfer = InvestmentMovementEntity.createTransfer({
+      ...shared,
+      type: InvestmentMovementType.CONTRIBUTION,
+      state: TransactionState.PLANNED,
+      completedOn: null,
+    });
+
+    const valuation = InvestmentMovementEntity.createValuation({
+      uuid: 'valuation',
+      ownerId: 3,
+      investmentId: 7,
+      change: 100,
+      date: '2026-11-15',
+    });
+
+    for (const movement of [transfer, valuation]) {
+      expect(movement).toMatchObject({
+        contributionKind: ContributionKind.ONE_TIME,
+        recurrence: null,
+        surplusMonth: null,
+        suggestedAmount: null,
+        retainedMinimum: null,
+      });
+    }
+  });
+
+  it('creates a mandatory contribution as planned, on its scheduled date', () => {
+    const movement =
+      InvestmentMovementEntity.createMandatoryContribution(shared);
+
+    expect(movement).toMatchObject({
+      type: InvestmentMovementType.CONTRIBUTION,
+      contributionKind: ContributionKind.MANDATORY,
+      state: TransactionState.PLANNED,
+      completedOn: null,
+      recurrence: { id: 9, uuid: 'recurrence', occurrenceDate: '2026-11-15' },
+    });
+    expect(movement.valueChange).toBe(0);
+  });
+
+  it('snapshots an additional contribution, completed on its date when it moves money now', () => {
+    const movement = InvestmentMovementEntity.createAdditionalContribution({
+      ...shared,
+      state: TransactionState.COMPLETED,
+      surplusMonth: '2026-11-01',
+      suggestedAmount: 60000,
+      retainedMinimum: 20000,
+    });
+
+    expect(movement).toMatchObject({
+      contributionKind: ContributionKind.ADDITIONAL,
+      completedOn: '2026-11-15',
+      recurrence: { id: 9, uuid: 'recurrence', occurrenceDate: null },
+      surplusMonth: '2026-11-01',
+      suggestedAmount: 60000,
+      retainedMinimum: 20000,
+    });
+    expect(movement.valueChange).toBe(70000);
+
+    const canceled = movement.cancel();
+
+    expect(canceled).toMatchObject({
+      suggestedAmount: 60000,
+      retainedMinimum: 20000,
+    });
+  });
+
+  it('changes the details of a planned movement only', () => {
+    const planned =
+      InvestmentMovementEntity.createMandatoryContribution(shared);
+
+    const changed = planned.withPlannedDetails({
+      amount: 80000,
+      date: '2026-11-20',
+      account: buildAccount({ id: 5 }),
+    });
+
+    expect(changed).toMatchObject({
+      amount: 80000,
+      date: '2026-11-20',
+      recurrence: { occurrenceDate: '2026-11-15' },
+    });
+    expect(() =>
+      changed.complete('2026-11-20').withPlannedDetails({
+        amount: 1,
+        date: '2026-11-20',
+        account: buildAccount(),
+      }),
+    ).toThrow(InvestmentMovementStateTransitionError);
   });
 });

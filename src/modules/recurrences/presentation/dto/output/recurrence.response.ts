@@ -1,15 +1,104 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { CreditCardRefResponseDto } from '@modules/credit-cards/presentation';
+import type { InvestmentEntity } from '@modules/investments';
+import { InvestmentType } from '@modules/investments';
+import { investmentTypeLabel } from '@modules/investments/presentation';
 import {
   TransactionAccountResponseDto,
   TransactionCategoryRefResponseDto,
 } from '@modules/transactions/presentation';
+import { RecordStatus } from '@shared/domain/enums/record-status.enum';
 import { formatMoney } from '@shared/domain/money';
 import { translateOrFallback } from '@shared/presentation/http';
 import { RecurrenceEntity } from '../../../domain/entities/recurrence.entity';
+import { AdditionalContributionStrategy } from '../../../domain/enums/additional-contribution-strategy.enum';
 import { RecurrenceFrequency } from '../../../domain/enums/recurrence-frequency.enum';
 import { RecurrenceState } from '../../../domain/enums/recurrence-state.enum';
 import { RecurrenceType } from '../../../domain/enums/recurrence-type.enum';
+import type { SavingStrategy } from '../../../domain/saving-plan/saving-plan';
+
+export class RecurrenceInvestmentRefResponseDto {
+  @ApiProperty()
+  uuid!: string;
+
+  @ApiProperty()
+  name!: string;
+
+  @ApiProperty({ enum: InvestmentType })
+  type!: InvestmentType;
+
+  @ApiProperty()
+  typeLabel!: string;
+
+  @ApiProperty({ enum: RecordStatus })
+  status!: RecordStatus;
+
+  static fromDomain(
+    investment: InvestmentEntity,
+    translate: (key: string) => string,
+  ): RecurrenceInvestmentRefResponseDto {
+    return Object.assign(new RecurrenceInvestmentRefResponseDto(), {
+      uuid: investment.uuid,
+      name: investment.name,
+      type: investment.type,
+      typeLabel: investmentTypeLabel(investment.type, translate),
+      status: investment.status,
+    });
+  }
+}
+
+export function additionalContributionLabel(
+  strategy: AdditionalContributionStrategy,
+  translate: (key: string) => string,
+): string {
+  return translateOrFallback(
+    translate,
+    `recurrences.additional_contribution.${strategy.toLowerCase()}`,
+    strategy,
+  );
+}
+
+export class SavingStrategyResponseDto {
+  @ApiProperty({
+    example: '200.00',
+    description:
+      'Balance to keep in the account before anything is suggested as an additional contribution.',
+  })
+  minimumRetainedBalance!: string;
+
+  @ApiProperty({ enum: AdditionalContributionStrategy })
+  additionalContribution!: AdditionalContributionStrategy;
+
+  @ApiProperty()
+  additionalContributionLabel!: string;
+
+  static fromDomain(
+    strategy: SavingStrategy,
+    translate: (key: string) => string,
+  ): SavingStrategyResponseDto {
+    return Object.assign(new SavingStrategyResponseDto(), {
+      minimumRetainedBalance: formatMoney(strategy.minimumRetainedBalance),
+      additionalContribution: strategy.additionalContribution,
+      additionalContributionLabel: additionalContributionLabel(
+        strategy.additionalContribution,
+        translate,
+      ),
+    });
+  }
+}
+
+function recurrenceTypeLabel(
+  type: RecurrenceType,
+  translate: (key: string) => string,
+): string {
+  return translateOrFallback(
+    translate,
+    type === RecurrenceType.INVESTMENT_CONTRIBUTION
+      ? `recurrences.type.${type.toLowerCase()}`
+      : `transactions.type.${type.toLowerCase()}`,
+    type,
+  );
+}
 
 export class RecurrenceResponseDto {
   @ApiProperty()
@@ -62,7 +151,8 @@ export class RecurrenceResponseDto {
   @ApiProperty({
     type: TransactionAccountResponseDto,
     nullable: true,
-    description: 'Account of the generated transactions; null for cards.',
+    description:
+      'Account of the generated transactions, or the source of the generated contributions; null for cards.',
   })
   account!: TransactionAccountResponseDto | null;
 
@@ -73,8 +163,27 @@ export class RecurrenceResponseDto {
   })
   creditCard!: CreditCardRefResponseDto | null;
 
-  @ApiProperty({ type: TransactionCategoryRefResponseDto })
-  category!: TransactionCategoryRefResponseDto;
+  @ApiProperty({
+    type: RecurrenceInvestmentRefResponseDto,
+    nullable: true,
+    description: 'Investment receiving the contributions; null otherwise.',
+  })
+  investment!: RecurrenceInvestmentRefResponseDto | null;
+
+  @ApiProperty({
+    type: TransactionCategoryRefResponseDto,
+    nullable: true,
+    description: 'Null for investment contributions.',
+  })
+  category!: TransactionCategoryRefResponseDto | null;
+
+  @ApiProperty({
+    type: SavingStrategyResponseDto,
+    nullable: true,
+    description:
+      'Set only on a MONTHLY investment contribution that uses a saving strategy.',
+  })
+  savingStrategy!: SavingStrategyResponseDto | null;
 
   @ApiProperty({ type: String, nullable: true })
   notes!: string | null;
@@ -105,11 +214,7 @@ export class RecurrenceResponseDto {
 
     dto.uuid = recurrence.uuid;
     dto.type = recurrence.type;
-    dto.typeLabel = translateOrFallback(
-      translate,
-      `transactions.type.${recurrence.type.toLowerCase()}`,
-      recurrence.type,
-    );
+    dto.typeLabel = recurrenceTypeLabel(recurrence.type, translate);
     dto.description = recurrence.description;
     dto.amount = formatMoney(recurrence.amount);
     dto.frequency = recurrence.frequency;
@@ -132,10 +237,24 @@ export class RecurrenceResponseDto {
     dto.creditCard = recurrence.creditCard
       ? CreditCardRefResponseDto.fromDomain(recurrence.creditCard)
       : null;
-    dto.category = TransactionCategoryRefResponseDto.fromDomain(
-      recurrence.category,
-      translate,
-    );
+    dto.investment = recurrence.investment
+      ? RecurrenceInvestmentRefResponseDto.fromDomain(
+          recurrence.investment,
+          translate,
+        )
+      : null;
+    dto.category = recurrence.category
+      ? TransactionCategoryRefResponseDto.fromDomain(
+          recurrence.category,
+          translate,
+        )
+      : null;
+    dto.savingStrategy = recurrence.savingStrategy
+      ? SavingStrategyResponseDto.fromDomain(
+          recurrence.savingStrategy,
+          translate,
+        )
+      : null;
     dto.notes = recurrence.notes;
     dto.nextOccurrenceDate = recurrence.nextOccurrenceDate(today);
     dto.createdAt = recurrence.createdAt;

@@ -1,11 +1,21 @@
 import { Logger } from '@nestjs/common';
-import type { AccountRepository } from '@modules/accounts';
+import {
+  InactiveAccountError,
+  type AccountRepository,
+} from '@modules/accounts';
 import {
   InactiveCreditCardError,
   type CreateCreditCardPurchaseUseCase,
   type CreditCardInvoiceAssigner,
   type CreditCardRepository,
 } from '@modules/credit-cards';
+import {
+  ContributionKind,
+  InvestmentMovementEntity,
+  type InvestmentMovementRepository,
+  type InvestmentRepository,
+  type InvestmentValues,
+} from '@modules/investments';
 import type { TransactionCategoryRepository } from '@modules/transaction-categories';
 import {
   OccurrenceAfterRecurrenceEndError,
@@ -26,6 +36,10 @@ import {
   buildRecurrence,
   buildRecurrenceCardCharge,
 } from '@test/support/builders/recurrence.builder';
+import {
+  buildInvestment,
+  buildInvestmentMovement,
+} from '@test/support/builders/investment.builder';
 import { buildTransactionCategory } from '@test/support/builders/transaction-category.builder';
 import { buildTransaction } from '@test/support/builders/transaction.builder';
 import { mockOf } from '@test/support/mocks/mock-of';
@@ -116,6 +130,24 @@ function setup(stored: RecurrenceEntity | null = buildRecurrence()) {
     softDelete: jest.fn().mockResolvedValue(undefined),
   };
 
+  const movements = {
+    findPlannedMandatoryByRecurrence: jest.fn().mockResolvedValue([]),
+    findPaginatedMandatoryByRecurrence: jest
+      .fn()
+      .mockResolvedValue({ items: [], total: 0 }),
+    findMandatoryDatesFrom: jest.fn().mockResolvedValue([]),
+    findMandatoryByUuidForRecurrence: jest.fn().mockResolvedValue(null),
+    create: jest.fn((movement: InvestmentMovementEntity) =>
+      Promise.resolve(movement),
+    ),
+    update: jest.fn((movement: InvestmentMovementEntity) =>
+      Promise.resolve(movement),
+    ),
+    softDelete: jest.fn().mockResolvedValue(undefined),
+  };
+
+  const investmentValues = { assertCanChangeBy: jest.fn() };
+
   const assigner = {
     referenceMonthFor: jest.fn((_: unknown, date: string) =>
       Promise.resolve(`${date.slice(0, 7)}-01`),
@@ -160,6 +192,13 @@ function setup(stored: RecurrenceEntity | null = buildRecurrence()) {
     mockOf<TransactionCategoryRepository>({
       findVisibleByUuid: jest.fn().mockResolvedValue(category),
     }),
+    mockOf<InvestmentRepository>({
+      lockOwnerInvestments: jest.fn(() => {
+        calls.push('lock-investments');
+
+        return Promise.resolve();
+      }),
+    }),
   );
 
   const invoiceAssigner = mockOf<CreditCardInvoiceAssigner>(assigner);
@@ -168,6 +207,7 @@ function setup(stored: RecurrenceEntity | null = buildRecurrence()) {
     mockOf<TransactionRepository>(transactions),
     mockOf<RecurrenceCardChargeRepository>(charges),
     invoiceAssigner,
+    mockOf<InvestmentMovementRepository>(movements),
   );
 
   const generator = new RecurrenceOccurrenceGenerator(
@@ -175,6 +215,7 @@ function setup(stored: RecurrenceEntity | null = buildRecurrence()) {
     mockOf<RecurrenceCardChargeRepository>(charges),
     mockOf<TransactionRepository>(transactions),
     invoiceAssigner,
+    mockOf<InvestmentMovementRepository>(movements),
   );
 
   const recurrenceRepository = mockOf<RecurrenceRepository>(recurrences);
@@ -186,6 +227,7 @@ function setup(stored: RecurrenceEntity | null = buildRecurrence()) {
     transactions,
     assigner,
     createPurchase,
+    movements,
     create: new CreateRecurrenceUseCase(
       recurrenceRepository,
       transactionManager,
@@ -225,6 +267,8 @@ function setup(stored: RecurrenceEntity | null = buildRecurrence()) {
       references,
       occurrences,
       mockOf<CreateCreditCardPurchaseUseCase>(createPurchase),
+      mockOf<InvestmentMovementRepository>(movements),
+      mockOf<InvestmentValues>(investmentValues),
     ),
     cancel: new CancelRecurrenceOccurrenceUseCase(
       transactionManager,
@@ -271,7 +315,11 @@ describe('recurrence use-cases', () => {
 
       const generated = createdTransactions(transactions);
 
-      expect(calls).toEqual(['lock-accounts', 'lock-cards']);
+      expect(calls).toEqual([
+        'lock-accounts',
+        'lock-cards',
+        'lock-investments',
+      ]);
       expect(generated).toHaveLength(14);
       expect(generated[0]).toMatchObject({
         type: TransactionType.EXPENSE,
@@ -1196,6 +1244,306 @@ describe('recurrence use-cases', () => {
           RecurrenceOccurrenceNotPlannedError,
         );
       });
+    });
+  });
+
+  describe('investment contribution recurrences', () => {
+    const investment = buildInvestment({ id: 7 });
+
+    const contribution = () =>
+      buildRecurrence({
+        type: RecurrenceType.INVESTMENT_CONTRIBUTION,
+        investment,
+        category: null,
+        account,
+        amount: 70000,
+        description: 'Reserve',
+        startDate: '2026-11-15',
+      });
+
+    const plannedMovement = () =>
+      InvestmentMovementEntity.createMandatoryContribution({
+        uuid: 'movement',
+        ownerId: 1,
+        investmentId: investment.id,
+        account,
+        amount: 70000,
+        date: '2026-11-15',
+        recurrence: { id: 1, uuid: 'recurrence-uuid' },
+      });
+
+    it('locks the investments after accounts and cards, before generating planned movements only', async () => {
+      const recurrence = contribution();
+      const useCases = setup(recurrence);
+      const { movements, transactions, calls } = useCases;
+
+      await useCases.updateState.execute({
+        uuid: recurrence.uuid,
+        ownerId: 1,
+        state: RecurrenceState.PAUSED,
+      });
+
+      expect(calls.slice(0, 3)).toEqual([
+        'lock-accounts',
+        'lock-cards',
+        'lock-investments',
+      ]);
+      expect(transactions.softDelete).not.toHaveBeenCalled();
+      expect(movements.findPlannedMandatoryByRecurrence).toHaveBeenCalled();
+    });
+
+    it('leaves planned movements alone without an amount or an account', async () => {
+      const { update, movements } = setup(contribution());
+
+      for (const change of [
+        { savingStrategy: null },
+        { notes: 'Rainy day' },
+        { description: 'Renamed' },
+      ]) {
+        await update.execute({
+          uuid: 'recurrence-uuid',
+          ownerId: 1,
+          scope: RecurrenceUpdateScope.ALL,
+          ...change,
+        });
+      }
+
+      expect(movements.findPlannedMandatoryByRecurrence).not.toHaveBeenCalled();
+      expect(movements.update).not.toHaveBeenCalled();
+    });
+
+    it('applies only the sent field to each planned movement', async () => {
+      const formerAccount = buildAccount({
+        id: 4,
+        uuid: 'former-account',
+        openingBalanceDate: '2026-01-01',
+      });
+
+      const editedRow = InvestmentMovementEntity.createMandatoryContribution({
+        uuid: 'movement',
+        ownerId: 1,
+        investmentId: investment.id,
+        account: formerAccount,
+        amount: 12300,
+        date: '2026-11-15',
+        recurrence: { id: 1, uuid: 'recurrence-uuid' },
+      });
+
+      const { update, movements } = setup(contribution());
+
+      movements.findPlannedMandatoryByRecurrence.mockResolvedValue([editedRow]);
+
+      await update.execute({
+        uuid: 'recurrence-uuid',
+        ownerId: 1,
+        scope: RecurrenceUpdateScope.ALL,
+        amount: 90000,
+      });
+
+      expect(movements.update.mock.calls[0][0]).toMatchObject({
+        amount: 90000,
+        account: { id: formerAccount.id },
+      });
+
+      await update.execute({
+        uuid: 'recurrence-uuid',
+        ownerId: 1,
+        scope: RecurrenceUpdateScope.ALL,
+        accountUuid: account.uuid,
+      });
+
+      expect(movements.update.mock.calls[1][0]).toMatchObject({
+        amount: 12300,
+        account: { id: account.id },
+      });
+    });
+
+    it('skips dates before the account opening, and never moves real money', async () => {
+      const recurrence = buildRecurrence({
+        type: RecurrenceType.INVESTMENT_CONTRIBUTION,
+        investment,
+        category: null,
+        account: buildAccount({ id: 3, openingBalanceDate: '2026-10-01' }),
+        startDate: '2026-08-15',
+        amount: 70000,
+      });
+
+      const useCases = setup(recurrence);
+      const { movements, recurrences } = useCases;
+
+      recurrences.findDueForGeneration.mockResolvedValue([
+        { uuid: recurrence.uuid, ownerId: 1 },
+      ]);
+
+      await useCases.generateDue.execute('2026-11-05');
+
+      const created = movements.create.mock.calls.map(([movement]) => movement);
+
+      expect(created[0]).toMatchObject({
+        date: '2026-10-15',
+        state: TransactionState.PLANNED,
+        contributionKind: ContributionKind.MANDATORY,
+      });
+      expect(
+        created.every(({ state }) => state === TransactionState.PLANNED),
+      ).toBe(true);
+    });
+
+    it('generates nothing while the investment is archived', async () => {
+      const recurrence = buildRecurrence({
+        type: RecurrenceType.INVESTMENT_CONTRIBUTION,
+        investment: buildInvestment({ status: RecordStatus.INACTIVE }),
+        category: null,
+        account,
+        state: RecurrenceState.PAUSED,
+      });
+
+      const useCases = setup(recurrence);
+      const { movements } = useCases;
+
+      await useCases.updateState.execute({
+        uuid: recurrence.uuid,
+        ownerId: 1,
+        state: RecurrenceState.ACTIVE,
+      });
+
+      expect(movements.create).not.toHaveBeenCalled();
+    });
+
+    it('confirms a planned movement, keeping its scheduled date', async () => {
+      const recurrence = contribution();
+      const useCases = setup(recurrence);
+      const { movements } = useCases;
+
+      movements.findMandatoryByUuidForRecurrence.mockResolvedValue(
+        plannedMovement(),
+      );
+
+      const occurrence = await useCases.confirm.execute({
+        uuid: recurrence.uuid,
+        occurrenceUuid: 'movement',
+        ownerId: 1,
+        amount: 75000,
+        date: '2026-11-16',
+      });
+
+      expect(occurrence).toMatchObject({
+        movementUuid: 'movement',
+        description: 'Reserve',
+        amount: 75000,
+        date: '2026-11-15',
+        completedOn: '2026-11-16',
+        state: TransactionState.COMPLETED,
+      });
+    });
+
+    it('rejects confirming when the account is inactive', async () => {
+      const recurrence = contribution();
+      const useCases = setup(recurrence);
+      const { movements } = useCases;
+
+      movements.findMandatoryByUuidForRecurrence.mockResolvedValue(
+        InvestmentMovementEntity.createMandatoryContribution({
+          uuid: 'movement',
+          ownerId: 1,
+          investmentId: investment.id,
+          account: buildAccount({ id: 3, status: RecordStatus.INACTIVE }),
+          amount: 70000,
+          date: '2026-11-15',
+          recurrence: { id: 1, uuid: 'recurrence-uuid' },
+        }),
+      );
+
+      await expect(
+        useCases.confirm.execute({
+          uuid: recurrence.uuid,
+          occurrenceUuid: 'movement',
+          ownerId: 1,
+        }),
+      ).rejects.toThrow(InactiveAccountError);
+    });
+
+    it('answers not found and not planned for movements that do not qualify', async () => {
+      const recurrence = contribution();
+      const useCases = setup(recurrence);
+      const { movements } = useCases;
+
+      await expect(
+        useCases.cancel.execute({
+          uuid: recurrence.uuid,
+          occurrenceUuid: 'missing',
+          ownerId: 1,
+        }),
+      ).rejects.toThrow(RecurrenceOccurrenceNotFoundError);
+
+      movements.findMandatoryByUuidForRecurrence.mockResolvedValue(
+        buildInvestmentMovement({
+          state: TransactionState.COMPLETED,
+          contributionKind: ContributionKind.MANDATORY,
+        }),
+      );
+
+      await expect(
+        useCases.cancel.execute({
+          uuid: recurrence.uuid,
+          occurrenceUuid: 'movement',
+          ownerId: 1,
+        }),
+      ).rejects.toThrow(RecurrenceOccurrenceNotPlannedError);
+    });
+
+    it('edits and cancels one planned movement', async () => {
+      const recurrence = contribution();
+      const useCases = setup(recurrence);
+      const { movements } = useCases;
+
+      movements.findMandatoryByUuidForRecurrence.mockResolvedValue(
+        plannedMovement(),
+      );
+
+      await expect(
+        useCases.updateOccurrence.execute({
+          uuid: recurrence.uuid,
+          occurrenceUuid: 'movement',
+          ownerId: 1,
+          amount: 80000,
+          date: '2026-11-20',
+        }),
+      ).resolves.toMatchObject({
+        amount: 80000,
+        date: '2026-11-20',
+        occurrenceDate: '2026-11-15',
+      });
+
+      await expect(
+        useCases.cancel.execute({
+          uuid: recurrence.uuid,
+          occurrenceUuid: 'movement',
+          ownerId: 1,
+        }),
+      ).resolves.toMatchObject({ state: TransactionState.CANCELED });
+    });
+
+    it('follows the template on planned movements when the scope reaches them', async () => {
+      const recurrence = contribution();
+      const useCases = setup(recurrence);
+      const { movements, transactions } = useCases;
+
+      movements.findPlannedMandatoryByRecurrence.mockResolvedValue([
+        plannedMovement(),
+      ]);
+
+      await useCases.update.execute({
+        uuid: recurrence.uuid,
+        ownerId: 1,
+        scope: RecurrenceUpdateScope.ALL,
+        amount: 90000,
+      });
+
+      expect(transactions.update).not.toHaveBeenCalled();
+      expect(movements.update).toHaveBeenCalledWith(
+        expect.objectContaining({ amount: 90000, date: '2026-11-15' }),
+      );
     });
   });
 });

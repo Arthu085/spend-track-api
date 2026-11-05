@@ -7,7 +7,8 @@
     "movement_not_found": "Movimentação do investimento não encontrada",
     "movement_state_transition": "Esta movimentação não pode passar para o estado solicitado",
     "insufficient_value": "Isso deixaria o investimento com valor negativo",
-    "valuation_unchanged": "O novo valor é igual ao valor atual"
+    "valuation_unchanged": "O novo valor é igual ao valor atual",
+    "additional_contribution_already_exists": "Esta recorrência já tem um aporte adicional nesse mês; cancele-o para registrar outro"
   },
   "type": {
     "investment": "Investimento",
@@ -18,5 +19,10 @@
     "contribution": "Aporte",
     "withdrawal": "Resgate",
     "valuation": "Atualização de valor"
+  },
+  "contribution_kind": {
+    "one_time": "Avulso",
+    "mandatory": "Obrigatório",
+    "additional": "Adicional"
   }
 }

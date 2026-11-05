@@ -7,6 +7,7 @@ import {
 } from '@shared/application/ports';
 import { financeToday } from '@shared/domain/calendar';
 import { RecurrenceEntity } from '../../domain/entities/recurrence.entity';
+import type { SavingStrategy } from '../../domain/saving-plan/saving-plan';
 import { RecurrenceFrequency } from '../../domain/enums/recurrence-frequency.enum';
 import { RecurrenceType } from '../../domain/enums/recurrence-type.enum';
 import {
@@ -26,8 +27,10 @@ export interface CreateRecurrenceInput {
   endDate?: string | null;
   accountUuid?: string;
   creditCardUuid?: string;
-  categoryUuid: string;
+  categoryUuid?: string;
+  investmentUuid?: string;
   notes?: string | null;
+  savingStrategy?: SavingStrategy | null;
 }
 
 @Injectable()
@@ -68,11 +71,20 @@ export class CreateRecurrenceUseCase {
                 input.ownerId,
               )
             : null,
-          category: await this.references.activeCategory(
-            input.categoryUuid,
-            input.ownerId,
-          ),
+          investment: input.investmentUuid
+            ? await this.references.activeInvestment(
+                input.investmentUuid,
+                input.ownerId,
+              )
+            : null,
+          category: input.categoryUuid
+            ? await this.references.activeCategory(
+                input.categoryUuid,
+                input.ownerId,
+              )
+            : null,
           notes: input.notes ?? null,
+          savingStrategy: input.savingStrategy ?? null,
         }),
       );
 

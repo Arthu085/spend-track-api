@@ -14,7 +14,8 @@ payloads are in Swagger; this document covers the rules behind them.
 
 - `index.ts`: `CreditCardEntity`, `CreditCardInvoiceStatus`, `InvoiceStatement`,
   `CREDIT_CARD_PURCHASE_REPOSITORY`/`CreditCardPurchaseRepository` with `CategorySpendingTotal`, and
-  `CreditCardStatements`, consumed by `dashboard`; `CREDIT_CARD_REPOSITORY`/`CreditCardRepository`,
+  `CreditCardStatements` and `statementsDueInMonth`, consumed by `dashboard` and `recurrences`;
+  `CREDIT_CARD_REPOSITORY`/`CreditCardRepository`,
   `findOwnedCreditCard`, `InactiveCreditCardError`, `CreditCardInvoiceAssigner`,
   `CreateCreditCardPurchaseUseCase`, and
   `CREDIT_CARD_PENDING_OPERATIONS`/`CreditCardPendingOperationsRegistry`, consumed by `recurrences`.

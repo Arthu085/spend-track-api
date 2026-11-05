@@ -96,3 +96,21 @@ export function cardBalanceOf(
     creditBalance: statements.at(-1)?.creditCarried ?? 0,
   };
 }
+
+export function statementsDueInMonth(
+  statements: readonly InvoiceStatement[],
+  monthStart: string,
+): InvoiceStatement[] {
+  return statements
+    .filter(
+      ({ invoice, outstanding }) =>
+        invoice.card.deletedAt === null &&
+        (invoice.referenceMonth === monthStart ||
+          (invoice.referenceMonth < monthStart && outstanding > 0)),
+    )
+    .sort(
+      (left, right) =>
+        left.invoice.dueDate.localeCompare(right.invoice.dueDate) ||
+        left.invoice.card.name.localeCompare(right.invoice.card.name),
+    );
+}

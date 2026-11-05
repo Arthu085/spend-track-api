@@ -11,6 +11,7 @@ import {
   investmentTypeLabel,
 } from '@modules/investments/presentation';
 import { SpendingPerspective } from '@modules/preferences';
+import { SavingPlanResponseDto } from '@modules/recurrences/presentation';
 import { spendingPerspectiveLabel } from '@modules/preferences/presentation';
 import type { TransactionCategoryEntity } from '@modules/transaction-categories';
 import { transactionCategoryName } from '@modules/transaction-categories/presentation';
@@ -443,6 +444,26 @@ export class DashboardInvestmentResponseDto {
   progress!: InvestmentProgressResponseDto | null;
 }
 
+export class DashboardContributionBreakdownResponseDto {
+  @ApiProperty({ example: '700.00' })
+  mandatoryPlanned!: string;
+
+  @ApiProperty({ example: '0.00' })
+  mandatoryCompleted!: string;
+
+  @ApiProperty({ example: '600.00' })
+  additionalPlanned!: string;
+
+  @ApiProperty({ example: '0.00' })
+  additionalCompleted!: string;
+
+  @ApiProperty({ example: '0.00' })
+  oneTimePlanned!: string;
+
+  @ApiProperty({ example: '0.00' })
+  oneTimeCompleted!: string;
+}
+
 export class DashboardInvestmentsResponseDto {
   @ApiProperty({
     example: '6000.00',
@@ -466,6 +487,20 @@ export class DashboardInvestmentsResponseDto {
   withdrawals!: DashboardAmountsResponseDto;
 
   @ApiProperty({
+    type: DashboardContributionBreakdownResponseDto,
+    description:
+      'The contributions dated inside the period by kind: mandatory (recurring), additional (accepted surplus), and one-time.',
+  })
+  contributionBreakdown!: DashboardContributionBreakdownResponseDto;
+
+  @ApiProperty({
+    type: [SavingPlanResponseDto],
+    description:
+      'Saving plans of the month, derived on read; suggestions never change any balance.',
+  })
+  savingPlans!: SavingPlanResponseDto[];
+
+  @ApiProperty({
     type: [DashboardInvestmentResponseDto],
     description: 'Active investments, reserves, and goals, by name.',
   })
@@ -482,6 +517,32 @@ export class DashboardInvestmentsResponseDto {
       ),
       withdrawals: DashboardAmountsResponseDto.fromDomain(
         investments.withdrawals,
+      ),
+      contributionBreakdown: Object.assign(
+        new DashboardContributionBreakdownResponseDto(),
+        {
+          mandatoryPlanned: formatMoney(
+            investments.contributionBreakdown.mandatoryPlanned,
+          ),
+          mandatoryCompleted: formatMoney(
+            investments.contributionBreakdown.mandatoryCompleted,
+          ),
+          additionalPlanned: formatMoney(
+            investments.contributionBreakdown.additionalPlanned,
+          ),
+          additionalCompleted: formatMoney(
+            investments.contributionBreakdown.additionalCompleted,
+          ),
+          oneTimePlanned: formatMoney(
+            investments.contributionBreakdown.oneTimePlanned,
+          ),
+          oneTimeCompleted: formatMoney(
+            investments.contributionBreakdown.oneTimeCompleted,
+          ),
+        },
+      ),
+      savingPlans: investments.savingPlans.map((plan) =>
+        SavingPlanResponseDto.fromDomain(plan, translate),
       ),
       items: investments.items.map(({ investment, value }) =>
         Object.assign(new DashboardInvestmentResponseDto(), {

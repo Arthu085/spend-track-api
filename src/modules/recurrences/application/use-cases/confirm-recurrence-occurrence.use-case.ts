@@ -5,6 +5,12 @@ import {
 } from '@modules/accounts';
 import { CreateCreditCardPurchaseUseCase } from '@modules/credit-cards';
 import {
+  INVESTMENT_MOVEMENT_REPOSITORY,
+  InvestmentValues,
+  type InvestmentMovementEntity,
+  type InvestmentMovementRepository,
+} from '@modules/investments';
+import {
   TRANSACTION_REPOSITORY,
   type TransactionEntity,
   type TransactionRepository,
@@ -23,6 +29,7 @@ import {
 } from '../../domain/repositories/recurrence-card-charge.repository';
 import {
   occurrenceOfCardCharge,
+  occurrenceOfMovement,
   occurrenceOfTransaction,
   type RecurrenceOccurrence,
 } from '../services/recurrence-occurrence';
@@ -49,6 +56,9 @@ export class ConfirmRecurrenceOccurrenceUseCase {
     private readonly references: RecurrenceReferences,
     private readonly occurrences: RecurrenceOccurrences,
     private readonly createPurchase: CreateCreditCardPurchaseUseCase,
+    @Inject(INVESTMENT_MOVEMENT_REPOSITORY)
+    private readonly movementRepository: InvestmentMovementRepository,
+    private readonly investmentValues: InvestmentValues,
   ) {}
 
   async execute(
@@ -67,9 +77,14 @@ export class ConfirmRecurrenceOccurrenceUseCase {
         input.occurrenceUuid,
       );
 
-      return occurrence.kind === 'transaction'
-        ? this.confirmTransaction(occurrence.transaction, input)
-        : this.confirmCardCharge(recurrence, occurrence.charge, input);
+      switch (occurrence.kind) {
+        case 'transaction':
+          return this.confirmTransaction(occurrence.transaction, input);
+        case 'cardCharge':
+          return this.confirmCardCharge(recurrence, occurrence.charge, input);
+        case 'movement':
+          return this.confirmMovement(recurrence, occurrence.movement, input);
+      }
     });
   }
 
@@ -100,6 +115,40 @@ export class ConfirmRecurrenceOccurrenceUseCase {
 
     return occurrenceOfTransaction(
       await this.transactionRepository.update(completed),
+    );
+  }
+
+  private async confirmMovement(
+    recurrence: RecurrenceEntity,
+    movement: InvestmentMovementEntity,
+    input: ConfirmRecurrenceOccurrenceInput,
+  ): Promise<RecurrenceOccurrence> {
+    if (!movement.account || !recurrence.investment) {
+      throw new Error('Contributions have an account and an investment');
+    }
+
+    assertRecordActive(movement.account, new InactiveAccountError());
+
+    const completedOn = input.date ?? financeToday();
+
+    assertNotBeforeOpening([movement.account], [movement.date, completedOn]);
+
+    const completed = movement
+      .withPlannedDetails({
+        amount: input.amount ?? movement.amount,
+        date: movement.date,
+        account: movement.account,
+      })
+      .complete(completedOn);
+
+    await this.investmentValues.assertCanChangeBy(
+      recurrence.investment,
+      completed.valueChange - movement.valueChange,
+    );
+
+    return occurrenceOfMovement(
+      await this.movementRepository.update(completed),
+      recurrence.description,
     );
   }
 

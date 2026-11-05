@@ -1,3 +1,4 @@
+import { buildInvestment } from '@test/support/builders/investment.builder';
 import { TransactionCategoryKind } from '@modules/transaction-categories';
 import {
   OccurrenceAfterRecurrenceEndError,
@@ -12,8 +13,10 @@ import {
 import { buildTransactionCategory } from '@test/support/builders/transaction-category.builder';
 import { RecurrenceFrequency } from '../../enums/recurrence-frequency.enum';
 import { RecurrenceState } from '../../enums/recurrence-state.enum';
+import { AdditionalContributionStrategy } from '../../enums/additional-contribution-strategy.enum';
 import { RecurrenceType } from '../../enums/recurrence-type.enum';
 import { InvalidRecurrenceTargetError } from '../../errors/invalid-recurrence-target.error';
+import { InvalidSavingStrategyError } from '../../errors/invalid-saving-strategy.error';
 import { RecurrenceCategoryKindMismatchError } from '../../errors/recurrence-category-kind-mismatch.error';
 import { RecurrenceEndBeforeStartError } from '../../errors/recurrence-end-before-start.error';
 import { RecurrenceEndedError } from '../../errors/recurrence-ended.error';
@@ -23,6 +26,114 @@ import {
   RecurrenceEntity,
   type CreateRecurrenceInput,
 } from '../recurrence.entity';
+
+describe('RecurrenceEntity investment contribution', () => {
+  const strategy = {
+    minimumRetainedBalance: 20000,
+    additionalContribution: AdditionalContributionStrategy.REMAINING_SURPLUS,
+  };
+
+  const contribution = (
+    overrides: Partial<CreateRecurrenceInput> = {},
+  ): CreateRecurrenceInput => ({
+    uuid: 'new',
+    ownerId: 1,
+    type: RecurrenceType.INVESTMENT_CONTRIBUTION,
+    description: 'Reserve',
+    amount: 70000,
+    frequency: RecurrenceFrequency.MONTHLY,
+    startDate: '2026-11-05',
+    endDate: null,
+    account: buildAccount(),
+    creditCard: null,
+    investment: buildInvestment(),
+    category: null,
+    notes: null,
+    savingStrategy: strategy,
+    ...overrides,
+  });
+
+  it('needs an investment and an account, and no card', () => {
+    expect(
+      RecurrenceEntity.create(contribution()).isInvestmentContribution,
+    ).toBe(true);
+
+    expect(() =>
+      RecurrenceEntity.create(contribution({ investment: null })),
+    ).toThrow(InvalidRecurrenceTargetError);
+    expect(() =>
+      RecurrenceEntity.create(
+        contribution({ account: null, creditCard: buildCreditCard() }),
+      ),
+    ).toThrow(InvalidRecurrenceTargetError);
+  });
+
+  it('rejects a category and refuses an investment on other types', () => {
+    expect(() =>
+      RecurrenceEntity.create(
+        contribution({ category: buildTransactionCategory() }),
+      ),
+    ).toThrow(RecurrenceCategoryKindMismatchError);
+
+    expect(() =>
+      RecurrenceEntity.create(
+        contribution({
+          type: RecurrenceType.EXPENSE,
+          category: buildTransactionCategory(),
+          savingStrategy: null,
+        }),
+      ),
+    ).toThrow(InvalidRecurrenceTargetError);
+  });
+
+  it('accepts a saving strategy only when monthly and with a non-negative retained balance', () => {
+    expect(() =>
+      RecurrenceEntity.create(
+        contribution({ frequency: RecurrenceFrequency.WEEKLY }),
+      ),
+    ).toThrow(InvalidSavingStrategyError);
+
+    expect(() =>
+      RecurrenceEntity.create(
+        contribution({
+          savingStrategy: { ...strategy, minimumRetainedBalance: -1 },
+        }),
+      ),
+    ).toThrow(InvalidSavingStrategyError);
+
+    expect(() =>
+      RecurrenceEntity.create(
+        contribution({
+          type: RecurrenceType.EXPENSE,
+          investment: null,
+          category: buildTransactionCategory(),
+        }),
+      ),
+    ).toThrow(InvalidSavingStrategyError);
+  });
+
+  it('can set and clear the saving strategy, keeping the investment', () => {
+    const recurrence = RecurrenceEntity.create(contribution());
+
+    const cleared = recurrence.withDetails({
+      description: recurrence.description,
+      amount: recurrence.amount,
+      category: null,
+      account: recurrence.account,
+      notes: null,
+      savingStrategy: null,
+    });
+
+    expect(cleared.savingStrategy).toBeNull();
+    expect(cleared.investment).toBe(recurrence.investment);
+  });
+
+  it('fails loudly when a contribution is asked for its category', () => {
+    expect(() =>
+      RecurrenceEntity.create(contribution()).categoryOrFail(),
+    ).toThrow('no category');
+  });
+});
 
 describe('RecurrenceEntity', () => {
   const input = (
@@ -38,8 +149,10 @@ describe('RecurrenceEntity', () => {
     endDate: null,
     account: buildAccount(),
     creditCard: null,
+    investment: null,
     category: buildTransactionCategory(),
     notes: null,
+    savingStrategy: null,
     ...overrides,
   });
 
@@ -222,6 +335,7 @@ describe('RecurrenceEntity', () => {
         category: recurrence.category,
         account: buildAccount(),
         notes: null,
+        savingStrategy: null,
       }),
     ).toThrow(InvalidRecurrenceTargetError);
   });

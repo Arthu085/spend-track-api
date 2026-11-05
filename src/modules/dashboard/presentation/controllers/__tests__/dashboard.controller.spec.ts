@@ -119,6 +119,15 @@ describe('DashboardController', () => {
         totalValue: 600050,
         contributions: { total: 40000, completed: 30000, pending: 10000 },
         withdrawals: { total: 0, completed: 0, pending: 0 },
+        contributionBreakdown: {
+          mandatoryPlanned: 10000,
+          mandatoryCompleted: 20000,
+          additionalPlanned: 0,
+          additionalCompleted: 5000,
+          oneTimePlanned: 0,
+          oneTimeCompleted: 5000,
+        },
+        savingPlans: [],
         items: [
           {
             investment: buildInvestment({ targetAmount: 1000000 }),
@@ -178,6 +187,15 @@ describe('DashboardController', () => {
         pending: '100.00',
       },
       withdrawals: { total: '0.00', completed: '0.00', pending: '0.00' },
+      contributionBreakdown: {
+        mandatoryPlanned: '100.00',
+        mandatoryCompleted: '200.00',
+        additionalPlanned: '0.00',
+        additionalCompleted: '50.00',
+        oneTimePlanned: '0.00',
+        oneTimeCompleted: '50.00',
+      },
+      savingPlans: [],
       items: [
         {
           uuid: 'investment-uuid',

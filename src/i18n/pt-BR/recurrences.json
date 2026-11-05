@@ -5,10 +5,15 @@
     "recurrence_ended": "Esta recorrência foi encerrada e não pode mais ser alterada",
     "state_transition": "Esta recorrência não pode passar para esse estado",
     "occurrence_not_planned": "Somente ocorrências planejadas podem ser alteradas, confirmadas ou puladas",
-    "invalid_target": "Uma recorrência precisa de exatamente uma conta ou um cartão de crédito, e cartão apenas para despesas",
-    "category_kind_mismatch": "O tipo da categoria deve corresponder ao tipo da recorrência",
+    "invalid_target": "Uma recorrência precisa de exatamente uma conta ou um cartão de crédito, e cartão apenas para despesas; um aporte em investimento precisa de um investimento e de uma conta",
+    "category_kind_mismatch": "O tipo da categoria deve corresponder ao tipo da recorrência, e um aporte em investimento não tem categoria",
     "end_before_start": "A data final não pode ser anterior à data inicial",
-    "invoice_end_not_applicable": "Somente recorrências de cartão de crédito podem ser encerradas a partir de uma fatura"
+    "invoice_end_not_applicable": "Somente recorrências de cartão de crédito podem ser encerradas a partir de uma fatura",
+    "invalid_saving_strategy": "A estratégia de poupança só está disponível em um aporte mensal em investimento, com saldo mínimo igual ou maior que zero",
+    "saving_plan_month_closed": "Não é possível registrar aporte adicional em um mês que já passou",
+    "saving_plan_not_active": "Esta recorrência precisa estar ativa e usar a estratégia de excedente restante para aceitar um aporte adicional",
+    "additional_contribution_outside_month": "A data deve estar dentro do mês selecionado",
+    "completed_additional_contribution_in_future": "Um aporte concluído não pode ter data futura. Registre-o como planejado"
   },
   "frequency": {
     "weekly": "Semanal",
@@ -19,5 +24,12 @@
     "active": "Ativa",
     "paused": "Pausada",
     "ended": "Encerrada"
+  },
+  "type": {
+    "investment_contribution": "Aporte em investimento"
+  },
+  "additional_contribution": {
+    "none": "Nenhum",
+    "remaining_surplus": "Excedente restante"
   }
 }

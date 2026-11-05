@@ -3,7 +3,9 @@ import { BaseOrmEntity } from '@shared/infrastructure/persistence/base.orm-entit
 import { UserOrmEntity } from '@modules/users/infrastructure/persistence/entities/user.orm-entity';
 import { AccountOrmEntity } from '@modules/accounts/infrastructure/persistence/entities/account.orm-entity';
 import { CreditCardOrmEntity } from '@modules/credit-cards/infrastructure/persistence/entities/credit-card.orm-entity';
+import { InvestmentOrmEntity } from '@modules/investments/infrastructure/persistence/entities/investment.orm-entity';
 import { TransactionCategoryOrmEntity } from '@modules/transaction-categories/infrastructure/persistence/entities/transaction-category.orm-entity';
+import { AdditionalContributionStrategy } from '@modules/recurrences/domain/enums/additional-contribution-strategy.enum';
 import { RecurrenceFrequency } from '@modules/recurrences/domain/enums/recurrence-frequency.enum';
 import { RecurrenceState } from '@modules/recurrences/domain/enums/recurrence-state.enum';
 import { RecurrenceType } from '@modules/recurrences/domain/enums/recurrence-type.enum';
@@ -11,8 +13,16 @@ import { RecurrenceType } from '@modules/recurrences/domain/enums/recurrence-typ
 @Entity('recurrences')
 @Check('chk_recurrences_amount_positive', `"amount" > 0`)
 @Check(
-  'chk_recurrences_target',
-  `("account_id" IS NULL) <> ("credit_card_id" IS NULL) AND ("credit_card_id" IS NULL OR "type" = 'EXPENSE')`,
+  'chk_recurrences_target_kind',
+  `("account_id" IS NULL) <> ("credit_card_id" IS NULL) AND ("credit_card_id" IS NULL OR "type"::text = 'EXPENSE')`,
+)
+@Check(
+  'chk_recurrences_investment_contribution',
+  `("type"::text = 'INVESTMENT_CONTRIBUTION' AND "investment_id" IS NOT NULL AND "account_id" IS NOT NULL AND "credit_card_id" IS NULL AND "category_id" IS NULL) OR ("type"::text <> 'INVESTMENT_CONTRIBUTION' AND "investment_id" IS NULL AND "category_id" IS NOT NULL)`,
+)
+@Check(
+  'chk_recurrences_saving_strategy',
+  `("minimum_retained_balance" IS NULL AND "additional_contribution_strategy" IS NULL) OR ("minimum_retained_balance" >= 0 AND "additional_contribution_strategy" IS NOT NULL AND "type"::text = 'INVESTMENT_CONTRIBUTION' AND "frequency" = 'MONTHLY')`,
 )
 @Check(
   'chk_recurrences_end_date',
@@ -22,6 +32,7 @@ import { RecurrenceType } from '@modules/recurrences/domain/enums/recurrence-typ
 @Index('idx_recurrences_account_id', ['accountId'])
 @Index('idx_recurrences_credit_card_id', ['creditCardId'])
 @Index('idx_recurrences_category_id', ['categoryId'])
+@Index('idx_recurrences_investment_id', ['investmentId'])
 export class RecurrenceOrmEntity extends BaseOrmEntity {
   @Column({
     name: 'user_id',
@@ -40,7 +51,7 @@ export class RecurrenceOrmEntity extends BaseOrmEntity {
     type: 'enum',
     enum: RecurrenceType,
     nullable: false,
-    comment: 'Income or expense; fixed at creation.',
+    comment: 'Income, expense, or investment contribution; fixed at creation.',
   })
   type!: RecurrenceType;
 
@@ -126,14 +137,49 @@ export class RecurrenceOrmEntity extends BaseOrmEntity {
   @Column({
     name: 'category_id',
     type: 'int',
-    nullable: false,
-    comment: 'Global or personal category whose kind matches the type.',
+    nullable: true,
+    comment:
+      'Global or personal category whose kind matches the type; null for investment contributions.',
   })
-  categoryId!: number;
+  categoryId!: number | null;
 
-  @ManyToOne(() => TransactionCategoryOrmEntity, { nullable: false })
+  @ManyToOne(() => TransactionCategoryOrmEntity, { nullable: true })
   @JoinColumn({ name: 'category_id' })
-  category?: TransactionCategoryOrmEntity;
+  category?: TransactionCategoryOrmEntity | null;
+
+  @Column({
+    name: 'investment_id',
+    type: 'int',
+    nullable: true,
+    comment:
+      'Investment receiving the contributions; set only on investment contributions and fixed at creation.',
+  })
+  investmentId!: number | null;
+
+  @ManyToOne(() => InvestmentOrmEntity, { nullable: true })
+  @JoinColumn({ name: 'investment_id' })
+  investment?: InvestmentOrmEntity | null;
+
+  @Column({
+    name: 'minimum_retained_balance',
+    type: 'numeric',
+    precision: 14,
+    scale: 2,
+    nullable: true,
+    comment:
+      'Saving strategy: balance to keep in the account before suggesting additional contributions.',
+  })
+  minimumRetainedBalance!: string | null;
+
+  @Column({
+    name: 'additional_contribution_strategy',
+    type: 'enum',
+    enum: AdditionalContributionStrategy,
+    nullable: true,
+    comment:
+      'Saving strategy: how additional contributions are suggested; null without a strategy.',
+  })
+  additionalContributionStrategy!: AdditionalContributionStrategy | null;
 
   @Column({
     name: 'notes',

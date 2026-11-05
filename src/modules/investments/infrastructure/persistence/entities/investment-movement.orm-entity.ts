@@ -2,7 +2,9 @@ import { Check, Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseOrmEntity } from '@shared/infrastructure/persistence/base.orm-entity';
 import { UserOrmEntity } from '@modules/users/infrastructure/persistence/entities/user.orm-entity';
 import { AccountOrmEntity } from '@modules/accounts/infrastructure/persistence/entities/account.orm-entity';
+import { RecurrenceOrmEntity } from '@modules/recurrences/infrastructure/persistence/entities/recurrence.orm-entity';
 import { TransactionState } from '@modules/transactions';
+import { ContributionKind } from '../../../domain/enums/contribution-kind.enum';
 import { InvestmentMovementType } from '../../../domain/enums/investment-movement-type.enum';
 import { InvestmentOrmEntity } from './investment.orm-entity';
 
@@ -27,7 +29,27 @@ import { InvestmentOrmEntity } from './investment.orm-entity';
   'chk_investment_movements_canceled_at',
   `("state" = 'CANCELED') = ("canceled_at" IS NOT NULL)`,
 )
+@Check(
+  'chk_investment_movements_contribution_kind',
+  `("contribution_kind" = 'ONE_TIME' AND "recurrence_id" IS NULL AND "recurrence_date" IS NULL AND "surplus_month" IS NULL AND "suggested_amount" IS NULL AND "retained_minimum" IS NULL) OR ("contribution_kind" = 'MANDATORY' AND "type" = 'CONTRIBUTION' AND "recurrence_id" IS NOT NULL AND "recurrence_date" IS NOT NULL AND "surplus_month" IS NULL AND "suggested_amount" IS NULL AND "retained_minimum" IS NULL) OR ("contribution_kind" = 'ADDITIONAL' AND "type" = 'CONTRIBUTION' AND "recurrence_id" IS NOT NULL AND "recurrence_date" IS NULL AND "surplus_month" IS NOT NULL AND "suggested_amount" IS NOT NULL AND "retained_minimum" IS NOT NULL)`,
+)
 @Index('idx_investment_movements_user_id_date', ['userId', 'date'])
+@Index(
+  'uq_investment_movements_recurrence_occurrence',
+  ['recurrenceId', 'recurrenceDate'],
+  {
+    unique: true,
+    where: `"contribution_kind" = 'MANDATORY' AND "deleted_at" IS NULL`,
+  },
+)
+@Index(
+  'uq_investment_movements_additional_month',
+  ['recurrenceId', 'surplusMonth'],
+  {
+    unique: true,
+    where: `"contribution_kind" = 'ADDITIONAL' AND "state" <> 'CANCELED' AND "deleted_at" IS NULL`,
+  },
+)
 @Index('idx_investment_movements_investment_id', ['investmentId'])
 @Index('idx_investment_movements_account_id', ['accountId'])
 export class InvestmentMovementOrmEntity extends BaseOrmEntity {
@@ -125,4 +147,66 @@ export class InvestmentMovementOrmEntity extends BaseOrmEntity {
     comment: 'Timestamp when the movement was canceled.',
   })
   canceledAt!: Date | null;
+
+  @Column({
+    name: 'contribution_kind',
+    type: 'enum',
+    enum: ContributionKind,
+    default: ContributionKind.ONE_TIME,
+    nullable: false,
+    comment:
+      'ONE_TIME for a manual movement, MANDATORY for a recurring contribution occurrence, ADDITIONAL for an accepted surplus contribution.',
+  })
+  contributionKind!: ContributionKind;
+
+  @Column({
+    name: 'recurrence_id',
+    type: 'int',
+    nullable: true,
+    comment: 'Recurrence behind a MANDATORY or ADDITIONAL contribution.',
+  })
+  recurrenceId!: number | null;
+
+  @ManyToOne(() => RecurrenceOrmEntity, { nullable: true })
+  @JoinColumn({ name: 'recurrence_id' })
+  recurrence?: RecurrenceOrmEntity | null;
+
+  @Column({
+    name: 'recurrence_date',
+    type: 'date',
+    nullable: true,
+    comment:
+      'Scheduled date of a MANDATORY contribution in its recurrence; never changes, even when date is edited.',
+  })
+  recurrenceDate!: string | null;
+
+  @Column({
+    name: 'surplus_month',
+    type: 'date',
+    nullable: true,
+    comment: 'First day of the month an ADDITIONAL contribution belongs to.',
+  })
+  surplusMonth!: string | null;
+
+  @Column({
+    name: 'suggested_amount',
+    type: 'numeric',
+    precision: 14,
+    scale: 2,
+    nullable: true,
+    comment:
+      'Additional amount suggested when an ADDITIONAL contribution was accepted; immutable snapshot.',
+  })
+  suggestedAmount!: string | null;
+
+  @Column({
+    name: 'retained_minimum',
+    type: 'numeric',
+    precision: 14,
+    scale: 2,
+    nullable: true,
+    comment:
+      'Minimum retained balance when an ADDITIONAL contribution was accepted; immutable snapshot.',
+  })
+  retainedMinimum!: string | null;
 }

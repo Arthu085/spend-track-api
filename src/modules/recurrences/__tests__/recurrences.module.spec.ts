@@ -15,6 +15,16 @@ describe('RecurrencesModule routes', () => {
         isPublic,
       ]),
     ).toEqual([
+      [
+        'RecurrenceSavingPlansController',
+        'GET /recurrences/saving-plans',
+        false,
+      ],
+      [
+        'RecurrenceSavingPlansController',
+        'POST /recurrences/:uuid/additional-contributions',
+        false,
+      ],
       ['RecurrencesController', 'GET /recurrences', false],
       ['RecurrencesController', 'GET /recurrences/:uuid', false],
       ['RecurrencesController', 'POST /recurrences', false],

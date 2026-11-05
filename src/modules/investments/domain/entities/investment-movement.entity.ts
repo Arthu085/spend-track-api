@@ -2,8 +2,15 @@ import type { AccountEntity } from '@modules/accounts';
 import { TransactionState } from '@modules/transactions';
 import { BaseEntity } from '@shared/domain/entities/base.entity';
 import { RecordStatus } from '@shared/domain/enums/record-status.enum';
+import { ContributionKind } from '../enums/contribution-kind.enum';
 import { InvestmentMovementType } from '../enums/investment-movement-type.enum';
 import { InvestmentMovementStateTransitionError } from '../errors/investment-movement-state-transition.error';
+
+export interface InvestmentMovementRecurrenceLink {
+  id: number;
+  uuid: string;
+  occurrenceDate: string | null;
+}
 
 export interface CreateTransferMovementInput {
   uuid: string;
@@ -25,7 +32,53 @@ export interface CreateValuationMovementInput {
   date: string;
 }
 
-export interface ReconstituteInvestmentMovementInput {
+export interface CreateMandatoryContributionInput {
+  uuid: string;
+  ownerId: number;
+  investmentId: number;
+  account: AccountEntity;
+  amount: number;
+  date: string;
+  recurrence: { id: number; uuid: string };
+}
+
+export interface CreateAdditionalContributionInput {
+  uuid: string;
+  ownerId: number;
+  investmentId: number;
+  account: AccountEntity;
+  amount: number;
+  date: string;
+  state: TransactionState.PLANNED | TransactionState.COMPLETED;
+  recurrence: { id: number; uuid: string };
+  surplusMonth: string;
+  suggestedAmount: number;
+  retainedMinimum: number;
+}
+
+export interface PlannedMovementDetails {
+  amount: number;
+  date: string;
+  account: AccountEntity;
+}
+
+export interface MovementContributionFields {
+  contributionKind: ContributionKind;
+  recurrence: InvestmentMovementRecurrenceLink | null;
+  surplusMonth: string | null;
+  suggestedAmount: number | null;
+  retainedMinimum: number | null;
+}
+
+const ONE_TIME_FIELDS: MovementContributionFields = {
+  contributionKind: ContributionKind.ONE_TIME,
+  recurrence: null,
+  surplusMonth: null,
+  suggestedAmount: null,
+  retainedMinimum: null,
+};
+
+export interface ReconstituteInvestmentMovementInput extends MovementContributionFields {
   id: number;
   uuid: string;
   status: RecordStatus;
@@ -60,6 +113,11 @@ export class InvestmentMovementEntity extends BaseEntity {
     readonly state: TransactionState,
     readonly completedOn: string | null,
     readonly canceledAt: Date | null,
+    readonly contributionKind: ContributionKind,
+    readonly recurrence: InvestmentMovementRecurrenceLink | null,
+    readonly surplusMonth: string | null,
+    readonly suggestedAmount: number | null,
+    readonly retainedMinimum: number | null,
   ) {
     super(id, uuid, status, createdAt, updatedAt, deletedAt);
   }
@@ -71,6 +129,7 @@ export class InvestmentMovementEntity extends BaseEntity {
 
     return InvestmentMovementEntity.reconstitute({
       ...input,
+      ...ONE_TIME_FIELDS,
       id: 0,
       status: RecordStatus.ACTIVE,
       completedOn:
@@ -95,6 +154,7 @@ export class InvestmentMovementEntity extends BaseEntity {
       status: RecordStatus.ACTIVE,
       ownerId: input.ownerId,
       investmentId: input.investmentId,
+      ...ONE_TIME_FIELDS,
       type: InvestmentMovementType.VALUATION,
       account: null,
       amount: input.change,
@@ -102,6 +162,49 @@ export class InvestmentMovementEntity extends BaseEntity {
       state: TransactionState.COMPLETED,
       completedOn: input.date,
       canceledAt: null,
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+    });
+  }
+
+  static createMandatoryContribution(
+    input: CreateMandatoryContributionInput,
+  ): InvestmentMovementEntity {
+    const now = new Date();
+
+    return InvestmentMovementEntity.reconstitute({
+      ...input,
+      ...ONE_TIME_FIELDS,
+      id: 0,
+      status: RecordStatus.ACTIVE,
+      type: InvestmentMovementType.CONTRIBUTION,
+      state: TransactionState.PLANNED,
+      completedOn: null,
+      canceledAt: null,
+      contributionKind: ContributionKind.MANDATORY,
+      recurrence: { ...input.recurrence, occurrenceDate: input.date },
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+    });
+  }
+
+  static createAdditionalContribution(
+    input: CreateAdditionalContributionInput,
+  ): InvestmentMovementEntity {
+    const now = new Date();
+
+    return InvestmentMovementEntity.reconstitute({
+      ...input,
+      id: 0,
+      status: RecordStatus.ACTIVE,
+      type: InvestmentMovementType.CONTRIBUTION,
+      completedOn:
+        input.state === TransactionState.COMPLETED ? input.date : null,
+      canceledAt: null,
+      contributionKind: ContributionKind.ADDITIONAL,
+      recurrence: { ...input.recurrence, occurrenceDate: null },
       createdAt: now,
       updatedAt: now,
       deletedAt: null,
@@ -127,6 +230,11 @@ export class InvestmentMovementEntity extends BaseEntity {
       input.state,
       input.completedOn,
       input.canceledAt,
+      input.contributionKind,
+      input.recurrence,
+      input.surplusMonth,
+      input.suggestedAmount,
+      input.retainedMinimum,
     );
   }
 
@@ -138,6 +246,16 @@ export class InvestmentMovementEntity extends BaseEntity {
     return this.type === InvestmentMovementType.WITHDRAWAL
       ? -this.amount
       : this.amount;
+  }
+
+  withPlannedDetails(
+    details: PlannedMovementDetails,
+  ): InvestmentMovementEntity {
+    if (this.state !== TransactionState.PLANNED) {
+      throw new InvestmentMovementStateTransitionError();
+    }
+
+    return this.copyWith(details);
   }
 
   complete(completedOn: string): InvestmentMovementEntity {
@@ -163,7 +281,7 @@ export class InvestmentMovementEntity extends BaseEntity {
     changes: Partial<
       Pick<
         ReconstituteInvestmentMovementInput,
-        'state' | 'completedOn' | 'canceledAt'
+        'state' | 'completedOn' | 'canceledAt' | keyof PlannedMovementDetails
       >
     >,
   ): InvestmentMovementEntity {
@@ -180,6 +298,11 @@ export class InvestmentMovementEntity extends BaseEntity {
       state: this.state,
       completedOn: this.completedOn,
       canceledAt: this.canceledAt,
+      contributionKind: this.contributionKind,
+      recurrence: this.recurrence,
+      surplusMonth: this.surplusMonth,
+      suggestedAmount: this.suggestedAmount,
+      retainedMinimum: this.retainedMinimum,
       createdAt: this.createdAt,
       updatedAt: new Date(),
       deletedAt: this.deletedAt,

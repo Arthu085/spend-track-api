@@ -898,11 +898,93 @@ describe('MVP acceptance scenarios (e2e)', () => {
             .put(`/api/investments/${investment}/movements/${movement}/state`)
             .send({ state: 'COMPLETED' }),
       ],
+      [
+        'POST additional contribution',
+        (a) =>
+          a
+            .post(`/api/recurrences/${recurrence}/additional-contributions`)
+            .send({
+              year: 2030,
+              month: 1,
+              amount: '10.00',
+              state: 'PLANNED',
+            }),
+      ],
     ];
 
     it.each(foreignRoutes)('answers 404 to %s', async (_, send) => {
       for (const [, visitor] of visitors) {
         await send(visitor).expect(404);
+      }
+    });
+
+    it('never lists or targets the saving plans and investments of another user', async () => {
+      const contribution = dataOf<{ uuid: string }>(
+        await owner.agent
+          .post('/api/recurrences')
+          .send({
+            type: 'INVESTMENT_CONTRIBUTION',
+            description: 'Reserve',
+            amount: '10.00',
+            frequency: 'MONTHLY',
+            startDate: '2030-01-05',
+            accountUuid: owner.bank,
+            investmentUuid: investment,
+            savingStrategy: {
+              minimumRetainedBalance: '0.00',
+              additionalContribution: 'REMAINING_SURPLUS',
+            },
+          })
+          .expect(201),
+      );
+
+      const plansOf = (agent: AuthAgent) =>
+        agent
+          .get('/api/recurrences/saving-plans?year=2030&month=1')
+          .expect(200);
+
+      const ownPlans = dataOf<Array<{ recurrence: { uuid: string } }>>(
+        await plansOf(owner.agent),
+      );
+
+      expect(ownPlans.map((plan) => plan.recurrence.uuid)).toContain(
+        contribution.uuid,
+      );
+
+      for (const [, visitor] of visitors) {
+        expect(dataOf<unknown[]>(await plansOf(visitor))).toEqual([]);
+
+        await visitor
+          .post(
+            `/api/recurrences/${contribution.uuid}/additional-contributions`,
+          )
+          .send({ year: 2030, month: 1, amount: '10.00', state: 'PLANNED' })
+          .expect(404);
+
+        const ownAccount = dataOf<{ uuid: string }>(
+          await visitor
+            .post('/api/accounts')
+            .send({
+              name: 'Own',
+              type: 'CHECKING',
+              openingBalance: '0.00',
+              openingBalanceDate: '2026-01-01',
+            })
+            .expect(201),
+        );
+
+        await visitor
+          .post('/api/recurrences')
+          .send({
+            type: 'INVESTMENT_CONTRIBUTION',
+            description: 'Foreign',
+            amount: '10.00',
+            frequency: 'MONTHLY',
+            startDate: '2030-01-05',
+            accountUuid: ownAccount.uuid,
+            investmentUuid: investment,
+          })
+          .expect(404);
       }
     });
 

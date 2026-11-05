@@ -5,6 +5,11 @@ import {
   type CreditCardEntity,
 } from '@modules/credit-cards';
 import {
+  INVESTMENT_MOVEMENT_REPOSITORY,
+  InvestmentMovementEntity,
+  type InvestmentMovementRepository,
+} from '@modules/investments';
+import {
   TRANSACTION_REPOSITORY,
   TransactionEntity,
   TransactionState,
@@ -12,7 +17,7 @@ import {
   type TransactionRepository,
 } from '@modules/transactions';
 import { lastDayOf, monthOf, shiftMonth } from '@shared/domain/calendar';
-import { RecordStatus } from '@shared/domain/enums/record-status.enum';
+import { isRecordUsable } from '@shared/domain/policies';
 import { RecurrenceCardChargeEntity } from '../../domain/entities/recurrence-card-charge.entity';
 import type { RecurrenceEntity } from '../../domain/entities/recurrence.entity';
 import { RecurrenceState } from '../../domain/enums/recurrence-state.enum';
@@ -42,6 +47,8 @@ export class RecurrenceOccurrenceGenerator {
     @Inject(TRANSACTION_REPOSITORY)
     private readonly transactionRepository: TransactionRepository,
     private readonly invoiceAssigner: CreditCardInvoiceAssigner,
+    @Inject(INVESTMENT_MOVEMENT_REPOSITORY)
+    private readonly movementRepository: InvestmentMovementRepository,
   ) {}
 
   async generate(
@@ -83,29 +90,41 @@ export class RecurrenceOccurrenceGenerator {
       return [];
     }
 
-    const existing = new Set(
-      recurrence.isCardRecurrence
-        ? await this.chargeRepository.findOccurrenceDatesFrom(
-            recurrence.id,
-            dates[0],
-          )
-        : await this.transactionRepository.findRecurrenceDatesFrom(
-            recurrence.ownerId,
-            recurrence.id,
-            dates[0],
-          ),
-    );
+    const existing = new Set(await this.existingDates(recurrence, dates[0]));
 
     return dates.filter((date) => !existing.has(date));
+  }
+
+  private existingDates(
+    recurrence: RecurrenceEntity,
+    from: string,
+  ): Promise<string[]> {
+    if (recurrence.isCardRecurrence) {
+      return this.chargeRepository.findOccurrenceDatesFrom(recurrence.id, from);
+    }
+
+    if (recurrence.isInvestmentContribution) {
+      return this.movementRepository.findMandatoryDatesFrom(
+        recurrence.ownerId,
+        recurrence.id,
+        from,
+      );
+    }
+
+    return this.transactionRepository.findRecurrenceDatesFrom(
+      recurrence.ownerId,
+      recurrence.id,
+      from,
+    );
   }
 
   private targetAvailable(recurrence: RecurrenceEntity): boolean {
     const target = recurrence.account ?? recurrence.creditCard;
 
     return (
-      target !== null &&
-      target.status === RecordStatus.ACTIVE &&
-      target.deletedAt === null
+      isRecordUsable(target) &&
+      (!recurrence.isInvestmentContribution ||
+        isRecordUsable(recurrence.investment))
     );
   }
 
@@ -123,6 +142,22 @@ export class RecurrenceOccurrenceGenerator {
       throw new Error('Recurrence must have an account or a card');
     }
 
+    if (recurrence.investment) {
+      await this.movementRepository.create(
+        InvestmentMovementEntity.createMandatoryContribution({
+          uuid: randomUUID(),
+          ownerId: recurrence.ownerId,
+          investmentId: recurrence.investment.id,
+          account: recurrence.account,
+          amount: recurrence.amount,
+          date,
+          recurrence: { id: recurrence.id, uuid: recurrence.uuid },
+        }),
+      );
+
+      return;
+    }
+
     await this.transactionRepository.create(
       TransactionEntity.create({
         uuid: randomUUID(),
@@ -138,7 +173,7 @@ export class RecurrenceOccurrenceGenerator {
         date,
         account: recurrence.account,
         destinationAccount: null,
-        category: recurrence.category,
+        category: recurrence.categoryOrFail(),
         notes: recurrence.notes,
         recurrence: {
           id: recurrence.id,
@@ -163,7 +198,7 @@ export class RecurrenceOccurrenceGenerator {
         occurrenceDate: date,
         description: recurrence.description,
         amount: recurrence.amount,
-        category: recurrence.category,
+        category: recurrence.categoryOrFail(),
         invoiceMonth: await this.invoiceAssigner.referenceMonthFor(card, date),
       }),
     );

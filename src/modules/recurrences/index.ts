@@ -5,3 +5,5 @@ export type {
   PlannedCardChargeTotal,
   RecurrenceCardChargeRepository,
 } from './domain/repositories/recurrence-card-charge.repository';
+export { SavingPlans } from './application/services/saving-plans';
+export type { SavingPlan } from './application/services/saving-plans';

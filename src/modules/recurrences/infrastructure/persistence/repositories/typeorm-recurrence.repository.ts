@@ -108,6 +108,18 @@ export class TypeOrmRecurrenceRepository
     return this.findByUuidForOwner(uuid, ownerId);
   }
 
+  async findWithSavingStrategyByOwner(
+    ownerId: number,
+  ): Promise<RecurrenceEntity[]> {
+    const rows = await this.ownerQuery(ownerId)
+      .andWhere('recurrence.additionalContributionStrategy IS NOT NULL')
+      .orderBy('recurrence.description', 'ASC')
+      .addOrderBy('recurrence.id', 'ASC')
+      .getMany();
+
+    return rows.map((row) => RecurrenceMapper.toDomain(row));
+  }
+
   async findDueForGeneration(
     through: string,
     today: string,
@@ -117,6 +129,7 @@ export class TypeOrmRecurrenceRepository
       .createQueryBuilder('recurrence')
       .leftJoin('recurrence.account', 'account')
       .leftJoin('recurrence.creditCard', 'creditCard')
+      .leftJoin('recurrence.investment', 'investment')
       .select('recurrence.uuid', 'uuid')
       .addSelect('recurrence.userId', 'ownerId')
       .where('recurrence.state = :state', { state: RecurrenceState.ACTIVE })
@@ -131,6 +144,16 @@ export class TypeOrmRecurrenceRepository
             ),
         ),
         { activeAccount: RecordStatus.ACTIVE, activeCard: RecordStatus.ACTIVE },
+      )
+      .andWhere(
+        new Brackets((either) =>
+          either
+            .where('recurrence.investmentId IS NULL')
+            .orWhere(
+              'investment.status = :activeInvestment AND investment.deletedAt IS NULL',
+            ),
+        ),
+        { activeInvestment: RecordStatus.ACTIVE },
       )
       .andWhere('recurrence.startDate <= :through', { through })
       .andWhere(
@@ -175,7 +198,8 @@ export class TypeOrmRecurrenceRepository
       .withDeleted()
       .leftJoinAndSelect('recurrence.account', 'account')
       .leftJoinAndSelect('recurrence.creditCard', 'creditCard')
-      .innerJoinAndSelect('recurrence.category', 'category')
+      .leftJoinAndSelect('recurrence.investment', 'investment')
+      .leftJoinAndSelect('recurrence.category', 'category')
       .where('recurrence.userId = :ownerId', { ownerId })
       .andWhere('recurrence.deletedAt IS NULL');
   }

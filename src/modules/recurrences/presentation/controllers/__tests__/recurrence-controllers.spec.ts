@@ -1,11 +1,20 @@
+import { ContributionKind } from '@modules/investments';
 import { TransactionState } from '@modules/transactions';
 import { PaginatedResult } from '@shared/application/dto';
 import type { Translate } from '@shared/presentation/decorators';
 import type { AuthenticatedUser } from '@shared/presentation/http';
 import { buildCreditCard } from '@test/support/builders/credit-card.builder';
+import { buildAccount } from '@test/support/builders/account.builder';
+import {
+  buildInvestment,
+  buildInvestmentMovement,
+} from '@test/support/builders/investment.builder';
 import { buildRecurrence } from '@test/support/builders/recurrence.builder';
 import { mockOf } from '@test/support/mocks/mock-of';
 import type { RecurrenceOccurrence } from '../../../application/services/recurrence-occurrence';
+import type { SavingPlan } from '../../../application/services/saving-plans';
+import type { AcceptAdditionalContributionUseCase } from '../../../application/use-cases/accept-additional-contribution.use-case';
+import type { ListSavingPlansUseCase } from '../../../application/use-cases/list-saving-plans.use-case';
 import type { CancelRecurrenceOccurrenceUseCase } from '../../../application/use-cases/cancel-recurrence-occurrence.use-case';
 import type { ConfirmRecurrenceOccurrenceUseCase } from '../../../application/use-cases/confirm-recurrence-occurrence.use-case';
 import type { CreateRecurrenceUseCase } from '../../../application/use-cases/create-recurrence.use-case';
@@ -16,13 +25,18 @@ import type { ListRecurrencesUseCase } from '../../../application/use-cases/list
 import type { UpdateRecurrenceOccurrenceUseCase } from '../../../application/use-cases/update-recurrence-occurrence.use-case';
 import type { UpdateRecurrenceStateUseCase } from '../../../application/use-cases/update-recurrence-state.use-case';
 import type { UpdateRecurrenceUseCase } from '../../../application/use-cases/update-recurrence.use-case';
+import { AdditionalContributionStrategy } from '../../../domain/enums/additional-contribution-strategy.enum';
 import { RecurrenceFrequency } from '../../../domain/enums/recurrence-frequency.enum';
 import { RecurrenceState } from '../../../domain/enums/recurrence-state.enum';
 import { RecurrenceType } from '../../../domain/enums/recurrence-type.enum';
 import { RecurrenceUpdateScope } from '../../../domain/enums/recurrence-update-scope.enum';
+import { AcceptAdditionalContributionDto } from '../../dto/input/accept-additional-contribution.dto';
 import { ListRecurrenceOccurrencesQueryDto } from '../../dto/input/list-recurrence-occurrences-query.dto';
 import { ListRecurrencesQueryDto } from '../../dto/input/list-recurrences-query.dto';
+import { SavingPlansQueryDto } from '../../dto/input/saving-plans-query.dto';
+import { RecurrenceResponseDto } from '../../dto/output/recurrence.response';
 import { RecurrenceOccurrencesController } from '../recurrence-occurrences.controller';
+import { RecurrenceSavingPlansController } from '../recurrence-saving-plans.controller';
 import { RecurrencesController } from '../recurrences.controller';
 
 const translate: Translate = (key) => `t:${key}`;
@@ -203,6 +217,7 @@ describe('RecurrenceOccurrencesController', () => {
     completedOn: null,
     transactionUuid: null,
     purchaseUuid: null,
+    movementUuid: null,
     invoiceMonth: '2026-12-01',
   };
 
@@ -284,6 +299,204 @@ describe('RecurrenceOccurrencesController', () => {
       uuid: 'recurrence-uuid',
       occurrenceUuid: 'charge',
       ownerId: 21,
+    });
+  });
+});
+
+describe('RecurrenceSavingPlansController', () => {
+  const investment = buildInvestment({ uuid: 'reserve' });
+  const account = buildAccount({ uuid: 'bank' });
+
+  const recurrence = buildRecurrence({
+    type: RecurrenceType.INVESTMENT_CONTRIBUTION,
+    investment,
+    category: null,
+    account,
+    amount: 70000,
+    savingStrategy: {
+      minimumRetainedBalance: 20000,
+      additionalContribution: AdditionalContributionStrategy.REMAINING_SURPLUS,
+    },
+  });
+
+  const additional = buildInvestmentMovement({
+    uuid: 'additional',
+    amount: 60000,
+    state: TransactionState.PLANNED,
+    completedOn: null,
+    contributionKind: ContributionKind.ADDITIONAL,
+    recurrence: { id: 1, uuid: 'recurrence-uuid', occurrenceDate: null },
+    surplusMonth: '2026-11-01',
+    suggestedAmount: 60000,
+    retainedMinimum: 20000,
+  });
+
+  const plan: SavingPlan = {
+    recurrence,
+    state: RecurrenceState.ACTIVE,
+    investment,
+    account,
+    strategy: {
+      minimumRetainedBalance: 20000,
+      additionalContribution: AdditionalContributionStrategy.REMAINING_SURPLUS,
+    },
+    month: '2026-11-01',
+    actualBalance: 150000,
+    plannedTransactions: 0,
+    otherInvestmentMovements: -60000,
+    cardObligations: 0,
+    balanceBeforeContribution: 90000,
+    distributable: 70000,
+    shortfall: 0,
+    suggestedAdditional: 0,
+    canAcceptAdditional: false,
+    mandatory: {
+      planned: 70000,
+      completed: 0,
+      plannedOccurrences: [
+        {
+          uuid: 'mandatory',
+          date: '2026-11-05',
+          amount: 70000,
+          overdue: false,
+        },
+      ],
+    },
+    additional,
+  };
+
+  function build() {
+    const list = executing([plan, { ...plan, additional: null }]);
+    const accept = executing(additional);
+
+    const controller = new RecurrenceSavingPlansController(
+      mockOf<ListSavingPlansUseCase>(list),
+      mockOf<AcceptAdditionalContributionUseCase>(accept),
+    );
+
+    return { controller, list, accept };
+  }
+
+  it('serializes the plans of the month with decimal amounts', async () => {
+    const { controller, list } = build();
+
+    const [withAdditional, without] = await controller.findAll(
+      Object.assign(new SavingPlansQueryDto(), { year: 2026, month: 11 }),
+      actor,
+      translate,
+    );
+
+    expect(list.execute).toHaveBeenCalledWith({
+      ownerId: 21,
+      year: 2026,
+      month: 11,
+    });
+    expect(withAdditional).toMatchObject({
+      recurrence: {
+        uuid: recurrence.uuid,
+        amount: '700.00',
+        state: RecurrenceState.ACTIVE,
+        stateLabel: 't:recurrences.state.active',
+        frequencyLabel: 't:recurrences.frequency.monthly',
+      },
+      investment: {
+        uuid: 'reserve',
+        typeLabel: 't:investments.type.reserve',
+      },
+      account: { uuid: 'bank' },
+      month: '2026-11-01',
+      actualBalance: '1500.00',
+      otherInvestmentMovements: '-600.00',
+      balanceBeforeContribution: '900.00',
+      minimumRetainedBalance: '200.00',
+      distributable: '700.00',
+      shortfall: '0.00',
+      additionalContribution: 'REMAINING_SURPLUS',
+      additionalContributionLabel:
+        't:recurrences.additional_contribution.remaining_surplus',
+      mandatory: {
+        planned: '700.00',
+        completed: '0.00',
+        plannedOccurrences: [
+          { uuid: 'mandatory', amount: '700.00', overdue: false },
+        ],
+      },
+      suggestedAdditional: '0.00',
+      additional: {
+        movementUuid: 'additional',
+        amount: '600.00',
+        state: TransactionState.PLANNED,
+        suggestedAmount: '600.00',
+      },
+      canAcceptAdditional: false,
+    });
+    expect(without.additional).toBeNull();
+  });
+
+  it('accepts an additional contribution and returns the movement', async () => {
+    const { controller, accept } = build();
+
+    const response = await controller.accept(
+      'recurrence-uuid',
+      Object.assign(new AcceptAdditionalContributionDto(), {
+        year: 2026,
+        month: 11,
+        amount: '600.00',
+        state: TransactionState.PLANNED,
+      }),
+      actor,
+      translate,
+    );
+
+    expect(accept.execute).toHaveBeenCalledWith({
+      uuid: 'recurrence-uuid',
+      ownerId: 21,
+      year: 2026,
+      month: 11,
+      amount: 60000,
+      date: undefined,
+      state: TransactionState.PLANNED,
+    });
+    expect(response).toMatchObject({
+      uuid: 'additional',
+      contributionKind: 'ADDITIONAL',
+      contributionKindLabel: 't:investments.contribution_kind.additional',
+      recurrence: { uuid: 'recurrence-uuid', occurrenceDate: null },
+      surplusMonth: '2026-11-01',
+      suggestedAmount: '600.00',
+      retainedMinimum: '200.00',
+    });
+  });
+});
+
+describe('RecurrenceResponseDto', () => {
+  it('serializes a contribution with its investment and saving strategy', () => {
+    const today = '2026-11-05';
+
+    const dto = RecurrenceResponseDto.fromDomain(
+      buildRecurrence({
+        type: RecurrenceType.INVESTMENT_CONTRIBUTION,
+        investment: buildInvestment({ uuid: 'reserve' }),
+        category: null,
+        savingStrategy: {
+          minimumRetainedBalance: 20000,
+          additionalContribution: AdditionalContributionStrategy.NONE,
+        },
+      }),
+      today,
+      translate,
+    );
+
+    expect(dto).toMatchObject({
+      typeLabel: 't:recurrences.type.investment_contribution',
+      category: null,
+      investment: { uuid: 'reserve' },
+      savingStrategy: {
+        minimumRetainedBalance: '200.00',
+        additionalContribution: 'NONE',
+        additionalContributionLabel:
+          't:recurrences.additional_contribution.none',
+      },
     });
   });
 });

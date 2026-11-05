@@ -7,7 +7,23 @@ import {
 import { formatMoney } from '@shared/domain/money';
 import { translateOrFallback } from '@shared/presentation/http';
 import type { InvestmentMovementEntity } from '../../../domain/entities/investment-movement.entity';
+import { ContributionKind } from '../../../domain/enums/contribution-kind.enum';
 import { InvestmentMovementType } from '../../../domain/enums/investment-movement-type.enum';
+
+export class InvestmentMovementRecurrenceResponseDto {
+  @ApiProperty()
+  uuid!: string;
+
+  @ApiProperty({
+    type: String,
+    format: 'date',
+    nullable: true,
+    example: '2026-11-15',
+    description:
+      'Scheduled date of a MANDATORY contribution; never changes. Null for ADDITIONAL.',
+  })
+  occurrenceDate!: string | null;
+}
 
 export class InvestmentMovementResponseDto {
   @ApiProperty()
@@ -53,6 +69,51 @@ export class InvestmentMovementResponseDto {
   })
   account!: TransactionAccountResponseDto | null;
 
+  @ApiProperty({
+    enum: ContributionKind,
+    description:
+      'ONE_TIME for manual movements (and every withdrawal and valuation), MANDATORY for an occurrence of a recurring contribution, ADDITIONAL for an accepted surplus contribution.',
+  })
+  contributionKind!: ContributionKind;
+
+  @ApiProperty()
+  contributionKindLabel!: string;
+
+  @ApiProperty({
+    type: InvestmentMovementRecurrenceResponseDto,
+    nullable: true,
+    description: 'Recurrence behind the contribution; null for ONE_TIME.',
+  })
+  recurrence!: InvestmentMovementRecurrenceResponseDto | null;
+
+  @ApiProperty({
+    type: String,
+    format: 'date',
+    nullable: true,
+    example: null,
+    description:
+      'First day of the month an ADDITIONAL contribution belongs to; null otherwise.',
+  })
+  surplusMonth!: string | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: null,
+    description:
+      'What the saving plan suggested when an ADDITIONAL contribution was accepted; never changes afterward.',
+  })
+  suggestedAmount!: string | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: null,
+    description:
+      'Minimum retained balance when an ADDITIONAL contribution was accepted; never changes afterward.',
+  })
+  retainedMinimum!: string | null;
+
   @ApiProperty()
   createdAt!: Date;
 
@@ -77,6 +138,27 @@ export class InvestmentMovementResponseDto {
       account: movement.account
         ? TransactionAccountResponseDto.fromDomain(movement.account)
         : null,
+      contributionKind: movement.contributionKind,
+      contributionKindLabel: translateOrFallback(
+        translate,
+        `investments.contribution_kind.${movement.contributionKind.toLowerCase()}`,
+        movement.contributionKind,
+      ),
+      recurrence: movement.recurrence
+        ? Object.assign(new InvestmentMovementRecurrenceResponseDto(), {
+            uuid: movement.recurrence.uuid,
+            occurrenceDate: movement.recurrence.occurrenceDate,
+          })
+        : null,
+      surplusMonth: movement.surplusMonth,
+      suggestedAmount:
+        movement.suggestedAmount === null
+          ? null
+          : formatMoney(movement.suggestedAmount),
+      retainedMinimum:
+        movement.retainedMinimum === null
+          ? null
+          : formatMoney(movement.retainedMinimum),
       createdAt: movement.createdAt,
     });
   }
