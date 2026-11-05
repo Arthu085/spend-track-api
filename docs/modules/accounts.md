@@ -84,7 +84,11 @@ operation dated before it would count twice.
 ## Deactivation and deletion
 
 `status` follows the shared convention: `PUT /accounts/:uuid/status` deactivates (`INACTIVE`) or
-reactivates an account, and `DELETE` soft-deletes it. An account referenced by any non-deleted
+reactivates an account, and `DELETE` soft-deletes it. Before checking history, `AccountDeletionGuards`
+asks dependent modules about live references. An active or paused recurrence referencing the account
+blocks deletion with `AccountHasRecurrencesError` (`409`), even with no occurrences; end the recurrence
+first. A recurrence whose end date has passed is effectively ended and does not block deletion.
+Archival is unchanged and preserves recurrence references. An account referenced by any non-deleted
 transaction, in any state and as source or destination, by any credit card invoice payment, or by
 any investment movement, has history: `DELETE` answers
 `AccountHasHistoryError` (`409`), and the user deactivates it instead. The check runs under the

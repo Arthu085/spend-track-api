@@ -194,7 +194,7 @@ export class AccountsController {
     .errorResponse(HttpStatus.NOT_FOUND, 'Account not found.')
     .errorResponse(
       HttpStatus.CONFLICT,
-      'Account has transactions; deactivate it instead.',
+      'Account has financial history; deactivate it instead. Active or paused recurrences must be ended before deletion.',
     )
     .build())
   async remove(

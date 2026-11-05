@@ -978,6 +978,37 @@ describe('Recurring investment contributions (e2e)', () => {
       expect(dataOf<unknown[]>(plans)).toEqual([]);
 
       await accept(owner, recurrence.uuid, {}).expect(409);
+      expect(
+        dataOf<Recurrence>(
+          await owner.agent
+            .get(`/api/recurrences/${recurrence.uuid}`)
+            .expect(200),
+        ).state,
+      ).toBe('PAUSED');
+      await owner.agent
+        .put(`/api/recurrences/${recurrence.uuid}/state`)
+        .send({ state: 'ACTIVE' })
+        .expect(409);
+      await owner.agent
+        .put(`/api/investments/${owner.reserve}/status`)
+        .send({ status: 'ACTIVE' })
+        .expect(200);
+      expect(
+        dataOf<Recurrence>(
+          await owner.agent
+            .get(`/api/recurrences/${recurrence.uuid}`)
+            .expect(200),
+        ).state,
+      ).toBe('PAUSED');
+      await setState(owner, recurrence.uuid, 'ACTIVE');
+      await generateDue(today);
+      const resumed = await occurrencesOf(owner, recurrence.uuid);
+
+      expect(resumed).toHaveLength(before.length);
+      expect(resumed[0].state).toBe('COMPLETED');
+      expect(new Set(resumed.map((o) => o.occurrenceDate)).size).toBe(
+        resumed.length,
+      );
     });
 
     it('cancels planned rows on CANCEL and never regenerates them', async () => {
@@ -998,15 +1029,18 @@ describe('Recurring investment contributions (e2e)', () => {
         .send({ status: 'ACTIVE' })
         .expect(200);
 
-      await owner.agent
-        .put(`/api/recurrences/${recurrence.uuid}/state`)
-        .send({ state: 'PAUSED' })
-        .expect(200);
+      const ended = dataOf<Recurrence>(
+        await owner.agent
+          .get(`/api/recurrences/${recurrence.uuid}`)
+          .expect(200),
+      );
 
+      expect(ended.state).toBe('ENDED');
       await owner.agent
         .put(`/api/recurrences/${recurrence.uuid}/state`)
         .send({ state: 'ACTIVE' })
-        .expect(200);
+        .expect(409);
+      await generateDue(addMonthsToDate(today, 3));
 
       const afterResume = await occurrencesOf(owner, recurrence.uuid);
 
@@ -1056,32 +1090,56 @@ describe('Recurring investment contributions (e2e)', () => {
       return recurrence;
     }
 
-    it('refuses an additional contribution to a deleted investment and moves nothing', async () => {
+    it('blocks deletion of an investment or account until its paused recurrence ends', async () => {
       const owner = await wallet();
       const recurrence = await withoutPlannedRows(owner);
 
-      await owner.agent.delete(`/api/investments/${owner.reserve}`).expect(200);
-      await setState(owner, recurrence.uuid, 'ACTIVE');
+      for (const [path, message] of [
+        [`/api/investments/${owner.reserve}`, 'End them before deleting it'],
+        [`/api/accounts/${owner.bank}`, 'End them before deleting it'],
+      ]) {
+        const blocked = await owner.agent
+          .delete(path)
+          .set('Accept-Language', 'en')
+          .expect(409);
 
-      await accept(owner, recurrence.uuid, { state: 'COMPLETED' }).expect(409);
+        expect((blocked.body as { message: string }).message).toContain(
+          message,
+        );
+      }
 
       await expect(liveMovementCount(owner.reserve)).resolves.toBe(0);
       await expect(balanceOf(owner)).resolves.toBe('1500.00');
-      await expect(plansOf(owner)).resolves.toEqual([]);
+      await owner.agent
+        .put(`/api/recurrences/${recurrence.uuid}/end`)
+        .send({})
+        .expect(200);
+      await owner.agent.delete(`/api/investments/${owner.reserve}`).expect(200);
+      await owner.agent.delete(`/api/accounts/${owner.bank}`).expect(200);
+      await owner.agent
+        .put(`/api/recurrences/${recurrence.uuid}/state`)
+        .send({ state: 'ACTIVE' })
+        .expect(409);
+      await generateDue(today);
+      await expect(liveMovementCount(owner.reserve)).resolves.toBe(0);
     });
 
-    it('refuses an additional contribution from a deleted account and moves nothing', async () => {
+    it('blocks deletion for an active recurrence beyond the generated horizon without movements', async () => {
       const owner = await wallet();
-      const recurrence = await withoutPlannedRows(owner);
 
-      await owner.agent.delete(`/api/accounts/${owner.bank}`).expect(200);
-      await setState(owner, recurrence.uuid, 'ACTIVE');
-
-      await accept(owner, recurrence.uuid, { state: 'COMPLETED' }).expect(409);
+      const recurrence = await contribution(owner, {
+        startDate: addMonthsToDate(today, 20),
+      });
 
       await expect(liveMovementCount(owner.reserve)).resolves.toBe(0);
-      await expect(valueOf(owner)).resolves.toBe('0.00');
-      await expect(plansOf(owner)).resolves.toEqual([]);
+      await owner.agent.delete(`/api/investments/${owner.reserve}`).expect(409);
+      await owner.agent.delete(`/api/accounts/${owner.bank}`).expect(409);
+      await owner.agent
+        .put(`/api/recurrences/${recurrence.uuid}/end`)
+        .send({})
+        .expect(200);
+      await owner.agent.delete(`/api/investments/${owner.reserve}`).expect(200);
+      await owner.agent.delete(`/api/accounts/${owner.bank}`).expect(200);
     });
   });
 
@@ -1404,10 +1462,40 @@ describe('Recurring investment contributions (e2e)', () => {
       await expect(suggestionOf(other.uuid)).resolves.toBe('1100.00');
 
       await accept(owner, reserve.uuid, { amount: '500.00' }).expect(201);
+      await accept(owner, other.uuid, { amount: '1100.00' }).expect(409);
 
       await expect(suggestionOf(reserve.uuid)).resolves.toBe('0.00');
       await expect(suggestionOf(other.uuid)).resolves.toBe('600.00');
 
+      await expect(balanceOf(owner)).resolves.toBe('1500.00');
+    });
+
+    it('serializes competing suggestions and requires an explicit override after the surplus is used', async () => {
+      const owner = await wallet();
+      const first = await contribution(owner, { amount: '100.00' });
+      const second = await contribution(owner, { amount: '100.00' });
+
+      const results = await Promise.all([
+        accept(owner, first.uuid, { amount: '1100.00' }),
+        accept(owner, second.uuid, { amount: '1100.00' }),
+      ]);
+
+      expect(results.map((r) => r.status).sort()).toEqual([201, 409]);
+      const plans = await plansOf(owner);
+      const remaining = plans.find((plan) => plan.additional === null);
+
+      expect(remaining?.suggestedAdditional).toBe('0.00');
+      expect((await dashboardOf(owner)).balances.projected).toBe('200.00');
+
+      const override = dataOf<Movement>(
+        await accept(owner, remaining!.recurrence.uuid, {
+          amount: '50.00',
+          allowExceedingSuggestion: true,
+        }).expect(201),
+      );
+
+      expect(override.suggestedAmount).toBe('0.00');
+      expect((await dashboardOf(owner)).balances.projected).toBe('150.00');
       await expect(balanceOf(owner)).resolves.toBe('1500.00');
     });
 
@@ -1609,6 +1697,7 @@ describe('Recurring investment contributions (e2e)', () => {
         await accept(owner, recurrence.uuid, {
           year: nextMonth.year,
           month: nextMonth.month,
+          allowExceedingSuggestion: true,
         }).expect(201),
       );
 
@@ -1649,6 +1738,7 @@ describe('Recurring investment contributions (e2e)', () => {
       await accept(owner, recurrence.uuid, {
         ...laterMonth,
         state: 'PLANNED',
+        allowExceedingSuggestion: true,
       }).expect(201);
 
       await expect(balanceOf(owner)).resolves.toBe('1500.00');
@@ -1677,6 +1767,7 @@ describe('Recurring investment contributions (e2e)', () => {
       await accept(owner, recurrence.uuid, {
         year: nextMonth.year,
         month: nextMonth.month,
+        allowExceedingSuggestion: true,
       }).expect(201);
 
       const upcoming = await contribution(owner, {

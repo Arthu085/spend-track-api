@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsIn, IsInt, Max, Min, ValidateIf } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, Max, Min, ValidateIf } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
 import { TransactionState } from '@modules/transactions';
 import {
@@ -29,6 +29,16 @@ export class AcceptAdditionalContributionDto {
 
   @TransactionAmountField()
   amount!: string;
+
+  @ApiProperty({
+    required: false,
+    default: false,
+    description:
+      'Explicitly acknowledge an amount above the freshly recalculated suggestion. Omit or use false for accepting the suggestion, so a stale amount cannot silently allocate money twice.',
+  })
+  @ValidateIf(isPresent)
+  @IsBoolean({ message: i18nValidationMessage('validation.IS_BOOLEAN') })
+  allowExceedingSuggestion?: boolean;
 
   @ValidateIf(isPresent)
   @DateOnlyField({

@@ -18,6 +18,8 @@ payloads are in Swagger; this document covers the rules behind them.
 - `presentation.ts`: `SavingPlanResponseDto`, used by the dashboard response.
 - `RecurrenceCardChargePendingOperations` registers into the credit card pending operations registry
   ([`credit-cards.md`](credit-cards.md#archiving-with-planned-operations)).
+- `RecurrenceTargetLifecycle` registers into `AccountDeletionGuards` and `InvestmentLifecycle` to
+  protect referenced targets and apply the contribution archival policy without reverse module imports.
 - `recurrences.module.ts`: `RecurrencesModule`. It imports `AccountsModule`, `CreditCardsModule`,
   `InvestmentsModule`, `TransactionCategoriesModule`, and `TransactionsModule`; none of them imports
   it back.
@@ -140,9 +142,15 @@ Pausing, resuming, and ending work as follows:
   or cancel it.
 - Pausing, ending, and the `PATCH` scope only touch planned `MANDATORY` rows of that recurrence, by
   soft delete when removing. A planned `ADDITIONAL` row is an explicit user decision and stays.
-- Archiving the investment with `KEEP` leaves planned rows confirmable and stops generation.
-  With `CANCEL` the rows stay `CANCELED` and their dates are never generated again, even after
-  reactivating it.
+- Archiving the investment with `KEEP` pauses its active contribution recurrences and leaves all
+  planned rows confirmable. The pause resets `generatedThrough` to yesterday without removing rows.
+  Archiving with `CANCEL` ends every active or paused contribution recurrence and cancels all planned
+  movements; completed and already canceled rows remain unchanged. Canceled dates never regenerate.
+  Reactivating an investment changes only its status. A paused recurrence needs an explicit resume
+  after both targets are active; it resumes from today, skips paused dates, and keeps existing rows
+  without duplicates. An ended recurrence cannot resume: create a new recurrence for a new schedule.
+  Archiving without pending movements pauses active recurrences too. Explicitly paused recurrences
+  stay paused with `KEEP`, and ended recurrences never change.
 
 ## Saving plans
 
@@ -183,7 +191,13 @@ as `ACTIVE`, whose investment and account are active and not deleted, for a mont
   the month has no live additional contribution. Only then is `suggestedAdditional` above 0.
 
 `POST /recurrences/:uuid/additional-contributions` records what the user accepts; nothing is created
-automatically. `amount` may differ from the suggestion. The movement is `ADDITIONAL`, with
+automatically. `amount` may differ from the suggestion. Acceptance recalculates the suggestion under
+the owner finance locks: an amount above that current suggestion requires
+`allowExceedingSuggestion: true`, sent only after the user sees and acknowledges an override warning.
+Otherwise `AdditionalContributionExceedsSuggestionError` (`409`) requires a refresh and explicit
+confirmation, including when the suggestion is zero. Concurrent defaults on overlapping plans cannot
+allocate the same surplus twice. An explicitly acknowledged override remains allowed and its actual
+amount affects projections normally. The movement is `ADDITIONAL`, with
 `suggestedAmount` and `retainedMinimum` as an immutable snapshot, so later changes to the strategy
 never rewrite history.
 
@@ -201,6 +215,20 @@ never rewrite history.
   `AdditionalContributionAlreadyExistsError` (`409`), also from a partial unique index. Canceling it
   through the investment movement state route frees the month.
 
+## Target deletion and existing cancellations
+
+Deleting an account or investment referenced by a non-deleted `ACTIVE` or `PAUSED` recurrence whose
+end date has not passed is blocked, even when no occurrences exist. `AccountHasRecurrencesError` or
+`InvestmentHasRecurrencesError` (`409`) asks the user to end the recurrence first. Effective `ENDED`
+recurrences do not block deletion, but the usual movement and payment history checks still apply.
+Resuming a contribution checks both targets before saving `ACTIVE`; an archived or legacy deleted
+target fails visibly and leaves the recurrence paused.
+
+For a database that ran the earlier archival behavior, do not delete canceled rows or rewind an active
+cursor to recreate them. End an active recurrence whose archive canceled its future dates, then create
+a new recurrence for the desired new schedule. If the old archive kept its rows, pause it, reactivate
+its targets, and explicitly resume. This preserves every cancellation and completed movement.
+
 ## Generation
 
 - Occurrences are generated up to the last day of the twelfth month after the current one, never past
@@ -213,7 +241,8 @@ never rewrite history.
   on a recurrence older than that date. A skipped date does not come back if the opening date later
   moves earlier, because `generated_through` has already passed it. A later pause and resume can only
   bring back dates from that day on.
-- `generated_through` records the last date already generated, and only pausing moves it back.
+- `generated_through` records the last date already generated. Only pausing, explicitly or through
+  investment archival with `KEEP`, moves it back.
   Generation only creates dates after it, and skips dates that already have a live occurrence, so an
   occurrence that was canceled, confirmed, or moved is never recreated.
 - Partial unique indexes on `(recurrence_id, recurrence_date)` in `transactions` and

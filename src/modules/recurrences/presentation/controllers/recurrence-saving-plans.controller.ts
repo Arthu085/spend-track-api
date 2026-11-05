@@ -56,12 +56,12 @@ export class RecurrenceSavingPlansController {
     .tags('recurrences')
     .summary('Accept an additional contribution for a month')
     .description(
-      "Records one contribution from the recurrence's account to its investment, with the suggested amount and retained minimum of that moment as an immutable snapshot. amount may differ from the suggestion. It is a normal investment movement: cancel it through PUT /investments/:uuid/movements/:movementUuid/state, which frees the month. Scoped to the authenticated user: another user's recurrence answers 404.",
+      "Records one contribution from the recurrence's account to its investment, with the suggested amount and retained minimum of that moment as an immutable snapshot. amount may differ from the suggestion. An amount above the freshly recalculated suggestion requires allowExceedingSuggestion=true after an explicit user warning; a stale amount otherwise answers 409 and should be refreshed. It is a normal investment movement: cancel it through PUT /investments/:uuid/movements/:movementUuid/state, which frees the month. Scoped to the authenticated user: another user's recurrence answers 404.",
     )
     .errorResponse(HttpStatus.NOT_FOUND, 'Recurrence not found.')
     .errorResponse(
       HttpStatus.CONFLICT,
-      'Recurrence not ACTIVE or without REMAINING_SURPLUS, month before the month of startDate or after the month of endDate, investment or account inactive or deleted, or the month already has a live additional contribution.',
+      'Recurrence not ACTIVE or without REMAINING_SURPLUS, month before the month of startDate or after the month of endDate, investment or account inactive or deleted, the month already has a live additional contribution, or amount exceeds the current suggestion without explicit acknowledgment.',
     )
     .errorResponse(
       HttpStatus.UNPROCESSABLE_ENTITY,
@@ -82,6 +82,7 @@ export class RecurrenceSavingPlansController {
       year: dto.year,
       month: dto.month,
       amount: parseMoney(dto.amount),
+      allowExceedingSuggestion: dto.allowExceedingSuggestion,
       date: dto.date ?? undefined,
       state: dto.state,
     });

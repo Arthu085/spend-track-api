@@ -16,6 +16,8 @@ in Swagger; this document covers the rules behind them.
   `ContributionKindTotal`, `InvestmentValues` with `InvestmentWithValue` and `InvestmentValue`,
   `targetProgress`, `findActiveInvestment`, `InactiveInvestmentError`, and
   `AdditionalContributionAlreadyExistsError`, consumed by `dashboard` and `recurrences`.
+  `InvestmentLifecycle` accepts participants from dependent modules for archival and deletion guards;
+  `InvestmentHasRecurrencesError` identifies a blocked deletion.
 - `presentation.ts`: `investmentTypeLabel`, `InvestmentProgressResponseDto`,
   `InvestmentMovementResponseDto`, and `NON_NEGATIVE_MONEY_PATTERN`, used by the dashboard and
   recurrence responses and inputs.
@@ -47,8 +49,10 @@ investment, so a foreign record is a `404` (`InvestmentNotFoundError`,
   keeps its movements and value and rejects `GET /investments/:uuid`, `PATCH`, new movements, and
   valuations (`InactiveInvestmentError`, `409`), but its movements stay listable, confirmable, and
   cancelable. `GET /investments` defaults to `ACTIVE` and orders by name.
-- `DELETE` soft-deletes an investment only while it has no movement, in any state; otherwise
-  `InvestmentHasHistoryError` (`409`) and the user archives it instead.
+- `DELETE` first rejects an investment referenced by any active or paused contribution recurrence
+  (`InvestmentHasRecurrencesError`, `409`), even without movements; end the recurrence first. It then
+  soft-deletes only while there are no movements, in any state; otherwise `InvestmentHasHistoryError`
+  (`409`) asks the user to archive it instead. Ended recurrences and all historical records stay intact.
 
 ## Archiving with planned movements
 
@@ -64,7 +68,13 @@ recorded history, and archiving never changes them.
   which changes the account balance and the value as usual and still needs an active account, or
   canceled.
 - `CANCEL` moves them to `CANCELED` with `canceledAt` in the same transaction, so they stay listed as
-  history and stop counting.
+  history and stop counting. It also ends every non-ended contribution recurrence of the investment;
+  these cannot resume and canceled dates never regenerate.
+- `KEEP`, or archiving with no planned movements, pauses active contribution recurrences without
+  removing their planned rows. Reactivating the investment leaves them paused; explicitly resume
+  after the account and investment are active. Existing paused recurrences stay paused on `KEEP`,
+  while `CANCEL` ends them. Completed, canceled, and ended history never changes. See
+  [`recurrences.md`](recurrences.md#investment-contributions) for cursor and resume rules.
 
 ## Contribution kinds
 

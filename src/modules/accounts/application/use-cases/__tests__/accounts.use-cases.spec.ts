@@ -1,3 +1,5 @@
+import { AccountDeletionGuards } from '../../services/account-deletion-guards';
+import { AccountHasRecurrencesError } from '../../../domain/errors/account-has-recurrences.error';
 import { RecordStatus } from '@shared/domain/enums/record-status.enum';
 import type { TransactionManagerPort } from '@shared/application/ports';
 import { buildAccount } from '@test/support/builders/account.builder';
@@ -411,6 +413,24 @@ describe('accounts use-cases', () => {
   });
 
   describe('DeleteAccountUseCase', () => {
+    it('rejects a recurrence reference before checking movement history', async () => {
+      const { port, calls } = buildRepository();
+      const guards = new AccountDeletionGuards();
+
+      guards.register({
+        assertCanDelete: () => Promise.reject(new AccountHasRecurrencesError()),
+      });
+
+      await expect(
+        new DeleteAccountUseCase(
+          port,
+          transactionManager,
+          emptyLedger,
+          guards,
+        ).execute({ uuid: 'account-uuid', ownerId: 1 }),
+      ).rejects.toThrow(AccountHasRecurrencesError);
+      expect(calls).toEqual(['lock']);
+    });
     it('soft-deletes an owned account under the owner lock', async () => {
       const { port, calls } = buildRepository();
 
@@ -418,6 +438,7 @@ describe('accounts use-cases', () => {
         port,
         transactionManager,
         emptyLedger,
+        new AccountDeletionGuards(),
       ).execute({
         uuid: 'account-uuid',
         ownerId: 1,
@@ -431,7 +452,12 @@ describe('accounts use-cases', () => {
       const { ledger, port: ledgerPort } = buildLedger(new Map(), true);
 
       await expect(
-        new DeleteAccountUseCase(port, transactionManager, ledgerPort).execute({
+        new DeleteAccountUseCase(
+          port,
+          transactionManager,
+          ledgerPort,
+          new AccountDeletionGuards(),
+        ).execute({
           uuid: 'account-uuid',
           ownerId: 1,
         }),
@@ -444,12 +470,15 @@ describe('accounts use-cases', () => {
       const { port, calls } = buildRepository(null);
 
       await expect(
-        new DeleteAccountUseCase(port, transactionManager, emptyLedger).execute(
-          {
-            uuid: 'account-uuid',
-            ownerId: 2,
-          },
-        ),
+        new DeleteAccountUseCase(
+          port,
+          transactionManager,
+          emptyLedger,
+          new AccountDeletionGuards(),
+        ).execute({
+          uuid: 'account-uuid',
+          ownerId: 2,
+        }),
       ).rejects.toBeInstanceOf(AccountNotFoundError);
       expect(calls).toEqual(['lock']);
     });

@@ -13,7 +13,8 @@
     "saving_plan_month_closed": "Additional contributions cannot be recorded for a month that has passed",
     "saving_plan_not_active": "This recurrence must be active and use the remaining surplus strategy to accept an additional contribution",
     "additional_contribution_outside_month": "The date must be inside the selected month",
-    "completed_additional_contribution_in_future": "A completed contribution cannot be dated in the future. Record it as planned instead"
+    "completed_additional_contribution_in_future": "A completed contribution cannot be dated in the future. Record it as planned instead",
+    "additional_contribution_exceeds_suggestion": "The amount exceeds the current available suggestion. Refresh the saving plans and explicitly confirm an override to continue."
   },
   "frequency": {
     "weekly": "Weekly",

@@ -9,6 +9,7 @@ import { RecurrenceCardChargePendingOperations } from './application/services/re
 import { RecurrenceOccurrenceGenerator } from './application/services/recurrence-occurrence-generator';
 import { RecurrenceOccurrences } from './application/services/recurrence-occurrences';
 import { RecurrenceReferences } from './application/services/recurrence-references';
+import { RecurrenceTargetLifecycle } from './application/services/recurrence-target-lifecycle';
 import { SavingPlans } from './application/services/saving-plans';
 import { AcceptAdditionalContributionUseCase } from './application/use-cases/accept-additional-contribution.use-case';
 import { CancelRecurrenceOccurrenceUseCase } from './application/use-cases/cancel-recurrence-occurrence.use-case';
@@ -57,6 +58,7 @@ import { RecurrencesController } from './presentation/controllers/recurrences.co
       provide: RECURRENCE_CARD_CHARGE_REPOSITORY,
       useClass: TypeOrmRecurrenceCardChargeRepository,
     },
+    RecurrenceTargetLifecycle,
     RecurrenceReferences,
     RecurrenceOccurrences,
     RecurrenceOccurrenceGenerator,

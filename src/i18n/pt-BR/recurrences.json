@@ -13,7 +13,8 @@
     "saving_plan_month_closed": "Não é possível registrar aporte adicional em um mês que já passou",
     "saving_plan_not_active": "Esta recorrência precisa estar ativa e usar a estratégia de excedente restante para aceitar um aporte adicional",
     "additional_contribution_outside_month": "A data deve estar dentro do mês selecionado",
-    "completed_additional_contribution_in_future": "Um aporte concluído não pode ter data futura. Registre-o como planejado"
+    "completed_additional_contribution_in_future": "Um aporte concluído não pode ter data futura. Registre-o como planejado",
+    "additional_contribution_exceeds_suggestion": "O valor excede a sugestão disponível atual. Atualize os planos de economia e confirme explicitamente o valor personalizado para continuar."
   },
   "frequency": {
     "weekly": "Semanal",

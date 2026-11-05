@@ -30,6 +30,7 @@ import { isRecordUsable } from '@shared/domain/policies';
 import type { RecurrenceEntity } from '../../domain/entities/recurrence.entity';
 import { AdditionalContributionStrategy } from '../../domain/enums/additional-contribution-strategy.enum';
 import { RecurrenceState } from '../../domain/enums/recurrence-state.enum';
+import { AdditionalContributionExceedsSuggestionError } from '../../domain/errors/additional-contribution-exceeds-suggestion.error';
 import { AdditionalContributionOutsideMonthError } from '../../domain/errors/additional-contribution-outside-month.error';
 import { CompletedAdditionalContributionInFutureError } from '../../domain/errors/completed-additional-contribution-in-future.error';
 import { SavingPlanMonthClosedError } from '../../domain/errors/saving-plan-month-closed.error';
@@ -43,6 +44,7 @@ export interface AcceptAdditionalContributionInput {
   year: number;
   month: number;
   amount: number;
+  allowExceedingSuggestion?: boolean;
   date?: string;
   state: TransactionState.PLANNED | TransactionState.COMPLETED;
 }
@@ -98,6 +100,13 @@ export class AcceptAdditionalContributionUseCase {
 
       if (plan.additional) {
         throw new AdditionalContributionAlreadyExistsError();
+      }
+
+      if (
+        input.amount > plan.suggestedAdditional &&
+        input.allowExceedingSuggestion !== true
+      ) {
+        throw new AdditionalContributionExceedsSuggestionError();
       }
 
       return this.movementRepository.create(

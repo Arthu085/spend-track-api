@@ -12,6 +12,7 @@ import {
 import {
   ContributionKind,
   InvestmentMovementEntity,
+  InactiveInvestmentError,
   type InvestmentMovementRepository,
   type InvestmentRepository,
   type InvestmentValues,
@@ -193,6 +194,9 @@ function setup(stored: RecurrenceEntity | null = buildRecurrence()) {
       findVisibleByUuid: jest.fn().mockResolvedValue(category),
     }),
     mockOf<InvestmentRepository>({
+      findByUuidForOwner: jest
+        .fn()
+        .mockResolvedValue(stored?.investment ?? null),
       lockOwnerInvestments: jest.fn(() => {
         calls.push('lock-investments');
 
@@ -1389,7 +1393,7 @@ describe('recurrence use-cases', () => {
       ).toBe(true);
     });
 
-    it('generates nothing while the investment is archived', async () => {
+    it('refuses resume while the investment is archived, leaving state and cursor unchanged', async () => {
       const recurrence = buildRecurrence({
         type: RecurrenceType.INVESTMENT_CONTRIBUTION,
         investment: buildInvestment({ status: RecordStatus.INACTIVE }),
@@ -1401,12 +1405,15 @@ describe('recurrence use-cases', () => {
       const useCases = setup(recurrence);
       const { movements } = useCases;
 
-      await useCases.updateState.execute({
-        uuid: recurrence.uuid,
-        ownerId: 1,
-        state: RecurrenceState.ACTIVE,
-      });
+      await expect(
+        useCases.updateState.execute({
+          uuid: recurrence.uuid,
+          ownerId: 1,
+          state: RecurrenceState.ACTIVE,
+        }),
+      ).rejects.toThrow(InactiveInvestmentError);
 
+      expect(useCases.recurrences.update).not.toHaveBeenCalled();
       expect(movements.create).not.toHaveBeenCalled();
     });
 

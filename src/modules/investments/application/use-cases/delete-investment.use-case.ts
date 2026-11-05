@@ -12,6 +12,7 @@ import {
   INVESTMENT_REPOSITORY,
   type InvestmentRepository,
 } from '../../domain/repositories/investment.repository';
+import { InvestmentLifecycle } from '../services/investment-lifecycle';
 import { findOwnedInvestment } from '../services/investment-references';
 
 export interface DeleteInvestmentInput {
@@ -28,6 +29,7 @@ export class DeleteInvestmentUseCase {
     private readonly movementRepository: InvestmentMovementRepository,
     @Inject(TRANSACTION_MANAGER)
     private readonly transactionManager: TransactionManagerPort,
+    private readonly lifecycle: InvestmentLifecycle,
   ) {}
 
   async execute(input: DeleteInvestmentInput): Promise<void> {
@@ -39,6 +41,8 @@ export class DeleteInvestmentUseCase {
         input.uuid,
         input.ownerId,
       );
+
+      await this.lifecycle.assertCanDelete(input.ownerId, investment.id);
 
       if (
         await this.movementRepository.existsForInvestment(

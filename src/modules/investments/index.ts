@@ -1,3 +1,5 @@
+export { InvestmentLifecycle } from './application/services/investment-lifecycle';
+export type { InvestmentLifecycleParticipant } from './application/services/investment-lifecycle';
 export { InvestmentEntity } from './domain/entities/investment.entity';
 export { InvestmentMovementEntity } from './domain/entities/investment-movement.entity';
 export { ContributionKind } from './domain/enums/contribution-kind.enum';
@@ -18,3 +20,4 @@ export { targetProgress } from './domain/valuation/investment-value';
 export { InvestmentValues } from './application/services/investment-values';
 export { findActiveInvestment } from './application/services/investment-references';
 export type { InvestmentWithValue } from './application/services/investment-values';
+export { InvestmentHasRecurrencesError } from './domain/errors/investment-has-recurrences.error';

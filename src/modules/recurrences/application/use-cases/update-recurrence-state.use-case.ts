@@ -53,8 +53,25 @@ export class UpdateRecurrenceStateUseCase {
         return paused;
       }
 
+      const resumed = recurrence.resume(today);
+
+      if (
+        recurrence.isInvestmentContribution &&
+        recurrence.investment &&
+        recurrence.account
+      ) {
+        await this.references.activeInvestment(
+          recurrence.investment.uuid,
+          input.ownerId,
+        );
+        await this.references.activeAccount(
+          recurrence.account.uuid,
+          input.ownerId,
+        );
+      }
+
       return this.generator.generate(
-        await this.recurrenceRepository.update(recurrence.resume(today)),
+        await this.recurrenceRepository.update(resumed),
         today,
       );
     });

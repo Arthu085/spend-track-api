@@ -176,6 +176,60 @@ describe('contribution recurrence repositories (integration)', () => {
     );
   }
 
+  it('finds only owned, non-deleted active or paused references whose end has not passed', async () => {
+    const owner = await ownerWithTargets();
+    const foreign = await ownerWithTargets();
+    const active = await createRecurrence(owner);
+
+    const paused = await recurrences.update(
+      (await createRecurrence(owner)).pause(TODAY),
+    );
+
+    const ended = await recurrences.update(
+      (await createRecurrence(owner)).endBefore(null, TODAY),
+    );
+
+    const expired = await recurrences.update(
+      (await createRecurrence(owner)).endBefore('2026-11-06', TODAY),
+    );
+
+    const deleted = await createRecurrence(owner);
+
+    await createRecurrence(foreign);
+    await dataSource.getRepository(RecurrenceOrmEntity).softDelete(deleted.id);
+
+    const forAccount = await recurrences.findOpenByTarget(
+      owner.ownerId,
+      { accountId: owner.account.id },
+      '2026-11-06',
+    );
+
+    const forInvestment = await recurrences.findOpenByTarget(
+      owner.ownerId,
+      { investmentId: owner.investment.id },
+      '2026-11-06',
+    );
+
+    expect(forAccount.map((r) => r.id)).toEqual([active.id, paused.id]);
+    expect(forInvestment.map((r) => r.id)).toEqual([active.id, paused.id]);
+    expect(forAccount.map((r) => r.id)).not.toContain(ended.id);
+    expect(forAccount.map((r) => r.id)).not.toContain(expired.id);
+    expect(
+      await recurrences.findOpenByTarget(
+        foreign.ownerId,
+        { accountId: owner.account.id },
+        TODAY,
+      ),
+    ).toEqual([]);
+    expect(
+      await recurrences.findOpenByTarget(
+        foreign.ownerId,
+        { investmentId: owner.investment.id },
+        TODAY,
+      ),
+    ).toEqual([]);
+  });
+
   function createAdditional(
     recurrence: RecurrenceEntity,
     {

@@ -36,6 +36,11 @@ export interface RecurrenceRepository {
     uuid: string,
     ownerId: number,
   ): Promise<RecurrenceEntity | null>;
+  findOpenByTarget(
+    ownerId: number,
+    target: { accountId: number } | { investmentId: number },
+    today: string,
+  ): Promise<RecurrenceEntity[]>;
   findWithSavingStrategyByOwner(ownerId: number): Promise<RecurrenceEntity[]>;
   findDueForGeneration(
     through: string,

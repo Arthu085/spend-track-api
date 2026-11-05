@@ -17,6 +17,7 @@ import type { RecurrenceEntity } from '../../../domain/entities/recurrence.entit
 import { AdditionalContributionStrategy } from '../../../domain/enums/additional-contribution-strategy.enum';
 import { RecurrenceState } from '../../../domain/enums/recurrence-state.enum';
 import { RecurrenceType } from '../../../domain/enums/recurrence-type.enum';
+import { AdditionalContributionExceedsSuggestionError } from '../../../domain/errors/additional-contribution-exceeds-suggestion.error';
 import { AdditionalContributionOutsideMonthError } from '../../../domain/errors/additional-contribution-outside-month.error';
 import { CompletedAdditionalContributionInFutureError } from '../../../domain/errors/completed-additional-contribution-in-future.error';
 import { SavingPlanMonthClosedError } from '../../../domain/errors/saving-plan-month-closed.error';
@@ -114,6 +115,28 @@ describe('AcceptAdditionalContributionUseCase', () => {
       recurrence: { id: 9, uuid: 'recurrence', occurrenceDate: null },
     });
     expect(lockOwnerFinances).toHaveBeenCalledWith(1);
+  });
+
+  it('rejects a stale suggestion or a zero available amount without explicit acknowledgment', async () => {
+    const { useCase, create, forRecurrence } = setup();
+
+    await expect(useCase.execute(input({ amount: 60001 }))).rejects.toThrow(
+      AdditionalContributionExceedsSuggestionError,
+    );
+    forRecurrence.mockResolvedValue({
+      month: '2026-11-01',
+      suggestedAdditional: 0,
+      strategy: recurrenceWith().savingStrategy,
+      additional: null,
+    });
+    await expect(
+      useCase.execute(input({ allowExceedingSuggestion: false })),
+    ).rejects.toThrow(AdditionalContributionExceedsSuggestionError);
+    expect(create).not.toHaveBeenCalled();
+
+    await expect(
+      useCase.execute(input({ allowExceedingSuggestion: true })),
+    ).resolves.toMatchObject({ amount: 45000, suggestedAmount: 0 });
   });
 
   it('defaults a later month to its first day, and keeps a requested date', async () => {

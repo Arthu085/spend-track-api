@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ACCOUNT_LEDGERS } from './application/ports/account-ledger.port';
+import { AccountDeletionGuards } from './application/services/account-deletion-guards';
 import { AccountLedgers } from './application/services/account-ledgers';
 import { CreateAccountUseCase } from './application/use-cases/create-account.use-case';
 import { DeleteAccountUseCase } from './application/use-cases/delete-account.use-case';
@@ -19,6 +20,7 @@ import { AccountsController } from './presentation/controllers/accounts.controll
   providers: [
     { provide: ACCOUNT_REPOSITORY, useClass: TypeOrmAccountRepository },
     { provide: ACCOUNT_LEDGERS, useClass: AccountLedgers },
+    AccountDeletionGuards,
     ListAccountsUseCase,
     GetAccountUseCase,
     CreateAccountUseCase,
@@ -26,6 +28,6 @@ import { AccountsController } from './presentation/controllers/accounts.controll
     UpdateAccountStatusUseCase,
     DeleteAccountUseCase,
   ],
-  exports: [ACCOUNT_REPOSITORY, ACCOUNT_LEDGERS],
+  exports: [ACCOUNT_REPOSITORY, ACCOUNT_LEDGERS, AccountDeletionGuards],
 })
 export class AccountsModule {}

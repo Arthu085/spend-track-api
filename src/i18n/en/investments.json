@@ -8,7 +8,8 @@
     "movement_state_transition": "This movement cannot move to the requested state",
     "insufficient_value": "This would leave the investment with a negative value",
     "valuation_unchanged": "The new value equals the current value",
-    "additional_contribution_already_exists": "This recurrence already has an additional contribution for that month; cancel it to record another"
+    "additional_contribution_already_exists": "This recurrence already has an additional contribution for that month; cancel it to record another",
+    "has_recurrences": "This investment has active or paused contribution recurrences. End them before deleting it."
   },
   "type": {
     "investment": "Investment",

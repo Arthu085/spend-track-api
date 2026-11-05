@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AccountsModule } from '@modules/accounts/accounts.module';
+import { InvestmentLifecycle } from './application/services/investment-lifecycle';
 import { InvestmentMovementLedger } from './application/services/investment-movement-ledger';
 import { InvestmentValues } from './application/services/investment-values';
 import { CreateInvestmentMovementUseCase } from './application/use-cases/create-investment-movement.use-case';
@@ -38,6 +39,7 @@ import { InvestmentsController } from './presentation/controllers/investments.co
       provide: INVESTMENT_MOVEMENT_REPOSITORY,
       useClass: TypeOrmInvestmentMovementRepository,
     },
+    InvestmentLifecycle,
     InvestmentValues,
     InvestmentMovementLedger,
     ListInvestmentsUseCase,
@@ -55,6 +57,7 @@ import { InvestmentsController } from './presentation/controllers/investments.co
   exports: [
     INVESTMENT_REPOSITORY,
     INVESTMENT_MOVEMENT_REPOSITORY,
+    InvestmentLifecycle,
     InvestmentValues,
   ],
 })

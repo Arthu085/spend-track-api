@@ -108,6 +108,35 @@ export class TypeOrmRecurrenceRepository
     return this.findByUuidForOwner(uuid, ownerId);
   }
 
+  async findOpenByTarget(
+    ownerId: number,
+    target: { accountId: number } | { investmentId: number },
+    today: string,
+  ): Promise<RecurrenceEntity[]> {
+    const qb = this.ownerQuery(ownerId)
+      .andWhere('recurrence.state IN (:...states)', {
+        states: [RecurrenceState.ACTIVE, RecurrenceState.PAUSED],
+      })
+      .andWhere(
+        '(recurrence.endDate IS NULL OR recurrence.endDate >= :today)',
+        { today },
+      );
+
+    if ('accountId' in target) {
+      qb.andWhere('recurrence.accountId = :targetId', {
+        targetId: target.accountId,
+      });
+    } else {
+      qb.andWhere('recurrence.investmentId = :targetId', {
+        targetId: target.investmentId,
+      });
+    }
+
+    return (await qb.orderBy('recurrence.id', 'ASC').getMany()).map((row) =>
+      RecurrenceMapper.toDomain(row),
+    );
+  }
+
   async findWithSavingStrategyByOwner(
     ownerId: number,
   ): Promise<RecurrenceEntity[]> {
