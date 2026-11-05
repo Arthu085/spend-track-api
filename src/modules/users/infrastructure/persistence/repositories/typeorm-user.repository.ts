@@ -9,6 +9,7 @@ import {
   BaseTransactionalRepository,
   isUniqueViolation,
 } from '@shared/infrastructure/persistence';
+import type { UserListSort } from '../../../domain/repositories/user-list-sort';
 import { UserEntity } from '../../../domain/entities/user.entity';
 import { EmailAlreadyInUseError } from '../../../domain/errors/email-already-in-use.error';
 import type {
@@ -22,6 +23,13 @@ import {
   UserOrmEntity,
 } from '../entities/user.orm-entity';
 import { UserMapper } from '../mappers/user.mapper';
+
+const USER_SORT_COLUMNS = {
+  name: 'user.name',
+  email: 'user.email',
+  status: 'user.status',
+  createdAt: 'user.createdAt',
+};
 
 const ROLES_RELATION = { roles: { abilities: true } };
 
@@ -41,6 +49,7 @@ export class TypeOrmUserRepository
     offset: number,
     limit: number,
     filters?: UserListFilters,
+    sort?: UserListSort,
   ): Promise<PaginatedUsers> {
     const qb: SelectQueryBuilder<ObjectLiteral> = this.repository
       .createQueryBuilder('user')
@@ -48,6 +57,13 @@ export class TypeOrmUserRepository
       .orderBy('user.id', 'DESC')
       .skip(offset)
       .take(limit);
+
+    if (sort?.sortBy) {
+      qb.orderBy(
+        USER_SORT_COLUMNS[sort.sortBy],
+        sort.sortOrder ?? 'ASC',
+      ).addOrderBy('user.id', 'DESC');
+    }
 
     applyILikeFilter(qb, 'user.name', 'name', filters?.name);
     applyILikeFilter(qb, 'user.email', 'email', filters?.email);

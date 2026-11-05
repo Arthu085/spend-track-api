@@ -112,6 +112,13 @@ the result without fallbacks. Code reads configuration through the typed `AppCon
 `NODE_ENV=production` the schema also rejects insecure values
 ([`infrastructure.md`](infrastructure.md#configuration)).
 
+## Listing query validation
+
+`SortByField(fields)` and `SortOrderField()` combine optional Swagger parameters with localized
+validation. List query DTOs provide an explicit domain-owned field allowlist; adapters map those
+fields to fixed ORM properties. Sort directions are `ASC` or `DESC`. Individual listing contracts
+and default order are documented in their module documents.
+
 ## Swagger UI
 
 `setupSwagger` serves Swagger UI at `/api/docs` and the spec at `/api/docs-json`, outside production

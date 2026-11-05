@@ -1,4 +1,4 @@
-import { Body, Controller, HttpStatus, Param } from '@nestjs/common';
+import { Body, Controller, HttpStatus, Param, Query } from '@nestjs/common';
 import { Action } from '@shared/domain/enums/action.enum';
 import { Subject } from '@shared/domain/authorization/subject';
 import { endpoint } from '@shared/presentation/builders';
@@ -7,6 +7,7 @@ import { ParseUuidParamPipe } from '@shared/presentation/pipes';
 import { GetRoleUseCase } from '../../application/use-cases/get-role.use-case';
 import { ListRolesUseCase } from '../../application/use-cases/list-roles.use-case';
 import { UpdateRoleAbilitiesUseCase } from '../../application/use-cases/update-role-abilities.use-case';
+import { ListRolesQueryDto } from '../dto/input/list-roles-query.dto';
 import { UpdateRoleAbilitiesDto } from '../dto/input/update-role-abilities.dto';
 import { RoleDetailResponseDto } from '../dto/output/role-detail.response';
 import { RoleListResponseDto } from '../dto/output/role-list.response';
@@ -30,8 +31,12 @@ export class RolesController {
     .build())
   async findAll(
     @Translator() translate: Translate,
+    @Query() query: ListRolesQueryDto,
   ): Promise<RoleListResponseDto[]> {
-    const roles = await this.listRoles.execute();
+    const roles = await this.listRoles.execute({
+      sortBy: query.sortBy,
+      sortOrder: query.sortOrder,
+    });
 
     return roles.map((role) => RoleListResponseDto.fromDomain(role, translate));
   }

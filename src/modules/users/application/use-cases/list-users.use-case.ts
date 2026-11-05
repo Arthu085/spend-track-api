@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { PaginatedResult } from '@shared/application/dto';
 import { normalizeTextFilter } from '@shared/application/filters';
 import { RecordStatus } from '@shared/domain/enums/record-status.enum';
+import type { UserListSort } from '../../domain/repositories/user-list-sort';
 import { UserEntity } from '../../domain/entities/user.entity';
 import {
   USER_REPOSITORY,
@@ -9,7 +10,7 @@ import {
   type UserRepository,
 } from '../../domain/repositories/user.repository';
 
-export interface ListUsersInput {
+export interface ListUsersInput extends UserListSort {
   page: number;
   limit: number;
   name?: string;
@@ -37,6 +38,7 @@ export class ListUsersUseCase {
       (input.page - 1) * input.limit,
       input.limit,
       filters,
+      { sortBy: input.sortBy, sortOrder: input.sortOrder },
     );
 
     return PaginatedResult.of(items, total, input.page, input.limit);

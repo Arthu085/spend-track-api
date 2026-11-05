@@ -919,6 +919,32 @@ describe('Users (e2e)', () => {
     await agent.delete(`/api/users/${wrongName.uuid}`).expect(200);
   });
 
+  it('rejects invalid and repeated sorting parameters with localized validation', async () => {
+    for (const query of [
+      'sortBy=password',
+      'sortOrder=asc',
+      'sortBy=status&sortBy=createdAt',
+      'sortOrder=ASC&sortOrder=DESC',
+    ]) {
+      const response = await agent
+        .get(`/api/users?${query}`)
+        .set('x-lang', 'en')
+        .expect(400);
+
+      const body = response.body as FlattenedValidationErrorBody;
+      const property = query.startsWith('sortBy') ? 'sortBy' : 'sortOrder';
+
+      expect(body.message).toEqual([
+        `The ${property} field has an invalid value`,
+      ]);
+    }
+
+    const response = await agent.get('/api/users?sortBy=password').expect(400);
+    const body = response.body as FlattenedValidationErrorBody;
+
+    expect(body.message).toEqual(['O campo sortBy possui um valor inválido']);
+  });
+
   it('rejects an invalid ?status= value with a translated validation message', async () => {
     const ptResponse = await agent
       .get('/api/users')

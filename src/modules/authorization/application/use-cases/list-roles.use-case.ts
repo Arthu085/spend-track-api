@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import type { RoleListSort } from '../../domain/repositories/role-list-sort';
 import { RoleEntity } from '../../domain/entities/role.entity';
 import {
   ROLE_REPOSITORY,
@@ -12,7 +13,7 @@ export class ListRolesUseCase {
     private readonly roleRepository: RoleRepository,
   ) {}
 
-  execute(): Promise<RoleEntity[]> {
-    return this.roleRepository.findAll();
+  execute(sort?: RoleListSort): Promise<RoleEntity[]> {
+    return this.roleRepository.findAll(sort);
   }
 }

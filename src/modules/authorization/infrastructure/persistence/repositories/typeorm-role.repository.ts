@@ -1,11 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, Repository, type FindOptionsOrder } from 'typeorm';
 import { BaseTransactionalRepository } from '@shared/infrastructure/persistence';
+import type { RoleListSort } from '../../../domain/repositories/role-list-sort';
 import { RoleEntity } from '../../../domain/entities/role.entity';
 import type { RoleRepository } from '../../../domain/repositories/role.repository';
 import { RoleOrmEntity } from '../entities/role.orm-entity';
 import { RoleMapper } from '../mappers/role.mapper';
+
+const ROLE_SORT_COLUMNS = {
+  role: 'name',
+  status: 'status',
+  createdAt: 'createdAt',
+} as const;
 
 const ABILITIES_RELATION = { abilities: true };
 
@@ -21,9 +28,17 @@ export class TypeOrmRoleRepository
     super(repository);
   }
 
-  async findAll(): Promise<RoleEntity[]> {
+  async findAll(sort?: RoleListSort): Promise<RoleEntity[]> {
+    const order: FindOptionsOrder<RoleOrmEntity> | undefined = sort?.sortBy
+      ? {
+          [ROLE_SORT_COLUMNS[sort.sortBy]]: sort.sortOrder ?? 'ASC',
+          id: 'DESC',
+        }
+      : undefined;
+
     const roles = await this.repository.find({
       relations: ABILITIES_RELATION,
+      ...(order ? { order } : {}),
     });
 
     return roles.map((role) => RoleMapper.toDomain(role));

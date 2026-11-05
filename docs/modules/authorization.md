@@ -56,6 +56,15 @@ matched to a catalog entry, removing a pair from existing databases needs a hand
 migration (seeders never delete), and a future route can use one without catalog or seed changes.
 When a route starts or stops requiring a pair, move it between the two lists above.
 
+## Listing order
+
+`GET /roles` accepts optional `sortBy` (`role`, `status`, `createdAt`) and `sortOrder` (`ASC`,
+`DESC`). An explicit field defaults to ascending order; a direction without a field leaves the
+existing database order unchanged. Explicit sorting uses internal id descending to break ties and
+keeps each role's abilities populated. `role` sorts the stored role code and `status` the stored
+status, rather than their translated labels. Invalid or repeated sorting parameters receive a
+localized validation error (`400`).
+
 ## Replacing a role's grants
 
 `PATCH /roles/:uuid/abilities` **replaces** the grant set; it never merges.

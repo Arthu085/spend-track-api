@@ -66,8 +66,12 @@ describe('RolesController', () => {
       {} as UpdateRoleAbilitiesUseCase,
     );
 
-    const result = await controller.findAll(translate);
+    const result = await controller.findAll(translate, {
+      sortBy: 'role',
+      sortOrder: 'DESC',
+    });
 
+    expect(execute).toHaveBeenCalledWith({ sortBy: 'role', sortOrder: 'DESC' });
     expect(result).toHaveLength(1);
     expect(result[0].uuid).toBe('role-uuid');
     expect(result[0].role).toBe(RoleEnum.ADMIN);

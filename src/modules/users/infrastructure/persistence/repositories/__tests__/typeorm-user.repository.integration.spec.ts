@@ -122,6 +122,75 @@ describe('TypeOrmUserRepository (integration)', () => {
     }
   }
 
+  it('sorts filtered users before pagination with stable ties and complete roles', async () => {
+    const admin = await insertRole(RoleEnum.ADMIN);
+    const user = await insertRole(RoleEnum.USER);
+    const roles = [buildRoleEntityStub(admin), buildRoleEntityStub(user)];
+
+    const first = await repository.create(
+      buildNewUser('first@example.com', roles),
+    );
+
+    const second = await repository.create(
+      buildNewUser('second@example.com', roles),
+    );
+
+    const third = await repository.create(
+      buildNewUser('third@example.com', roles),
+    );
+
+    const filters = {
+      name: 'Jane',
+      role: admin.uuid,
+      status: RecordStatus.ACTIVE,
+    };
+
+    const firstPage = await repository.findAllPaginated(0, 2, filters, {
+      sortBy: 'name',
+      sortOrder: 'ASC',
+    });
+
+    const secondPage = await repository.findAllPaginated(2, 2, filters, {
+      sortBy: 'name',
+      sortOrder: 'ASC',
+    });
+
+    expect(firstPage.items.map(({ uuid }) => uuid)).toEqual([
+      third.uuid,
+      second.uuid,
+    ]);
+    expect(secondPage.items.map(({ uuid }) => uuid)).toEqual([first.uuid]);
+    expect(firstPage.total).toBe(3);
+    expect(firstPage.items.every(({ roles }) => roles.length === 2)).toBe(true);
+
+    const ascending = await repository.findAllPaginated(0, 10, filters, {
+      sortBy: 'email',
+    });
+
+    const descending = await repository.findAllPaginated(0, 10, filters, {
+      sortBy: 'email',
+      sortOrder: 'DESC',
+    });
+
+    const defaults = await repository.findAllPaginated(0, 10, filters);
+
+    expect(ascending.items.map(({ uuid }) => uuid)).toEqual([
+      first.uuid,
+      second.uuid,
+      third.uuid,
+    ]);
+    expect(descending.items.map(({ uuid }) => uuid)).toEqual([
+      third.uuid,
+      second.uuid,
+      first.uuid,
+    ]);
+    expect(defaults.items.map(({ uuid }) => uuid)).toEqual([
+      third.uuid,
+      second.uuid,
+      first.uuid,
+    ]);
+  });
+
   it('creates a user, persisting the N:N roles relation (user_roles)', async () => {
     const roleRow = await insertRole(RoleEnum.USER);
 
