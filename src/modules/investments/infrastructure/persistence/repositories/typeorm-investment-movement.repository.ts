@@ -1,12 +1,22 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, type SelectQueryBuilder } from 'typeorm';
-import { TransactionState } from '@modules/transactions';
+import {
+  TransactionState,
+  type RecurrenceOccurrenceFilters,
+} from '@modules/transactions';
 import { parseMoneyTotal } from '@shared/domain/money';
-import { BaseTransactionalRepository } from '@shared/infrastructure/persistence';
+import {
+  BaseTransactionalRepository,
+  applyExactFilter,
+  isUniqueViolation,
+} from '@shared/infrastructure/persistence';
 import { InvestmentMovementEntity } from '../../../domain/entities/investment-movement.entity';
+import { ContributionKind } from '../../../domain/enums/contribution-kind.enum';
 import { InvestmentMovementType } from '../../../domain/enums/investment-movement-type.enum';
+import { AdditionalContributionAlreadyExistsError } from '../../../domain/errors/additional-contribution-already-exists.error';
 import type {
+  ContributionKindTotal,
   InvestmentMovementRepository,
   InvestmentMovementTotal,
   MovementAccountFilter,
@@ -34,6 +44,20 @@ interface TypeStateTotalRow {
   state: TransactionState;
   total: string;
 }
+
+interface KindStateTotalRow {
+  kind: ContributionKind;
+  state: TransactionState;
+  total: string;
+}
+
+interface RecurrenceTotalRow {
+  recurrenceId: number;
+  total: string;
+}
+
+const ADDITIONAL_MONTH_UNIQUE_INDEX =
+  'uq_investment_movements_additional_month';
 
 const TRANSFER_TYPES = [
   InvestmentMovementType.CONTRIBUTION,
@@ -203,6 +227,210 @@ export class TypeOrmInvestmentMovementRepository
     }));
   }
 
+  async sumContributionsByKindAndState(
+    ownerId: number,
+    range: MovementDateRange,
+  ): Promise<ContributionKindTotal[]> {
+    const rows = await this.repository
+      .createQueryBuilder('movement')
+      .select('movement.contributionKind', 'kind')
+      .addSelect('movement.state', 'state')
+      .addSelect('SUM(movement.amount)::text', 'total')
+      .where('movement.userId = :ownerId', { ownerId })
+      .andWhere('movement.date BETWEEN :from AND :to', range)
+      .andWhere('movement.type = :contribution', {
+        contribution: InvestmentMovementType.CONTRIBUTION,
+      })
+      .andWhere('movement.state IN (:...states)', {
+        states: [TransactionState.PLANNED, TransactionState.COMPLETED],
+      })
+      .groupBy('movement.contributionKind')
+      .addGroupBy('movement.state')
+      .getRawMany<KindStateTotalRow>();
+
+    return rows.map((row) => ({
+      kind: row.kind,
+      state: row.state,
+      total: parseMoneyTotal(row.total),
+    }));
+  }
+
+  async findPaginatedMandatoryByRecurrence(
+    ownerId: number,
+    recurrenceId: number,
+    offset: number,
+    limit: number,
+    filters: RecurrenceOccurrenceFilters = {},
+  ): Promise<PaginatedInvestmentMovements> {
+    const qb = this.mandatoryQuery(ownerId, recurrenceId)
+      .orderBy('movement.recurrenceDate', 'ASC')
+      .addOrderBy('movement.id', 'ASC')
+      .skip(offset)
+      .take(limit);
+
+    if (filters.from) {
+      qb.andWhere('movement.recurrenceDate >= :from', { from: filters.from });
+    }
+
+    if (filters.to) {
+      qb.andWhere('movement.recurrenceDate <= :to', { to: filters.to });
+    }
+
+    applyExactFilter(qb, 'movement.state', 'state', filters.state);
+
+    const [rows, total] = await qb.getManyAndCount();
+
+    return {
+      items: rows.map((row) => InvestmentMovementMapper.toDomain(row)),
+      total,
+    };
+  }
+
+  async findMandatoryByUuidForRecurrence(
+    uuid: string,
+    recurrenceId: number,
+  ): Promise<InvestmentMovementEntity | null> {
+    const row = await this.movementQuery()
+      .where('movement.uuid = :uuid', { uuid })
+      .andWhere('movement.recurrenceId = :recurrenceId', { recurrenceId })
+      .andWhere('movement.contributionKind = :mandatory', {
+        mandatory: ContributionKind.MANDATORY,
+      })
+      .andWhere('movement.deletedAt IS NULL')
+      .getOne();
+
+    return row ? InvestmentMovementMapper.toDomain(row) : null;
+  }
+
+  async findPlannedMandatoryByRecurrence(
+    ownerId: number,
+    recurrenceId: number,
+    occurrenceFrom?: string,
+  ): Promise<InvestmentMovementEntity[]> {
+    const qb = this.mandatoryQuery(ownerId, recurrenceId)
+      .andWhere('movement.state = :planned', {
+        planned: TransactionState.PLANNED,
+      })
+      .orderBy('movement.recurrenceDate', 'ASC');
+
+    if (occurrenceFrom) {
+      qb.andWhere('movement.recurrenceDate >= :occurrenceFrom', {
+        occurrenceFrom,
+      });
+    }
+
+    const rows = await qb.getMany();
+
+    return rows.map((row) => InvestmentMovementMapper.toDomain(row));
+  }
+
+  async findMandatoryDatesFrom(
+    ownerId: number,
+    recurrenceId: number,
+    from: string,
+  ): Promise<string[]> {
+    const rows = await this.repository
+      .createQueryBuilder('movement')
+      .select('CAST(movement.recurrenceDate AS text)', 'date')
+      .where('movement.userId = :ownerId', { ownerId })
+      .andWhere('movement.recurrenceId = :recurrenceId', { recurrenceId })
+      .andWhere('movement.contributionKind = :mandatory', {
+        mandatory: ContributionKind.MANDATORY,
+      })
+      .andWhere('movement.recurrenceDate >= :from', { from })
+      .getRawMany<{ date: string }>();
+
+    return rows.map(({ date }) => date);
+  }
+
+  async findPlannedMandatoryThrough(
+    ownerId: number,
+    recurrenceIds: readonly number[],
+    until: string,
+  ): Promise<InvestmentMovementEntity[]> {
+    if (recurrenceIds.length === 0) {
+      return [];
+    }
+
+    const rows = await this.movementQuery()
+      .where('movement.userId = :ownerId', { ownerId })
+      .andWhere('movement.recurrenceId IN (:...recurrenceIds)', {
+        recurrenceIds,
+      })
+      .andWhere('movement.contributionKind = :mandatory', {
+        mandatory: ContributionKind.MANDATORY,
+      })
+      .andWhere('movement.state = :planned', {
+        planned: TransactionState.PLANNED,
+      })
+      .andWhere('movement.date <= :until', { until })
+      .andWhere('movement.deletedAt IS NULL')
+      .orderBy('movement.date', 'ASC')
+      .addOrderBy('movement.id', 'ASC')
+      .getMany();
+
+    return rows.map((row) => InvestmentMovementMapper.toDomain(row));
+  }
+
+  async sumCompletedMandatoryByRecurrence(
+    ownerId: number,
+    recurrenceIds: readonly number[],
+    range: MovementDateRange,
+  ): Promise<Map<number, number>> {
+    if (recurrenceIds.length === 0) {
+      return new Map();
+    }
+
+    const rows = await this.repository
+      .createQueryBuilder('movement')
+      .select('movement.recurrenceId', 'recurrenceId')
+      .addSelect('SUM(movement.amount)::text', 'total')
+      .where('movement.userId = :ownerId', { ownerId })
+      .andWhere('movement.recurrenceId IN (:...recurrenceIds)', {
+        recurrenceIds,
+      })
+      .andWhere('movement.contributionKind = :mandatory', {
+        mandatory: ContributionKind.MANDATORY,
+      })
+      .andWhere('movement.state = :completed', {
+        completed: TransactionState.COMPLETED,
+      })
+      .andWhere('movement.date BETWEEN :from AND :to', range)
+      .groupBy('movement.recurrenceId')
+      .getRawMany<RecurrenceTotalRow>();
+
+    return new Map(
+      rows.map((row) => [Number(row.recurrenceId), parseMoneyTotal(row.total)]),
+    );
+  }
+
+  async findLiveAdditionalByMonth(
+    ownerId: number,
+    recurrenceIds: readonly number[],
+    surplusMonth: string,
+  ): Promise<InvestmentMovementEntity[]> {
+    if (recurrenceIds.length === 0) {
+      return [];
+    }
+
+    const rows = await this.movementQuery()
+      .where('movement.userId = :ownerId', { ownerId })
+      .andWhere('movement.recurrenceId IN (:...recurrenceIds)', {
+        recurrenceIds,
+      })
+      .andWhere('movement.contributionKind = :additional', {
+        additional: ContributionKind.ADDITIONAL,
+      })
+      .andWhere('movement.surplusMonth = :surplusMonth', { surplusMonth })
+      .andWhere('movement.state <> :canceled', {
+        canceled: TransactionState.CANCELED,
+      })
+      .andWhere('movement.deletedAt IS NULL')
+      .getMany();
+
+    return rows.map((row) => InvestmentMovementMapper.toDomain(row));
+  }
+
   async existsForAccount(ownerId: number, accountId: number): Promise<boolean> {
     return this.repository.exists({ where: { userId: ownerId, accountId } });
   }
@@ -248,24 +476,56 @@ export class TypeOrmInvestmentMovementRepository
     return this.saveAndReload(movement);
   }
 
+  async softDelete(movement: InvestmentMovementEntity): Promise<void> {
+    await this.repository.softDelete({ id: movement.id });
+  }
+
   private movementQuery(): SelectQueryBuilder<InvestmentMovementOrmEntity> {
     return this.repository
       .createQueryBuilder('movement')
       .withDeleted()
-      .leftJoinAndSelect('movement.account', 'account');
+      .leftJoinAndSelect('movement.account', 'account')
+      .leftJoinAndSelect('movement.recurrence', 'recurrence');
+  }
+
+  private mandatoryQuery(
+    ownerId: number,
+    recurrenceId: number,
+  ): SelectQueryBuilder<InvestmentMovementOrmEntity> {
+    return this.movementQuery()
+      .where('movement.userId = :ownerId', { ownerId })
+      .andWhere('movement.recurrenceId = :recurrenceId', { recurrenceId })
+      .andWhere('movement.contributionKind = :mandatory', {
+        mandatory: ContributionKind.MANDATORY,
+      })
+      .andWhere('movement.deletedAt IS NULL');
   }
 
   private async saveAndReload(
     movement: InvestmentMovementEntity,
   ): Promise<InvestmentMovementEntity> {
-    const saved = await this.repository.save(
-      InvestmentMovementMapper.toOrm(movement),
-    );
+    const saved = await this.save(movement);
 
     return InvestmentMovementMapper.toDomain(
       await this.movementQuery()
         .where('movement.id = :id', { id: saved.id })
         .getOneOrFail(),
     );
+  }
+
+  private async save(
+    movement: InvestmentMovementEntity,
+  ): Promise<InvestmentMovementOrmEntity> {
+    try {
+      return await this.repository.save(
+        InvestmentMovementMapper.toOrm(movement),
+      );
+    } catch (error) {
+      if (isUniqueViolation(error, ADDITIONAL_MONTH_UNIQUE_INDEX)) {
+        throw new AdditionalContributionAlreadyExistsError();
+      }
+
+      throw error;
+    }
   }
 }

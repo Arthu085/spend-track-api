@@ -15,6 +15,7 @@ import {
   INVESTMENT_REPOSITORY,
   type InvestmentRepository,
 } from '../../domain/repositories/investment.repository';
+import { InvestmentLifecycle } from '../services/investment-lifecycle';
 import { findOwnedInvestment } from '../services/investment-references';
 import {
   InvestmentValues,
@@ -38,6 +39,7 @@ export class UpdateInvestmentStatusUseCase {
     private readonly values: InvestmentValues,
     @Inject(INVESTMENT_MOVEMENT_REPOSITORY)
     private readonly movementRepository: InvestmentMovementRepository,
+    private readonly lifecycle: InvestmentLifecycle,
   ) {}
 
   async execute(
@@ -57,6 +59,11 @@ export class UpdateInvestmentStatusUseCase {
         input.status === RecordStatus.INACTIVE
       ) {
         await this.settlePendingOperations(investment, input.pendingOperations);
+        await this.lifecycle.archive(
+          input.ownerId,
+          investment.id,
+          input.pendingOperations,
+        );
       }
 
       return this.investmentRepository.update(

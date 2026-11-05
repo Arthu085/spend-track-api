@@ -20,6 +20,7 @@ import {
 } from '@modules/credit-cards/domain/entities/credit-card-refund.entity';
 import type { InvoiceStatement } from '@modules/credit-cards/domain/billing/invoice-statement';
 import { CreditCardInvoiceStatus } from '@modules/credit-cards/domain/enums/credit-card-invoice-status.enum';
+import { CreditCardPaymentSource } from '@modules/credit-cards/domain/enums/credit-card-payment-source.enum';
 import { RecordStatus } from '@shared/domain/enums/record-status.enum';
 import { buildAccount } from './account.builder';
 import { buildTransactionCategory } from './transaction-category.builder';
@@ -118,6 +119,7 @@ export function buildCreditCardPayment(
     account: buildAccount(),
     amount: 10000,
     paidOn: '2026-11-10',
+    source: CreditCardPaymentSource.ACCOUNT,
     canceledAt: null,
     createdAt: CREATED_AT,
     updatedAt: CREATED_AT,

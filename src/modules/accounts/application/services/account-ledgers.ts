@@ -55,4 +55,21 @@ export class AccountLedgers implements AccountLedgerRegistry {
 
     return earliest;
   }
+
+  async latestHistoricalEntryDate(
+    ownerId: number,
+    accountId: number,
+  ): Promise<string | null> {
+    let latest: string | null = null;
+
+    for (const ledger of this.ledgers) {
+      const date = await ledger.latestHistoricalEntryDate(ownerId, accountId);
+
+      if (date !== null && (latest === null || date > latest)) {
+        latest = date;
+      }
+    }
+
+    return latest;
+  }
 }

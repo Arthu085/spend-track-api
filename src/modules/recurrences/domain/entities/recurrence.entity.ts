@@ -1,18 +1,26 @@
 import type { AccountEntity } from '@modules/accounts';
 import type { CreditCardEntity } from '@modules/credit-cards';
+import type { InvestmentEntity } from '@modules/investments';
 import type { TransactionCategoryEntity } from '@modules/transaction-categories';
 import { OccurrenceAfterRecurrenceEndError } from '@modules/transactions';
-import { addDaysToDate } from '@shared/domain/calendar';
+import {
+  addDaysToDate,
+  compareMonths,
+  monthOf,
+  type MonthRef,
+} from '@shared/domain/calendar';
 import { BaseEntity } from '@shared/domain/entities/base.entity';
 import { RecordStatus } from '@shared/domain/enums/record-status.enum';
 import { RecurrenceFrequency } from '../enums/recurrence-frequency.enum';
 import { RecurrenceState } from '../enums/recurrence-state.enum';
 import { RecurrenceType } from '../enums/recurrence-type.enum';
 import { InvalidRecurrenceTargetError } from '../errors/invalid-recurrence-target.error';
+import { InvalidSavingStrategyError } from '../errors/invalid-saving-strategy.error';
 import { RecurrenceCategoryKindMismatchError } from '../errors/recurrence-category-kind-mismatch.error';
 import { RecurrenceEndBeforeStartError } from '../errors/recurrence-end-before-start.error';
 import { RecurrenceEndedError } from '../errors/recurrence-ended.error';
 import { RecurrenceStateTransitionError } from '../errors/recurrence-state-transition.error';
+import type { SavingStrategy } from '../saving-plan/saving-plan';
 import {
   firstScheduleDateFrom,
   scheduleDates,
@@ -21,9 +29,10 @@ import {
 export interface RecurrenceDetails {
   description: string;
   amount: number;
-  category: TransactionCategoryEntity;
+  category: TransactionCategoryEntity | null;
   account: AccountEntity | null;
   notes: string | null;
+  savingStrategy: SavingStrategy | null;
 }
 
 export interface CreateRecurrenceInput extends RecurrenceDetails {
@@ -34,6 +43,7 @@ export interface CreateRecurrenceInput extends RecurrenceDetails {
   startDate: string;
   endDate: string | null;
   creditCard: CreditCardEntity | null;
+  investment: InvestmentEntity | null;
 }
 
 export interface ReconstituteRecurrenceInput extends CreateRecurrenceInput {
@@ -64,9 +74,11 @@ export class RecurrenceEntity extends BaseEntity {
     readonly state: RecurrenceState,
     readonly account: AccountEntity | null,
     readonly creditCard: CreditCardEntity | null,
-    readonly category: TransactionCategoryEntity,
+    readonly category: TransactionCategoryEntity | null,
     readonly notes: string | null,
     readonly generatedThrough: string | null,
+    readonly investment: InvestmentEntity | null,
+    readonly savingStrategy: SavingStrategy | null,
   ) {
     super(id, uuid, status, createdAt, updatedAt, deletedAt);
   }
@@ -74,6 +86,11 @@ export class RecurrenceEntity extends BaseEntity {
   static create(input: CreateRecurrenceInput): RecurrenceEntity {
     RecurrenceEntity.assertTarget(input);
     RecurrenceEntity.assertCategory(input.type, input.category);
+    RecurrenceEntity.assertSavingStrategy(
+      input.type,
+      input.frequency,
+      input.savingStrategy,
+    );
 
     if (input.endDate !== null && input.endDate < input.startDate) {
       throw new RecurrenceEndBeforeStartError();
@@ -114,11 +131,16 @@ export class RecurrenceEntity extends BaseEntity {
       input.category,
       input.notes,
       input.generatedThrough,
+      input.investment,
+      input.savingStrategy,
     );
   }
 
   private static assertTarget(
-    input: Pick<CreateRecurrenceInput, 'type' | 'account' | 'creditCard'>,
+    input: Pick<
+      CreateRecurrenceInput,
+      'type' | 'account' | 'creditCard' | 'investment'
+    >,
   ): void {
     if ((input.account === null) === (input.creditCard === null)) {
       throw new InvalidRecurrenceTargetError();
@@ -127,19 +149,64 @@ export class RecurrenceEntity extends BaseEntity {
     if (input.creditCard !== null && input.type !== RecurrenceType.EXPENSE) {
       throw new InvalidRecurrenceTargetError();
     }
+
+    const contributes = input.type === RecurrenceType.INVESTMENT_CONTRIBUTION;
+
+    if (
+      contributes !== (input.investment !== null) ||
+      (contributes && input.account === null)
+    ) {
+      throw new InvalidRecurrenceTargetError();
+    }
   }
 
   private static assertCategory(
     type: RecurrenceType,
-    category: TransactionCategoryEntity,
+    category: TransactionCategoryEntity | null,
   ): void {
-    if (String(category.kind) !== String(type)) {
+    const expected = type === RecurrenceType.INVESTMENT_CONTRIBUTION;
+
+    if (expected !== (category === null)) {
       throw new RecurrenceCategoryKindMismatchError();
+    }
+
+    if (category !== null && String(category.kind) !== String(type)) {
+      throw new RecurrenceCategoryKindMismatchError();
+    }
+  }
+
+  private static assertSavingStrategy(
+    type: RecurrenceType,
+    frequency: RecurrenceFrequency,
+    strategy: SavingStrategy | null,
+  ): void {
+    if (strategy === null) {
+      return;
+    }
+
+    if (
+      type !== RecurrenceType.INVESTMENT_CONTRIBUTION ||
+      frequency !== RecurrenceFrequency.MONTHLY ||
+      strategy.minimumRetainedBalance < 0
+    ) {
+      throw new InvalidSavingStrategyError();
     }
   }
 
   get isCardRecurrence(): boolean {
     return this.creditCard !== null;
+  }
+
+  get isInvestmentContribution(): boolean {
+    return this.type === RecurrenceType.INVESTMENT_CONTRIBUTION;
+  }
+
+  categoryOrFail(): TransactionCategoryEntity {
+    if (!this.category) {
+      throw new Error('Investment contribution recurrences have no category');
+    }
+
+    return this.category;
   }
 
   stateOn(today: string): RecurrenceState {
@@ -148,6 +215,14 @@ export class RecurrenceEntity extends BaseEntity {
     }
 
     return this.state;
+  }
+
+  isScheduledInMonth(month: MonthRef): boolean {
+    return (
+      compareMonths(month, monthOf(this.startDate)) >= 0 &&
+      (this.endDate === null ||
+        compareMonths(month, monthOf(this.endDate)) <= 0)
+    );
   }
 
   nextOccurrenceDate(today: string): string | null {
@@ -201,8 +276,14 @@ export class RecurrenceEntity extends BaseEntity {
       type: this.type,
       account: details.account,
       creditCard: this.creditCard,
+      investment: this.investment,
     });
     RecurrenceEntity.assertCategory(this.type, details.category);
+    RecurrenceEntity.assertSavingStrategy(
+      this.type,
+      this.frequency,
+      details.savingStrategy,
+    );
 
     return this.copyWith(details);
   }
@@ -287,8 +368,10 @@ export class RecurrenceEntity extends BaseEntity {
       state: this.state,
       account: this.account,
       creditCard: this.creditCard,
+      investment: this.investment,
       category: this.category,
       notes: this.notes,
+      savingStrategy: this.savingStrategy,
       generatedThrough: this.generatedThrough,
       createdAt: this.createdAt,
       updatedAt: new Date(),

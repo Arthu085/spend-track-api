@@ -15,12 +15,18 @@
     "refund_not_deletable": "Este estorno está em uma fatura fechada e não pode ser excluído",
     "payment_not_found": "Pagamento não encontrado",
     "payment_exceeds_outstanding": "O pagamento ultrapassa o valor em aberto da fatura",
-    "payment_already_canceled": "Este pagamento já foi cancelado"
+    "payment_already_canceled": "Este pagamento já foi cancelado",
+    "historical_settlement_not_before_opening": "Uma quitação histórica deve ter data anterior à data do saldo inicial da conta e não pode estar no futuro. Para uma data posterior, registre um pagamento normal da fatura",
+    "historical_settlement_duplicate": "Esta quitação histórica já está registrada nesta fatura"
   },
   "invoice_status": {
     "open": "Aberta",
     "closed": "Fechada",
     "overdue": "Vencida",
     "paid": "Paga"
+  },
+  "payment_source": {
+    "account": "Pago pela conta",
+    "historical_settlement": "Quitação histórica"
   }
 }

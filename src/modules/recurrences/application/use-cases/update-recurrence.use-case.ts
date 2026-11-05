@@ -8,6 +8,7 @@ import {
 import { financeToday } from '@shared/domain/calendar';
 import { RecurrenceEntity } from '../../domain/entities/recurrence.entity';
 import { RecurrenceUpdateScope } from '../../domain/enums/recurrence-update-scope.enum';
+import type { SavingStrategy } from '../../domain/saving-plan/saving-plan';
 import {
   RECURRENCE_REPOSITORY,
   type RecurrenceRepository,
@@ -25,6 +26,7 @@ export interface UpdateRecurrenceInput {
   categoryUuid?: string;
   accountUuid?: string;
   notes?: string | null;
+  savingStrategy?: SavingStrategy | null;
 }
 
 @Injectable()
@@ -65,19 +67,30 @@ export class UpdateRecurrenceUseCase {
           input.ownerId,
         ),
         notes: input.notes === undefined ? recurrence.notes : input.notes,
+        savingStrategy:
+          input.savingStrategy === undefined
+            ? recurrence.savingStrategy
+            : input.savingStrategy,
       };
 
       const updated = await this.recurrenceRepository.update(
         recurrence.withDetails(details),
       );
 
-      await this.occurrences.updatePlanned(
-        updated,
+      const occurrenceFrom =
         input.scope === RecurrenceUpdateScope.FUTURE
           ? (input.from ?? today)
-          : undefined,
-        details,
-      );
+          : undefined;
+
+      if (updated.isInvestmentContribution) {
+        await this.occurrences.updatePlannedMovements(updated, occurrenceFrom, {
+          amount: input.amount,
+          account:
+            input.accountUuid === undefined ? undefined : details.account,
+        });
+      } else {
+        await this.occurrences.updatePlanned(updated, occurrenceFrom, details);
+      }
 
       return updated;
     });
@@ -97,10 +110,10 @@ export class UpdateRecurrenceUseCase {
 
   private async changedCategory(
     uuid: string | undefined,
-    current: TransactionCategoryEntity,
+    current: TransactionCategoryEntity | null,
     ownerId: number,
-  ): Promise<TransactionCategoryEntity> {
-    if (uuid === undefined || uuid === current.uuid) {
+  ): Promise<TransactionCategoryEntity | null> {
+    if (uuid === undefined || uuid === current?.uuid) {
       return current;
     }
 

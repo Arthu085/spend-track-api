@@ -15,12 +15,18 @@
     "refund_not_deletable": "This refund is on a closed invoice and cannot be deleted",
     "payment_not_found": "Payment not found",
     "payment_exceeds_outstanding": "The payment exceeds the outstanding amount of the invoice",
-    "payment_already_canceled": "This payment is already canceled"
+    "payment_already_canceled": "This payment is already canceled",
+    "historical_settlement_not_before_opening": "A historical settlement must be dated before the opening balance date of the account and not in the future. For a later date, record a normal invoice payment",
+    "historical_settlement_duplicate": "This historical settlement is already recorded for this invoice"
   },
   "invoice_status": {
     "open": "Open",
     "closed": "Closed",
     "overdue": "Overdue",
     "paid": "Paid"
+  },
+  "payment_source": {
+    "account": "Paid from account",
+    "historical_settlement": "Historical settlement"
   }
 }

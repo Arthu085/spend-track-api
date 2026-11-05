@@ -45,4 +45,8 @@ export class InvestmentMovementLedger implements AccountLedger, OnModuleInit {
       accountId,
     );
   }
+
+  latestHistoricalEntryDate(): Promise<string | null> {
+    return Promise.resolve(null);
+  }
 }

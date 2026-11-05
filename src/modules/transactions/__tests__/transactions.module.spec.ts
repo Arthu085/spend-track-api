@@ -15,6 +15,16 @@ describe('TransactionsModule routes', () => {
         isPublic,
       ]),
     ).toEqual([
+      [
+        'TransactionConfirmationsController',
+        'GET /transactions/pending-confirmations',
+        false,
+      ],
+      [
+        'TransactionConfirmationsController',
+        'POST /transactions/bulk-confirmation',
+        false,
+      ],
       ['TransactionsController', 'GET /transactions', false],
       ['TransactionsController', 'GET /transactions/:uuid', false],
       ['TransactionsController', 'POST /transactions', false],

@@ -7,7 +7,9 @@ import type {
   InvoiceStatement,
 } from '@modules/credit-cards';
 import {
+  ContributionKind,
   InvestmentMovementType,
+  type ContributionKindTotal,
   type InvestmentMovementRepository,
   type InvestmentMovementTotal,
   type InvestmentRepository,
@@ -23,6 +25,8 @@ import type {
   PlannedCardChargesDue,
   PlannedCardChargeTotal,
   RecurrenceCardChargeRepository,
+  SavingPlan,
+  SavingPlans,
 } from '@modules/recurrences';
 import { TransactionCategoryKind } from '@modules/transaction-categories';
 import {
@@ -74,6 +78,8 @@ describe('GetDashboardUseCase', () => {
       items?: InvestmentWithValue[];
       totals?: InvestmentMovementTotal[];
       plannedAccountChanges?: Map<number, number>;
+      kindTotals?: ContributionKindTotal[];
+      savingPlans?: SavingPlan[];
     } = {},
   ) {
     const findAllByOwner = jest.fn().mockResolvedValue(accounts);
@@ -95,6 +101,8 @@ describe('GetDashboardUseCase', () => {
       .mockResolvedValue(cards.plannedDue ?? { items: [], count: 0, total: 0 });
 
     const findBudgetByMonth = jest.fn().mockResolvedValue(budget);
+
+    const forMonth = jest.fn().mockResolvedValue(investments.savingPlans ?? []);
 
     const useCase = new GetDashboardUseCase(
       mockOf<AccountRepository>({ findAllByOwner }),
@@ -128,14 +136,19 @@ describe('GetDashboardUseCase', () => {
         sumByTypeAndState: jest
           .fn()
           .mockResolvedValue(investments.totals ?? []),
+        sumContributionsByKindAndState: jest
+          .fn()
+          .mockResolvedValue(investments.kindTotals ?? []),
       }),
       mockOf<InvestmentValues>({
         withValues: jest.fn().mockResolvedValue(investments.items ?? []),
       }),
+      mockOf<SavingPlans>({ forMonth }),
     );
 
     return {
       useCase,
+      forMonth,
       findBudgetByMonth,
       findPlannedDueThrough,
       findAllByOwner,
@@ -557,6 +570,69 @@ describe('GetDashboardUseCase', () => {
       ],
     });
     expect(summary.balances.available).toBe(149990 - 12000);
+  });
+
+  it('breaks contributions down by kind and hands the card obligations to the saving plans', async () => {
+    const savingPlans = [
+      { suggestedAdditional: 30000 },
+      { suggestedAdditional: 5000 },
+    ] as SavingPlan[];
+
+    const { useCase, forMonth } = build(
+      null,
+      undefined,
+      {},
+      new Map(),
+      {
+        plannedDue: { items: [], count: 0, total: 2500 },
+        statements: [
+          buildInvoiceStatement({
+            outstanding: 10000,
+            invoice: buildCreditCardInvoice({ referenceMonth: '2026-10-01' }),
+          }),
+        ],
+      },
+      null,
+      {
+        kindTotals: [
+          {
+            kind: ContributionKind.MANDATORY,
+            state: TransactionState.PLANNED,
+            total: 70000,
+          },
+          {
+            kind: ContributionKind.ADDITIONAL,
+            state: TransactionState.COMPLETED,
+            total: 60000,
+          },
+          {
+            kind: ContributionKind.ONE_TIME,
+            state: TransactionState.COMPLETED,
+            total: 1000,
+          },
+        ],
+        savingPlans,
+      },
+    );
+
+    const { investments } = await useCase.execute({ ownerId: 8 });
+
+    expect(investments.contributionBreakdown).toEqual({
+      mandatoryPlanned: 70000,
+      mandatoryCompleted: 0,
+      additionalPlanned: 0,
+      additionalCompleted: 60000,
+      oneTimePlanned: 0,
+      oneTimeCompleted: 1000,
+    });
+    expect(investments.savingPlans).toBe(savingPlans);
+    expect(investments).not.toHaveProperty('suggestedAdditionalTotal');
+    expect(forMonth).toHaveBeenCalledWith(
+      8,
+      expect.objectContaining({ year: 2026, month: 10 }),
+      '2026-10-29',
+      12500,
+    );
   });
 
   it('projects planned contributions and totals investments without counting them as income or spending', async () => {

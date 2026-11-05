@@ -181,7 +181,7 @@ export class InvestmentsController {
     .tags('investments')
     .summary('Archive or reactivate one of your investments')
     .description(
-      `Archiving (INACTIVE) keeps the investment with its movements and value but blocks new movements and valuations; existing planned movements can still be confirmed or canceled. An investment with planned movements also needs pendingOperations: KEEP leaves them planned and confirmable, CANCEL cancels them. ${OWNERSHIP_NOTE}`,
+      `Archiving (INACTIVE) keeps the investment with its movements and value but blocks new movements and valuations; existing planned movements can still be confirmed or canceled. An investment with planned movements also needs pendingOperations: KEEP leaves them planned and confirmable, CANCEL cancels them and ends all non-ended contribution recurrences. KEEP (or archiving without pending movements) pauses active contribution recurrences without removing occurrences. Reactivating the investment never resumes a recurrence; explicitly resume a paused recurrence after reactivation. ${OWNERSHIP_NOTE}`,
     )
     .errorResponse(HttpStatus.NOT_FOUND, 'Investment not found.')
     .errorResponse(
@@ -219,7 +219,7 @@ export class InvestmentsController {
     .errorResponse(HttpStatus.NOT_FOUND, 'Investment not found.')
     .errorResponse(
       HttpStatus.CONFLICT,
-      'Investment has movements; archive it instead.',
+      'Investment has movements; archive it instead. Active or paused contribution recurrences must be ended before deletion.',
     )
     .build())
   async remove(

@@ -2,11 +2,19 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, type SelectQueryBuilder } from 'typeorm';
 import { parseMoneyTotal } from '@shared/domain/money';
-import { BaseTransactionalRepository } from '@shared/infrastructure/persistence';
+import {
+  BaseTransactionalRepository,
+  isUniqueViolation,
+} from '@shared/infrastructure/persistence';
 import { CreditCardPaymentEntity } from '../../../domain/entities/credit-card-payment.entity';
+import { CreditCardPaymentSource } from '../../../domain/enums/credit-card-payment-source.enum';
+import { CreditCardHistoricalSettlementDuplicateError } from '../../../domain/errors/credit-card-historical-settlement-duplicate.error';
 import type { CreditCardPaymentRepository } from '../../../domain/repositories/credit-card-payment.repository';
 import { CreditCardPaymentOrmEntity } from '../entities/credit-card-payment.orm-entity';
 import { CreditCardPaymentMapper } from '../mappers/credit-card-payment.mapper';
+
+const HISTORICAL_SETTLEMENT_UNIQUE_INDEX =
+  'uq_credit_card_payments_historical_settlement';
 
 interface AccountTotalRow {
   accountId: number;
@@ -53,6 +61,9 @@ export class TypeOrmCreditCardPaymentRepository
       .where('payment.userId = :ownerId', { ownerId })
       .andWhere('payment.accountId IN (:...accountIds)', { accountIds })
       .andWhere('payment.canceledAt IS NULL')
+      .andWhere('payment.source = :source', {
+        source: CreditCardPaymentSource.ACCOUNT,
+      })
       .groupBy('payment.accountId')
       .getRawMany<AccountTotalRow>();
 
@@ -75,9 +86,30 @@ export class TypeOrmCreditCardPaymentRepository
       .where('payment.userId = :ownerId', { ownerId })
       .andWhere('payment.accountId = :accountId', { accountId })
       .andWhere('payment.canceledAt IS NULL')
+      .andWhere('payment.source = :source', {
+        source: CreditCardPaymentSource.ACCOUNT,
+      })
       .getRawOne<{ earliest: string | null }>();
 
     return row?.earliest ?? null;
+  }
+
+  async findLatestHistoricalDateForAccount(
+    ownerId: number,
+    accountId: number,
+  ): Promise<string | null> {
+    const row = await this.repository
+      .createQueryBuilder('payment')
+      .select('MAX(payment.paidOn)::text', 'latest')
+      .where('payment.userId = :ownerId', { ownerId })
+      .andWhere('payment.accountId = :accountId', { accountId })
+      .andWhere('payment.canceledAt IS NULL')
+      .andWhere('payment.source = :source', {
+        source: CreditCardPaymentSource.HISTORICAL_SETTLEMENT,
+      })
+      .getRawOne<{ latest: string | null }>();
+
+    return row?.latest ?? null;
   }
 
   async create(
@@ -104,14 +136,26 @@ export class TypeOrmCreditCardPaymentRepository
   private async saveAndReload(
     payment: CreditCardPaymentEntity,
   ): Promise<CreditCardPaymentEntity> {
-    const saved = await this.repository.save(
-      CreditCardPaymentMapper.toOrm(payment),
-    );
+    const saved = await this.saveWithDuplicateMapping(payment);
 
     return CreditCardPaymentMapper.toDomain(
       await this.paymentQuery()
         .where('payment.id = :id', { id: saved.id })
         .getOneOrFail(),
     );
+  }
+
+  private async saveWithDuplicateMapping(
+    payment: CreditCardPaymentEntity,
+  ): Promise<CreditCardPaymentOrmEntity> {
+    try {
+      return await this.repository.save(CreditCardPaymentMapper.toOrm(payment));
+    } catch (error) {
+      if (isUniqueViolation(error, HISTORICAL_SETTLEMENT_UNIQUE_INDEX)) {
+        throw new CreditCardHistoricalSettlementDuplicateError();
+      }
+
+      throw error;
+    }
   }
 }

@@ -10,15 +10,22 @@ in Swagger; this document covers the rules behind them.
 
 ## Public API
 
-- `index.ts`: `InvestmentEntity`, `InvestmentType`, `InvestmentMovementType`,
-  `INVESTMENT_REPOSITORY`/`InvestmentRepository`,
-  `INVESTMENT_MOVEMENT_REPOSITORY`/`InvestmentMovementRepository` with `InvestmentMovementTotal`,
-  `InvestmentValues` with `InvestmentWithValue` and `InvestmentValue`, and `targetProgress`,
-  consumed by `dashboard`.
-- `presentation.ts`: `investmentTypeLabel` and `InvestmentProgressResponseDto`, used by the
-  dashboard response.
+- `index.ts`: `InvestmentEntity`, `InvestmentMovementEntity`, `InvestmentType`,
+  `InvestmentMovementType`, `ContributionKind`, `INVESTMENT_REPOSITORY`/`InvestmentRepository`,
+  `INVESTMENT_MOVEMENT_REPOSITORY`/`InvestmentMovementRepository` with `InvestmentMovementTotal` and
+  `ContributionKindTotal`, `InvestmentValues` with `InvestmentWithValue` and `InvestmentValue`,
+  `targetProgress`, `findActiveInvestment`, `InactiveInvestmentError`, and
+  `AdditionalContributionAlreadyExistsError`, consumed by `dashboard` and `recurrences`.
+  `InvestmentLifecycle` accepts participants from dependent modules for archival and deletion guards;
+  `InvestmentHasRecurrencesError` identifies a blocked deletion.
+- `presentation.ts`: `investmentTypeLabel`, `InvestmentProgressResponseDto`,
+  `InvestmentMovementResponseDto`, and `NON_NEGATIVE_MONEY_PATTERN`, used by the dashboard and
+  recurrence responses and inputs.
+- `persistence.ts`: `InvestmentMapper`, used by the recurrence mapper.
 - `investments.module.ts`: `InvestmentsModule`. It imports `AccountsModule`, which does not import
-  it back. Movement states reuse `TransactionState` from `transactions`.
+  it back. `RecurrencesModule` imports it, never the reverse; only the movement ORM entity references
+  the recurrence ORM entity, as transactions do. Movement states reuse `TransactionState` from
+  `transactions`.
 
 ## Ownership
 
@@ -42,8 +49,10 @@ investment, so a foreign record is a `404` (`InvestmentNotFoundError`,
   keeps its movements and value and rejects `GET /investments/:uuid`, `PATCH`, new movements, and
   valuations (`InactiveInvestmentError`, `409`), but its movements stay listable, confirmable, and
   cancelable. `GET /investments` defaults to `ACTIVE` and orders by name.
-- `DELETE` soft-deletes an investment only while it has no movement, in any state; otherwise
-  `InvestmentHasHistoryError` (`409`) and the user archives it instead.
+- `DELETE` first rejects an investment referenced by any active or paused contribution recurrence
+  (`InvestmentHasRecurrencesError`, `409`), even without movements; end the recurrence first. It then
+  soft-deletes only while there are no movements, in any state; otherwise `InvestmentHasHistoryError`
+  (`409`) asks the user to archive it instead. Ended recurrences and all historical records stay intact.
 
 ## Archiving with planned movements
 
@@ -59,7 +68,33 @@ recorded history, and archiving never changes them.
   which changes the account balance and the value as usual and still needs an active account, or
   canceled.
 - `CANCEL` moves them to `CANCELED` with `canceledAt` in the same transaction, so they stay listed as
-  history and stop counting.
+  history and stop counting. It also ends every non-ended contribution recurrence of the investment;
+  these cannot resume and canceled dates never regenerate.
+- `KEEP`, or archiving with no planned movements, pauses active contribution recurrences without
+  removing their planned rows. Reactivating the investment leaves them paused; explicitly resume
+  after the account and investment are active. Existing paused recurrences stay paused on `KEEP`,
+  while `CANCEL` ends them. Completed, canceled, and ended history never changes. See
+  [`recurrences.md`](recurrences.md#investment-contributions) for cursor and resume rules.
+
+## Contribution kinds
+
+Every movement has a `contributionKind`:
+
+- `ONE_TIME` is the default: manual contributions and every withdrawal and valuation.
+- `MANDATORY` is an occurrence of a recurring contribution, with `recurrence_id` and
+  `recurrence_date`. A partial unique index on them covers live rows, canceled ones included, so a
+  canceled date is never generated again.
+- `ADDITIONAL` is a surplus contribution the user accepted, with `recurrence_id`, `surplus_month` (the
+  first day of its month), and an immutable snapshot of `suggested_amount` and `retained_minimum`. A
+  partial unique index on `(recurrence_id, surplus_month)` covers live, non-canceled rows, so canceling
+  it frees the month.
+
+Check constraints keep these fields consistent with the kind, and a kind other than `ONE_TIME` is
+always a `CONTRIBUTION`. The response exposes `contributionKind`, `contributionKindLabel`,
+`recurrence` (`uuid` and `occurrenceDate`), `surplusMonth`, `suggestedAmount`, and `retainedMinimum`.
+They follow the same movement rules below, and recurring ones are created, edited, and removed by
+[`recurrences.md`](recurrences.md#investment-contributions). `MANDATORY` rows the recurrence removes
+are soft-deleted and stop counting everywhere.
 
 ## Movements
 
@@ -75,8 +110,9 @@ recorded history, and archiving never changes them.
   the account balance and the value, `CANCELED` affects nothing and stays listed as history with
   `canceledAt`. Transitions go through `PUT /investments/:uuid/movements/:movementUuid/state`:
   `PLANNED → COMPLETED`, `PLANNED → CANCELED`, `COMPLETED → CANCELED`; anything else is
-  `InvestmentMovementStateTransitionError` (`409`). There is no edit or delete: correct a movement
-  by canceling it and recording a new one.
+  `InvestmentMovementStateTransitionError` (`409`). These routes have no edit or delete: correct a
+  movement by canceling it and recording a new one. Only a planned `MANDATORY` movement can be edited
+  or removed, through its recurrence.
 - A movement created as `COMPLETED` defaults `completedOn` to its `date`; confirming later defaults
   it to today in `America/Sao_Paulo` and needs an active account.
 - `date` and `completedOn` cannot be before the account's opening date

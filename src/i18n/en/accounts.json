@@ -4,7 +4,9 @@
     "inactive": "Account is inactive",
     "has_history": "This account has transactions and cannot be deleted; deactivate it instead",
     "operation_before_opening": "This date is before the account's opening balance date. Choose a later date or move the opening balance date earlier",
-    "opening_after_operations": "The opening balance date cannot be after the earliest operation on this account"
+    "opening_after_operations": "The opening balance date cannot be after the earliest operation on this account",
+    "opening_not_after_historical_entries": "The opening balance date must stay after the historical invoice settlements of this account. Cancel them first",
+    "has_recurrences": "This account has active or paused recurrences. End them before deleting it."
   },
   "type": {
     "checking": "Checking account",

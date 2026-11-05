@@ -26,23 +26,23 @@ included ([financial data ownership](conventions.md#financial-data-ownership)).
 
 ## Modules
 
-| Module                                                        | Responsibility                                                                                                                        | HTTP routes |
-| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| [`auth`](modules/auth.md)                                     | Login, refresh, logout, password recovery, CSRF token issuance; binds the global CSRF, JWT, and ability guards                        | Yes         |
-| [`users`](modules/users.md)                                   | User management, role assignment, admin protection and change approvals, self-service profile and password change, email confirmation | Yes         |
-| [`authorization`](modules/authorization.md)                   | Fixed Role/Ability catalog, role grant management, and the `AbilitiesGuard`                                                           | Yes         |
-| [`audit`](modules/audit.md)                                   | Append-only trail of HTTP requests on opted-in routes                                                                                 | No          |
-| [`email-quota`](modules/email-quota.md)                       | Per-recipient, per-type, per-UTC-day send cap; fails closed                                                                           | No          |
-| [`email-outbox`](modules/email-outbox.md)                     | Durable PostgreSQL outbox and in-process worker that delivers transactional emails with retries                                       | No          |
-| [`preferences`](modules/preferences.md)                       | Per-user financial preferences: spending perspective and dashboard default month                                                      | Yes         |
-| [`accounts`](modules/accounts.md)                             | Per-user financial accounts with opening balances, active/inactive status, and one default account                                    | Yes         |
-| [`transaction-categories`](modules/transaction-categories.md) | Read-only global transaction category catalog plus per-user personal ones                                                             | Yes         |
-| [`transactions`](modules/transactions.md)                     | Per-user planned and completed income, expenses, and transfers between own accounts; feeds account balances                           | Yes         |
-| [`credit-cards`](modules/credit-cards.md)                     | Per-user credit cards, invoice cycles, installment purchases, refunds, and invoice payments from accounts                             | Yes         |
-| [`recurrences`](modules/recurrences.md)                       | Per-user recurring income, expenses, and card charges, projected as planned occurrences and confirmed one by one                      | Yes         |
-| [`budgets`](modules/budgets.md)                               | Per-user monthly budgets: an overall spending limit and optional category limits per month                                            | Yes         |
-| [`investments`](modules/investments.md)                       | Per-user investments, reserves, and goals with contributions and withdrawals from accounts and manual valuations                      | Yes         |
-| [`dashboard`](modules/dashboard.md)                           | Monthly financial summary computed from the caller's own records                                                                      | Yes         |
+| Module                                                        | Responsibility                                                                                                                                                   | HTTP routes |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| [`auth`](modules/auth.md)                                     | Login, refresh, logout, password recovery, CSRF token issuance; binds the global CSRF, JWT, and ability guards                                                   | Yes         |
+| [`users`](modules/users.md)                                   | User management, role assignment, admin protection and change approvals, self-service profile and password change, email confirmation                            | Yes         |
+| [`authorization`](modules/authorization.md)                   | Fixed Role/Ability catalog, role grant management, and the `AbilitiesGuard`                                                                                      | Yes         |
+| [`audit`](modules/audit.md)                                   | Append-only trail of HTTP requests on opted-in routes                                                                                                            | No          |
+| [`email-quota`](modules/email-quota.md)                       | Per-recipient, per-type, per-UTC-day send cap; fails closed                                                                                                      | No          |
+| [`email-outbox`](modules/email-outbox.md)                     | Durable PostgreSQL outbox and in-process worker that delivers transactional emails with retries                                                                  | No          |
+| [`preferences`](modules/preferences.md)                       | Per-user financial preferences: spending perspective and dashboard default month                                                                                 | Yes         |
+| [`accounts`](modules/accounts.md)                             | Per-user financial accounts with opening balances, active/inactive status, and one default account                                                               | Yes         |
+| [`transaction-categories`](modules/transaction-categories.md) | Read-only global transaction category catalog plus per-user personal ones                                                                                        | Yes         |
+| [`transactions`](modules/transactions.md)                     | Per-user planned and completed income, expenses, and transfers between own accounts; feeds account balances                                                      | Yes         |
+| [`credit-cards`](modules/credit-cards.md)                     | Per-user credit cards, invoice cycles, installment purchases, refunds, and invoice payments from accounts                                                        | Yes         |
+| [`recurrences`](modules/recurrences.md)                       | Per-user recurring income, expenses, card charges, and investment contributions, projected as planned occurrences and confirmed one by one; monthly saving plans | Yes         |
+| [`budgets`](modules/budgets.md)                               | Per-user monthly budgets: an overall spending limit and optional category limits per month                                                                       | Yes         |
+| [`investments`](modules/investments.md)                       | Per-user investments, reserves, and goals with one-time, mandatory, and additional contributions, withdrawals, and manual valuations                             | Yes         |
+| [`dashboard`](modules/dashboard.md)                           | Monthly financial summary computed from the caller's own records                                                                                                 | Yes         |
 
 There is no self-registration: users are created by an administrator or by the seed.
 

@@ -135,8 +135,10 @@ describe('recurrence card charge repository (integration)', () => {
         ...schedule,
         account: null,
         creditCard: card,
+        investment: null,
         category,
         notes: null,
+        savingStrategy: null,
       }),
     );
   }

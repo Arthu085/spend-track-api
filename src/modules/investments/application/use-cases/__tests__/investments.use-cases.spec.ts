@@ -1,3 +1,5 @@
+import { InvestmentLifecycle } from '../../services/investment-lifecycle';
+import { InvestmentHasRecurrencesError } from '../../../domain/errors/investment-has-recurrences.error';
 import {
   AccountNotFoundError,
   InactiveAccountError,
@@ -314,6 +316,7 @@ describe('Investment use-cases', () => {
         transactionManager,
         ctx.values,
         ctx.movementRepository,
+        new InvestmentLifecycle(),
       ).execute({ uuid: 'x', ownerId: 9, status, pendingOperations });
     }
 
@@ -435,11 +438,32 @@ describe('Investment use-cases', () => {
   });
 
   describe('DeleteInvestmentUseCase', () => {
+    it('rejects a recurrence reference even with no movements', async () => {
+      const ctx = setup();
+      const lifecycle = new InvestmentLifecycle();
+
+      lifecycle.register({
+        assertCanDelete: () =>
+          Promise.reject(new InvestmentHasRecurrencesError()),
+        archive: () => Promise.resolve(),
+      });
+
+      await expect(
+        new DeleteInvestmentUseCase(
+          ctx.investmentRepository,
+          ctx.movementRepository,
+          transactionManager,
+          lifecycle,
+        ).execute({ uuid: 'x', ownerId: 9 }),
+      ).rejects.toThrow(InvestmentHasRecurrencesError);
+      expect(ctx.investments.softDelete).not.toHaveBeenCalled();
+    });
     function remove(ctx: ReturnType<typeof setup>) {
       return new DeleteInvestmentUseCase(
         ctx.investmentRepository,
         ctx.movementRepository,
         transactionManager,
+        new InvestmentLifecycle(),
       );
     }
 

@@ -37,7 +37,8 @@ everyone, including admins.
   `onModuleInit`; `balanceChanges(ownerId, accountIds)` adds up every registered ledger per account,
   `hasEntries(ownerId, accountId)` tells whether any ledger references the account, and
   `earliestEntryDate(ownerId, accountId)` answers the earliest date of its planned or completed
-  operations. With nothing registered, changes are 0 and there are no entries. A module that adds operations on accounts
+  operations, and `latestHistoricalEntryDate(ownerId, accountId)` the latest record kept from before
+  the opening date. With nothing registered, changes are 0 and there are no entries. A module that adds operations on accounts
   registers its own ledger; nothing checks that at compile time, so cover it with a test.
   `credit-cards` registers one for invoice payments and `investments` one for contributions and
   withdrawals.
@@ -55,9 +56,13 @@ operation dated before it would count twice.
   movement's `date` and `completedOn`, and an account recurrence's `startDate`, occurrence edits, and
   confirmations. An operation on the opening date itself is allowed. A date left out defaults to
   today, so an account opening in the future rejects it too.
-- `openingBalanceDate` can move earlier at any time. It can move later only up to the earliest planned
+- `openingBalanceDate` can move earlier, down to the limit below. It can move later only up to the earliest planned
   or completed, non-deleted operation (`earliestEntryDate`); past that it answers
   `AccountOpeningAfterOperationsError` (`422`). Canceled and deleted operations do not hold it back.
+- Historical invoice settlements ([`credit-cards.md`](credit-cards.md#historical-settlements)) are the
+  one record dated before the opening date, because the opening balance includes them. They never
+  change the balance, and the opening date cannot move to or before the latest live one
+  (`latestHistoricalEntryDate`, `AccountOpeningNotAfterHistoricalEntriesError`, `422`).
 - `openingBalance` can change at any time, with or without history. Current and projected balances
   shift by exactly the difference and no operation is rewritten.
 - There is no data migration: an operation recorded before these rules, dated before its account's
@@ -79,7 +84,11 @@ operation dated before it would count twice.
 ## Deactivation and deletion
 
 `status` follows the shared convention: `PUT /accounts/:uuid/status` deactivates (`INACTIVE`) or
-reactivates an account, and `DELETE` soft-deletes it. An account referenced by any non-deleted
+reactivates an account, and `DELETE` soft-deletes it. Before checking history, `AccountDeletionGuards`
+asks dependent modules about live references. An active or paused recurrence referencing the account
+blocks deletion with `AccountHasRecurrencesError` (`409`), even with no occurrences; end the recurrence
+first. A recurrence whose end date has passed is effectively ended and does not block deletion.
+Archival is unchanged and preserves recurrence references. An account referenced by any non-deleted
 transaction, in any state and as source or destination, by any credit card invoice payment, or by
 any investment movement, has history: `DELETE` answers
 `AccountHasHistoryError` (`409`), and the user deactivates it instead. The check runs under the

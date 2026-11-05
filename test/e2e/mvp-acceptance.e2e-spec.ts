@@ -769,6 +769,19 @@ describe('MVP acceptance scenarios (e2e)', () => {
       ['DELETE card', (a) => a.delete(`/api/credit-cards/${owner.card}`)],
       ['GET invoice', (a) => a.get(`/api/credit-card-invoices/${invoiceOf()}`)],
       [
+        'POST historical settlement',
+        (a) =>
+          a
+            .post(
+              `/api/credit-card-invoices/${invoiceOf()}/historical-settlements`,
+            )
+            .send({
+              accountUuid: owner.bank,
+              amount: '1.00',
+              paidOn: '2020-01-01',
+            }),
+      ],
+      [
         'PUT payment cancellation',
         (a) =>
           a.put(
@@ -885,11 +898,116 @@ describe('MVP acceptance scenarios (e2e)', () => {
             .put(`/api/investments/${investment}/movements/${movement}/state`)
             .send({ state: 'COMPLETED' }),
       ],
+      [
+        'POST additional contribution',
+        (a) =>
+          a
+            .post(`/api/recurrences/${recurrence}/additional-contributions`)
+            .send({
+              year: 2030,
+              month: 1,
+              amount: '10.00',
+              state: 'PLANNED',
+            }),
+      ],
     ];
 
     it.each(foreignRoutes)('answers 404 to %s', async (_, send) => {
       for (const [, visitor] of visitors) {
         await send(visitor).expect(404);
+      }
+    });
+
+    it('never lists or targets the saving plans and investments of another user', async () => {
+      const contribution = dataOf<{ uuid: string }>(
+        await owner.agent
+          .post('/api/recurrences')
+          .send({
+            type: 'INVESTMENT_CONTRIBUTION',
+            description: 'Reserve',
+            amount: '10.00',
+            frequency: 'MONTHLY',
+            startDate: '2030-01-05',
+            accountUuid: owner.bank,
+            investmentUuid: investment,
+            savingStrategy: {
+              minimumRetainedBalance: '0.00',
+              additionalContribution: 'REMAINING_SURPLUS',
+            },
+          })
+          .expect(201),
+      );
+
+      const plansOf = (agent: AuthAgent) =>
+        agent
+          .get('/api/recurrences/saving-plans?year=2030&month=1')
+          .expect(200);
+
+      const ownPlans = dataOf<Array<{ recurrence: { uuid: string } }>>(
+        await plansOf(owner.agent),
+      );
+
+      expect(ownPlans.map((plan) => plan.recurrence.uuid)).toContain(
+        contribution.uuid,
+      );
+
+      for (const [, visitor] of visitors) {
+        expect(dataOf<unknown[]>(await plansOf(visitor))).toEqual([]);
+
+        await visitor
+          .post(
+            `/api/recurrences/${contribution.uuid}/additional-contributions`,
+          )
+          .send({ year: 2030, month: 1, amount: '10.00', state: 'PLANNED' })
+          .expect(404);
+
+        const ownAccount = dataOf<{ uuid: string }>(
+          await visitor
+            .post('/api/accounts')
+            .send({
+              name: 'Own',
+              type: 'CHECKING',
+              openingBalance: '0.00',
+              openingBalanceDate: '2026-01-01',
+            })
+            .expect(201),
+        );
+
+        await visitor
+          .post('/api/recurrences')
+          .send({
+            type: 'INVESTMENT_CONTRIBUTION',
+            description: 'Foreign',
+            amount: '10.00',
+            frequency: 'MONTHLY',
+            startDate: '2030-01-05',
+            accountUuid: ownAccount.uuid,
+            investmentUuid: investment,
+          })
+          .expect(404);
+      }
+    });
+
+    it('never confirms or lists the transactions of another user in bulk', async () => {
+      for (const [, visitor] of visitors) {
+        const confirmation = await visitor
+          .post('/api/transactions/bulk-confirmation')
+          .send({ items: [{ uuid: transaction }] })
+          .expect(200);
+
+        expect(dataOf<{ failedCount: number }>(confirmation).failedCount).toBe(
+          1,
+        );
+
+        const pending = await visitor
+          .get('/api/transactions/pending-confirmations?until=2099-12-31')
+          .expect(200);
+
+        expect(
+          dataOf<{ items: Array<{ uuid: string }> }>(pending).items.map(
+            ({ uuid }) => uuid,
+          ),
+        ).not.toContain(transaction);
       }
     });
 

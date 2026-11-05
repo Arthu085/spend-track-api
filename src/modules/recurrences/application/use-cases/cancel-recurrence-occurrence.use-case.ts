@@ -34,6 +34,7 @@ export class CancelRecurrenceOccurrenceUseCase {
       );
 
       return this.occurrences.cancel(
+        recurrence,
         await this.occurrences.lockPlanned(recurrence, input.occurrenceUuid),
       );
     });

@@ -4,7 +4,9 @@
     "inactive": "Conta inativa",
     "has_history": "Esta conta possui transações e não pode ser excluída; desative-a",
     "operation_before_opening": "Esta data é anterior à data do saldo inicial da conta. Escolha uma data posterior ou antecipe a data do saldo inicial",
-    "opening_after_operations": "A data do saldo inicial não pode ser posterior à primeira operação desta conta"
+    "opening_after_operations": "A data do saldo inicial não pode ser posterior à primeira operação desta conta",
+    "opening_not_after_historical_entries": "A data do saldo inicial deve continuar posterior às quitações históricas de faturas desta conta. Cancele-as antes",
+    "has_recurrences": "Esta conta possui recorrências ativas ou pausadas. Encerre-as antes de excluir a conta."
   },
   "type": {
     "checking": "Conta corrente",

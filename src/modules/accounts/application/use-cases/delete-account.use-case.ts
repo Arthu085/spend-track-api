@@ -12,6 +12,7 @@ import {
   ACCOUNT_LEDGERS,
   type AccountLedger,
 } from '../ports/account-ledger.port';
+import { AccountDeletionGuards } from '../services/account-deletion-guards';
 import { findOwnedAccount } from '../services/find-owned-account';
 
 export interface DeleteAccountInput {
@@ -28,6 +29,7 @@ export class DeleteAccountUseCase {
     private readonly transactionManager: TransactionManagerPort,
     @Inject(ACCOUNT_LEDGERS)
     private readonly accountLedger: AccountLedger,
+    private readonly deletionGuards: AccountDeletionGuards,
   ) {}
 
   async execute(input: DeleteAccountInput): Promise<void> {
@@ -39,6 +41,8 @@ export class DeleteAccountUseCase {
         input.uuid,
         input.ownerId,
       );
+
+      await this.deletionGuards.assertCanDelete(input.ownerId, account.id);
 
       if (await this.accountLedger.hasEntries(input.ownerId, account.id)) {
         throw new AccountHasHistoryError();

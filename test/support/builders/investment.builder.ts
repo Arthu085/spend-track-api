@@ -6,6 +6,7 @@ import {
   InvestmentMovementEntity,
   type ReconstituteInvestmentMovementInput,
 } from '@modules/investments/domain/entities/investment-movement.entity';
+import { ContributionKind } from '@modules/investments/domain/enums/contribution-kind.enum';
 import { InvestmentMovementType } from '@modules/investments/domain/enums/investment-movement-type.enum';
 import { InvestmentType } from '@modules/investments/domain/enums/investment-type.enum';
 import { TransactionState } from '@modules/transactions';
@@ -46,6 +47,11 @@ export function buildInvestmentMovement(
     state: TransactionState.COMPLETED,
     completedOn: '2026-10-10',
     canceledAt: null,
+    contributionKind: ContributionKind.ONE_TIME,
+    recurrence: null,
+    surplusMonth: null,
+    suggestedAmount: null,
+    retainedMinimum: null,
     createdAt: new Date('2026-10-10T00:00:00Z'),
     updatedAt: new Date('2026-10-10T00:00:00Z'),
     deletedAt: null,

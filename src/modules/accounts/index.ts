@@ -1,3 +1,5 @@
+export { AccountDeletionGuards } from './application/services/account-deletion-guards';
+export type { AccountDeletionGuard } from './application/services/account-deletion-guards';
 export { AccountEntity } from './domain/entities/account.entity';
 export { AccountType } from './domain/enums/account-type.enum';
 export { AccountNotFoundError } from './domain/errors/account-not-found.error';
@@ -13,3 +15,4 @@ export type {
 } from './application/ports/account-ledger.port';
 export { findOwnedAccount } from './application/services/find-owned-account';
 export { withCurrentBalances } from './application/services/with-current-balances';
+export { AccountHasRecurrencesError } from './domain/errors/account-has-recurrences.error';

@@ -7,7 +7,7 @@ import type { RecurrenceOccurrence } from '../../../application/services/recurre
 export class RecurrenceOccurrenceResponseDto {
   @ApiProperty({
     description:
-      'Uuid of the occurrence: the transaction of an account recurrence, the charge of a card recurrence.',
+      'Uuid of the occurrence: the transaction of an account recurrence, the charge of a card recurrence, the movement of an investment contribution.',
   })
   uuid!: string;
 
@@ -54,7 +54,8 @@ export class RecurrenceOccurrenceResponseDto {
   @ApiProperty({
     type: String,
     nullable: true,
-    description: 'Transaction of an account occurrence; null for cards.',
+    description:
+      'Transaction of an account occurrence; null for cards and contributions.',
   })
   transactionUuid!: string | null;
 
@@ -64,6 +65,14 @@ export class RecurrenceOccurrenceResponseDto {
     description: 'Purchase created when a card charge was confirmed.',
   })
   purchaseUuid!: string | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description:
+      'Investment movement of a contribution occurrence; null otherwise.',
+  })
+  movementUuid!: string | null;
 
   @ApiProperty({
     type: String,

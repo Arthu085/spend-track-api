@@ -1,5 +1,9 @@
-import type { TransactionState } from '@modules/transactions';
+import type {
+  RecurrenceOccurrenceFilters,
+  TransactionState,
+} from '@modules/transactions';
 import { InvestmentMovementEntity } from '../entities/investment-movement.entity';
+import { ContributionKind } from '../enums/contribution-kind.enum';
 import { InvestmentMovementType } from '../enums/investment-movement-type.enum';
 import type { InvestmentTotals } from '../valuation/investment-value';
 
@@ -24,6 +28,12 @@ export interface MovementAccountFilter {
 
 export interface InvestmentMovementTotal {
   type: InvestmentMovementType.CONTRIBUTION | InvestmentMovementType.WITHDRAWAL;
+  state: TransactionState;
+  total: number;
+}
+
+export interface ContributionKindTotal {
+  kind: ContributionKind;
   state: TransactionState;
   total: number;
 }
@@ -56,6 +66,46 @@ export interface InvestmentMovementRepository {
     ownerId: number,
     range: MovementDateRange,
   ): Promise<InvestmentMovementTotal[]>;
+  sumContributionsByKindAndState(
+    ownerId: number,
+    range: MovementDateRange,
+  ): Promise<ContributionKindTotal[]>;
+  findPaginatedMandatoryByRecurrence(
+    ownerId: number,
+    recurrenceId: number,
+    offset: number,
+    limit: number,
+    filters?: RecurrenceOccurrenceFilters,
+  ): Promise<PaginatedInvestmentMovements>;
+  findMandatoryByUuidForRecurrence(
+    uuid: string,
+    recurrenceId: number,
+  ): Promise<InvestmentMovementEntity | null>;
+  findPlannedMandatoryByRecurrence(
+    ownerId: number,
+    recurrenceId: number,
+    occurrenceFrom?: string,
+  ): Promise<InvestmentMovementEntity[]>;
+  findMandatoryDatesFrom(
+    ownerId: number,
+    recurrenceId: number,
+    from: string,
+  ): Promise<string[]>;
+  findPlannedMandatoryThrough(
+    ownerId: number,
+    recurrenceIds: readonly number[],
+    until: string,
+  ): Promise<InvestmentMovementEntity[]>;
+  sumCompletedMandatoryByRecurrence(
+    ownerId: number,
+    recurrenceIds: readonly number[],
+    range: MovementDateRange,
+  ): Promise<Map<number, number>>;
+  findLiveAdditionalByMonth(
+    ownerId: number,
+    recurrenceIds: readonly number[],
+    surplusMonth: string,
+  ): Promise<InvestmentMovementEntity[]>;
   existsForAccount(ownerId: number, accountId: number): Promise<boolean>;
   findEarliestDateForAccount(
     ownerId: number,
@@ -64,4 +114,5 @@ export interface InvestmentMovementRepository {
   existsForInvestment(ownerId: number, investmentId: number): Promise<boolean>;
   create(movement: InvestmentMovementEntity): Promise<InvestmentMovementEntity>;
   update(movement: InvestmentMovementEntity): Promise<InvestmentMovementEntity>;
+  softDelete(movement: InvestmentMovementEntity): Promise<void>;
 }

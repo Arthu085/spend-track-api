@@ -91,6 +91,15 @@ in Swagger; this document covers the rules behind them.
   of investments of any status: `completed`, `pending` (planned), and `total`. They are never income
   or expenses; planned ones already move `balances.projected`, so they lower `balances.available`
   and the balance-based daily allowance exactly once.
+- `investments.contributionBreakdown` splits those contributions by kind:
+  `mandatoryPlanned`, `mandatoryCompleted`, `additionalPlanned`, `additionalCompleted`,
+  `oneTimePlanned`, and `oneTimeCompleted` ([`investments.md`](investments.md#contribution-kinds)).
+  `contributions` keeps its meaning.
+- `investments.savingPlans` lists the saving plans of the month, the same items as
+  `GET /recurrences/saving-plans` ([`recurrences.md`](recurrences.md#saving-plans)). Suggestions on
+  a shared account overlap, so they are not totaled. A suggestion changes no balance until the user
+  accepts it. Plans receive `creditCards.outstanding + creditCards.plannedDue` from the
+  same computation, and `statementsDueInMonth` is the one invoice selection for both.
 - Sums use integer cents (`sumMoney`) and are returned as decimal strings, so totals always equal the
   sum of the listed accounts.
 

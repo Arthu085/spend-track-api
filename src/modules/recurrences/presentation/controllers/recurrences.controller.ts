@@ -17,15 +17,27 @@ import { ListRecurrencesUseCase } from '../../application/use-cases/list-recurre
 import { UpdateRecurrenceStateUseCase } from '../../application/use-cases/update-recurrence-state.use-case';
 import { UpdateRecurrenceUseCase } from '../../application/use-cases/update-recurrence.use-case';
 import type { RecurrenceEntity } from '../../domain/entities/recurrence.entity';
+import type { SavingStrategy } from '../../domain/saving-plan/saving-plan';
 import { CreateRecurrenceDto } from '../dto/input/create-recurrence.dto';
 import { EndRecurrenceDto } from '../dto/input/end-recurrence.dto';
 import { ListRecurrencesQueryDto } from '../dto/input/list-recurrences-query.dto';
 import { UpdateRecurrenceStateDto } from '../dto/input/update-recurrence-state.dto';
 import { UpdateRecurrenceDto } from '../dto/input/update-recurrence.dto';
+import { SavingStrategyDto } from '../dto/input/saving-strategy.dto';
 import { RecurrenceResponseDto } from '../dto/output/recurrence.response';
 
 const OWNERSHIP_NOTE =
   "Scoped to the authenticated user: another user's recurrence answers 404, whatever the caller's roles.";
+
+const savingStrategyOf = (
+  dto: SavingStrategyDto | null | undefined,
+): SavingStrategy | null | undefined =>
+  dto
+    ? {
+        minimumRetainedBalance: parseMoney(dto.minimumRetainedBalance),
+        additionalContribution: dto.additionalContribution,
+      }
+    : dto;
 
 @Controller('recurrences')
 export class RecurrencesController {
@@ -93,21 +105,23 @@ export class RecurrencesController {
     .audit('Recurrence.create')
     .successMessage('success.created')
     .tags('recurrences')
-    .summary('Create a recurring income, expense, or card charge')
+    .summary(
+      'Create a recurring income, expense, card charge, or investment contribution',
+    )
     .description(
-      'Generates planned occurrences from startDate up to 12 months ahead, never twice for the same date; a daily job keeps extending them. Account recurrences generate planned transactions; card recurrences generate planned charges that become purchases once confirmed. Nothing is paid or received until an occurrence is confirmed. An endDate already in the past creates an ENDED recurrence that generates nothing. Account, card, and category resolve within your own records (404) and must be active (409).',
+      'Generates planned occurrences from startDate up to 12 months ahead, never twice for the same date; a daily job keeps extending them. Account recurrences generate planned transactions; card recurrences generate planned charges that become purchases once confirmed; investment contributions generate planned MANDATORY movements, never income or expenses, that lower the projected balance. Nothing is paid or received until an occurrence is confirmed. An endDate already in the past creates an ENDED recurrence that generates nothing. Account, card, category, and investment resolve within your own records (404) and must be active (409).',
     )
     .errorResponse(
       HttpStatus.NOT_FOUND,
-      'Account, card, or category not found.',
+      'Account, card, category, or investment not found.',
     )
     .errorResponse(
       HttpStatus.CONFLICT,
-      'Account, card, or category is inactive.',
+      'Account, card, category, or investment is inactive.',
     )
     .errorResponse(
       HttpStatus.UNPROCESSABLE_ENTITY,
-      'Card on an income, category kind mismatch, end date before start date, or start date before the opening balance date of the account.',
+      'Card on an income, category kind mismatch, saving strategy outside a monthly investment contribution, end date before start date, or start date before the opening balance date of the account.',
     )
     .body(CreateRecurrenceDto)
     .response(RecurrenceResponseDto, HttpStatus.CREATED)
@@ -127,8 +141,10 @@ export class RecurrencesController {
       endDate: dto.endDate ?? null,
       accountUuid: dto.accountUuid,
       creditCardUuid: dto.creditCardUuid ?? undefined,
-      categoryUuid: dto.categoryUuid,
+      categoryUuid: dto.categoryUuid ?? undefined,
+      investmentUuid: dto.investmentUuid ?? undefined,
       notes: dto.notes ?? null,
+      savingStrategy: savingStrategyOf(dto.savingStrategy),
     });
 
     return this.toResponse(recurrence, translate);
@@ -141,7 +157,7 @@ export class RecurrencesController {
     .tags('recurrences')
     .summary('Update a recurrence and its planned occurrences')
     .description(
-      `Changes the template and, by scope, the planned occurrences scheduled on or after from (FUTURE) or all of them (ALL). Completed and canceled occurrences never change. Type, frequency, start date, card, and end date are fixed: end the recurrence and create a new one. An ended recurrence rejects this route; change its remaining planned occurrences through the occurrence routes. ${OWNERSHIP_NOTE}`,
+      `Changes the template and, by scope, the planned occurrences scheduled on or after from (FUTURE) or all of them (ALL). Completed and canceled occurrences never change. On an investment contribution, planned occurrences follow only a sent amount or accountUuid, and each keeps whichever of the two was not sent; description, notes, and savingStrategy change the template alone. Type, frequency, start date, card, investment, and end date are fixed: end the recurrence and create a new one. An ended recurrence rejects this route; change its remaining planned occurrences through the occurrence routes. ${OWNERSHIP_NOTE}`,
     )
     .errorResponse(
       HttpStatus.NOT_FOUND,
@@ -153,7 +169,7 @@ export class RecurrencesController {
     )
     .errorResponse(
       HttpStatus.UNPROCESSABLE_ENTITY,
-      'Account on a card recurrence, category kind mismatch, or a moved occurrence dated before the opening balance date of the new account.',
+      'Account on a card recurrence, category on an investment contribution, category kind mismatch, saving strategy outside a monthly investment contribution, or a moved occurrence dated before the opening balance date of the new account.',
     )
     .body(UpdateRecurrenceDto)
     .response(RecurrenceResponseDto)
@@ -174,6 +190,7 @@ export class RecurrencesController {
       categoryUuid: dto.categoryUuid,
       accountUuid: dto.accountUuid,
       notes: dto.notes,
+      savingStrategy: savingStrategyOf(dto.savingStrategy),
     });
 
     return this.toResponse(recurrence, translate);

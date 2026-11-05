@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsUUID, ValidateIf } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsEnum, IsUUID, ValidateIf, ValidateNested } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
 import {
   AllowedOnlyWhen,
@@ -11,12 +12,13 @@ import {
 } from '@modules/transactions/presentation';
 import { DateOnlyField } from '@shared/presentation/dto';
 import { RecurrenceUpdateScope } from '../../../domain/enums/recurrence-update-scope.enum';
+import { SavingStrategyDto } from './saving-strategy.dto';
 
 export class UpdateRecurrenceDto {
   @ApiProperty({
     enum: RecurrenceUpdateScope,
     description:
-      'FUTURE also updates planned occurrences scheduled on or after from; ALL updates every planned occurrence. Completed and canceled occurrences never change.',
+      'FUTURE also updates planned occurrences scheduled on or after from; ALL updates every planned occurrence. Completed and canceled occurrences never change. On an investment contribution, only a sent amount or accountUuid reaches planned occurrences.',
   })
   @IsEnum(RecurrenceUpdateScope, {
     message: i18nValidationMessage('validation.IS_ENUM'),
@@ -42,7 +44,10 @@ export class UpdateRecurrenceDto {
   @TransactionAmountField(false)
   amount?: string;
 
-  @ApiPropertyOptional({ description: 'Category whose kind matches the type.' })
+  @ApiPropertyOptional({
+    description:
+      'Category whose kind matches the type; not applicable to INVESTMENT_CONTRIBUTION.',
+  })
   @ValidateIf(isProvided)
   @IsUUID(undefined, { message: i18nValidationMessage('validation.IS_UUID') })
   categoryUuid?: string;
@@ -55,4 +60,15 @@ export class UpdateRecurrenceDto {
   @ValidateIf(isPresent)
   @TransactionNotesField()
   notes?: string | null;
+
+  @ApiPropertyOptional({
+    type: SavingStrategyDto,
+    nullable: true,
+    description:
+      'Sets the saving strategy of a MONTHLY INVESTMENT_CONTRIBUTION; null clears it, omitted keeps it. Never changes planned or completed contributions.',
+  })
+  @ValidateIf(isPresent)
+  @ValidateNested()
+  @Type(() => SavingStrategyDto)
+  savingStrategy?: SavingStrategyDto | null;
 }

@@ -1,14 +1,19 @@
 import { AccountMapper } from '@modules/accounts/persistence';
 import { CreditCardMapper } from '@modules/credit-cards/persistence';
 import { TransactionCategoryMapper } from '@modules/transaction-categories/persistence';
+import { InvestmentMapper } from '@modules/investments/persistence';
 import { formatMoney, parseMoney } from '@shared/domain/money';
 import { RecurrenceEntity } from '../../../domain/entities/recurrence.entity';
 import { RecurrenceOrmEntity } from '../entities/recurrence.orm-entity';
 
 export class RecurrenceMapper {
   static toDomain(orm: RecurrenceOrmEntity): RecurrenceEntity {
-    if (!orm.category) {
+    if (orm.categoryId !== null && !orm.category) {
       throw new Error('Recurrence category relation must be loaded');
+    }
+
+    if (orm.investmentId !== null && !orm.investment) {
+      throw new Error('Recurrence investment relation must be loaded');
     }
 
     return RecurrenceEntity.reconstitute({
@@ -27,7 +32,20 @@ export class RecurrenceMapper {
       creditCard: orm.creditCard
         ? CreditCardMapper.toDomain(orm.creditCard)
         : null,
-      category: TransactionCategoryMapper.toDomain(orm.category),
+      investment: orm.investment
+        ? InvestmentMapper.toDomain(orm.investment)
+        : null,
+      category: orm.category
+        ? TransactionCategoryMapper.toDomain(orm.category)
+        : null,
+      savingStrategy:
+        orm.minimumRetainedBalance !== null &&
+        orm.additionalContributionStrategy !== null
+          ? {
+              minimumRetainedBalance: parseMoney(orm.minimumRetainedBalance),
+              additionalContribution: orm.additionalContributionStrategy,
+            }
+          : null,
       notes: orm.notes,
       generatedThrough: orm.generatedThrough,
       createdAt: orm.createdAt,
@@ -56,7 +74,13 @@ export class RecurrenceMapper {
     orm.state = domain.state;
     orm.accountId = domain.account?.id ?? null;
     orm.creditCardId = domain.creditCard?.id ?? null;
-    orm.categoryId = domain.category.id;
+    orm.categoryId = domain.category?.id ?? null;
+    orm.investmentId = domain.investment?.id ?? null;
+    orm.minimumRetainedBalance = domain.savingStrategy
+      ? formatMoney(domain.savingStrategy.minimumRetainedBalance)
+      : null;
+    orm.additionalContributionStrategy =
+      domain.savingStrategy?.additionalContribution ?? null;
     orm.notes = domain.notes;
     orm.generatedThrough = domain.generatedThrough;
     orm.deletedAt = domain.deletedAt;

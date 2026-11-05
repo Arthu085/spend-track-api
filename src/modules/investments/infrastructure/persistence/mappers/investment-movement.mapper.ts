@@ -1,6 +1,9 @@
 import { AccountMapper } from '@modules/accounts/persistence';
 import { formatMoney, parseMoney } from '@shared/domain/money';
-import { InvestmentMovementEntity } from '../../../domain/entities/investment-movement.entity';
+import {
+  InvestmentMovementEntity,
+  type InvestmentMovementRecurrenceLink,
+} from '../../../domain/entities/investment-movement.entity';
 import { InvestmentMovementOrmEntity } from '../entities/investment-movement.orm-entity';
 
 export class InvestmentMovementMapper {
@@ -22,6 +25,13 @@ export class InvestmentMovementMapper {
       state: orm.state,
       completedOn: orm.completedOn,
       canceledAt: orm.canceledAt,
+      contributionKind: orm.contributionKind,
+      recurrence: InvestmentMovementMapper.recurrenceOf(orm),
+      surplusMonth: orm.surplusMonth,
+      suggestedAmount:
+        orm.suggestedAmount === null ? null : parseMoney(orm.suggestedAmount),
+      retainedMinimum:
+        orm.retainedMinimum === null ? null : parseMoney(orm.retainedMinimum),
       createdAt: orm.createdAt,
       updatedAt: orm.updatedAt,
       deletedAt: orm.deletedAt,
@@ -47,8 +57,38 @@ export class InvestmentMovementMapper {
     orm.state = domain.state;
     orm.completedOn = domain.completedOn;
     orm.canceledAt = domain.canceledAt;
+    orm.contributionKind = domain.contributionKind;
+    orm.recurrenceId = domain.recurrence?.id ?? null;
+    orm.recurrenceDate = domain.recurrence?.occurrenceDate ?? null;
+    orm.surplusMonth = domain.surplusMonth;
+    orm.suggestedAmount =
+      domain.suggestedAmount === null
+        ? null
+        : formatMoney(domain.suggestedAmount);
+    orm.retainedMinimum =
+      domain.retainedMinimum === null
+        ? null
+        : formatMoney(domain.retainedMinimum);
     orm.deletedAt = domain.deletedAt;
 
     return orm;
+  }
+
+  private static recurrenceOf(
+    orm: InvestmentMovementOrmEntity,
+  ): InvestmentMovementRecurrenceLink | null {
+    if (orm.recurrenceId === null) {
+      return null;
+    }
+
+    if (!orm.recurrence) {
+      throw new Error('Movement recurrence relation must be loaded');
+    }
+
+    return {
+      id: orm.recurrenceId,
+      uuid: orm.recurrence.uuid,
+      occurrenceDate: orm.recurrenceDate,
+    };
   }
 }

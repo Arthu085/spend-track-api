@@ -19,6 +19,8 @@ import type { CreditCardEntity } from '../../../domain/entities/credit-card.enti
 import { CreditCardHasHistoryError } from '../../../domain/errors/credit-card-has-history.error';
 import { CreditCardInvoiceNotFoundError } from '../../../domain/errors/credit-card-invoice-not-found.error';
 import { CreditCardNotFoundError } from '../../../domain/errors/credit-card-not-found.error';
+import { CreditCardPaymentSource } from '../../../domain/enums/credit-card-payment-source.enum';
+import { CreditCardHistoricalSettlementNotBeforeOpeningError } from '../../../domain/errors/credit-card-historical-settlement-not-before-opening.error';
 import { CreditCardPaymentExceedsOutstandingError } from '../../../domain/errors/credit-card-payment-exceeds-outstanding.error';
 import { CreditCardPaymentNotFoundError } from '../../../domain/errors/credit-card-payment-not-found.error';
 import { CreditCardPendingOperationsDecisionRequiredError } from '../../../domain/errors/credit-card-pending-operations-decision-required.error';
@@ -37,6 +39,7 @@ import { GetCreditCardUseCase } from '../get-credit-card.use-case';
 import { ListCreditCardInvoicesUseCase } from '../list-credit-card-invoices.use-case';
 import { ListCreditCardsUseCase } from '../list-credit-cards.use-case';
 import { PayCreditCardInvoiceUseCase } from '../pay-credit-card-invoice.use-case';
+import { RecordHistoricalSettlementUseCase } from '../record-historical-settlement.use-case';
 import { UpdateCreditCardStatusUseCase } from '../update-credit-card-status.use-case';
 import { UpdateCreditCardUseCase } from '../update-credit-card.use-case';
 
@@ -484,6 +487,85 @@ describe('invoice use-cases', () => {
     await expect(pay('closed', 1)).rejects.toThrow(InactiveAccountError);
     await expect(pay('other', 1)).rejects.toThrow(AccountNotFoundError);
     expect(context.payments.create).not.toHaveBeenCalled();
+  });
+
+  describe('historical settlements', () => {
+    function settle(
+      context: ReturnType<typeof invoiceSetup>,
+      overrides: Partial<{
+        accountUuid: string;
+        amount: number;
+        paidOn: string;
+      }> = {},
+    ) {
+      return new RecordHistoricalSettlementUseCase(
+        context.cardPort,
+        context.invoicePort,
+        context.paymentPort,
+        context.accounts,
+        transactionManager,
+        context.statementsPort,
+      ).execute({
+        invoiceUuid: 'invoice-uuid',
+        ownerId: 1,
+        accountUuid: 'bank',
+        amount: 30000,
+        paidOn: '2025-12-31',
+        ...overrides,
+      });
+    }
+
+    it('records a settlement before the opening date under both locks', async () => {
+      const context = invoiceSetup();
+
+      const settlement = await settle(context);
+
+      expect(context.calls).toEqual(['lock-accounts', 'lock-cards']);
+      expect(settlement).toMatchObject({
+        amount: 30000,
+        paidOn: '2025-12-31',
+        source: CreditCardPaymentSource.HISTORICAL_SETTLEMENT,
+        isHistoricalSettlement: true,
+      });
+    });
+
+    it('accepts an archived account, since no money moves', async () => {
+      const context = invoiceSetup();
+
+      await expect(
+        settle(context, { accountUuid: 'closed' }),
+      ).resolves.toMatchObject({ paidOn: '2025-12-31' });
+    });
+
+    it('refuses a date on or after the opening date, or in the future', async () => {
+      const context = invoiceSetup();
+      const opening = buildAccount().openingBalanceDate;
+
+      await expect(settle(context, { paidOn: opening })).rejects.toThrow(
+        CreditCardHistoricalSettlementNotBeforeOpeningError,
+      );
+
+      (context.accounts.findByUuidForOwner as jest.Mock).mockResolvedValue(
+        buildAccount({ openingBalanceDate: '2999-01-01' }),
+      );
+
+      await expect(settle(context, { paidOn: '2998-01-01' })).rejects.toThrow(
+        CreditCardHistoricalSettlementNotBeforeOpeningError,
+      );
+      expect(context.payments.create).not.toHaveBeenCalled();
+    });
+
+    it('refuses an amount above the outstanding and a foreign account', async () => {
+      const context = invoiceSetup();
+
+      await expect(settle(context, { amount: 30001 })).rejects.toThrow(
+        CreditCardPaymentExceedsOutstandingError,
+      );
+      await expect(settle(context, { accountUuid: 'other' })).rejects.toThrow(
+        AccountNotFoundError,
+      );
+      expect(context.payments.create).not.toHaveBeenCalled();
+    });
   });
 
   it('cancels a payment of the invoice and answers 404 for an unknown one', async () => {
