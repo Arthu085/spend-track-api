@@ -23,8 +23,8 @@ WORK_DIR="$(mktemp -d)"
 ENV_FILE="$WORK_DIR/production.env"
 COOKIE_JAR="$WORK_DIR/cookies.txt"
 
-DB_USER=app
-DB_NAME=app
+DB_USER=spend_track
+DB_NAME=spend_track
 DB_PASSWORD="$(openssl rand -hex 24)"
 ADMIN_EMAIL=smoke-admin@example.com
 ADMIN_PASSWORD="$(openssl rand -hex 16)-Aa1"
@@ -122,16 +122,24 @@ step 'Disposable PostgreSQL and SMTP'
 
 docker network create "$NETWORK" >/dev/null
 docker run -d --name "$DB" --network "$NETWORK" \
-  -e POSTGRES_USER="$DB_USER" -e POSTGRES_PASSWORD="$DB_PASSWORD" -e POSTGRES_DB="$DB_NAME" \
+  -e POSTGRES_PASSWORD="$(openssl rand -hex 24)" \
   "$POSTGRES_IMAGE" >/dev/null
 docker run -d --name "$SMTP" --network "$NETWORK" -p 127.0.0.1::8025 "$MAILPIT_IMAGE" >/dev/null
 MAILPIT_URL="http://localhost:$(docker port "$SMTP" 8025/tcp | head -n1 | sed 's/.*://')"
 
 postgres_ready() {
-  docker exec "$DB" pg_isready -U "$DB_USER" -d "$DB_NAME" >/dev/null 2>&1 &&
-    docker exec "$DB" psql -U "$DB_USER" -d "$DB_NAME" -c 'SELECT 1' >/dev/null 2>&1
+  docker exec "$DB" pg_isready -U postgres -d postgres >/dev/null 2>&1 &&
+    docker exec "$DB" psql -U postgres -d postgres -c 'SELECT 1' >/dev/null 2>&1
 }
 wait_until 'PostgreSQL accepts connections' postgres_ready
+
+docker exec -i "$DB" psql -U postgres -d postgres -v ON_ERROR_STOP=1 >"$WORK_DIR/database.log" <<EOF
+CREATE ROLE $DB_USER LOGIN PASSWORD '$DB_PASSWORD';
+CREATE DATABASE $DB_NAME OWNER $DB_USER;
+EOF
+[[ "$(psql_value "SELECT rolsuper OR rolcreatedb OR rolcreaterole FROM pg_roles WHERE rolname = '$DB_USER'")" == f ]] ||
+  fail 'API database role has superuser, CREATEDB, or CREATEROLE privileges'
+pass 'API database role owns its database without superuser privileges'
 
 step 'Production configuration with generated secrets'
 
@@ -245,6 +253,15 @@ pass 'POST /auth/login -> 200 with Secure cookies'
 me_status="$(curl -s -b "$COOKIE_JAR" -o /dev/null -w '%{http_code}' "$API_URL/users/me")"
 [[ $me_status == 200 ]] || fail "GET /users/me returned $me_status"
 pass 'GET /users/me -> 200 with the session cookies'
+
+step 'API restart preserves the database-backed session'
+
+docker restart -t 30 "$API" >/dev/null
+API_URL="http://localhost:$(docker port "$API" 3000/tcp | head -n1 | sed 's/.*://')/api"
+wait_until 'readiness returns 200 after API restart' status_is 200 "$API_URL/health/ready"
+me_status="$(curl -s -b "$COOKIE_JAR" -o /dev/null -w '%{http_code}' "$API_URL/users/me")"
+[[ $me_status == 200 ]] || fail "GET /users/me after restart returned $me_status"
+pass 'existing session works after API restart with unchanged secrets'
 
 step 'Email outbox delivers through SMTP'
 

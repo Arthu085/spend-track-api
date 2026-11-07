@@ -123,6 +123,7 @@ every change must pass is in [`docs/conventions.md`](docs/conventions.md#testing
 | [`docs/PROJECT.md`](docs/PROJECT.md) | Purpose, stack, modules, and seeded data |
 | [`docs/conventions.md`](docs/conventions.md) | Engineering rules: architecture, modules, HTTP, auth, persistence, i18n, testing, delivery |
 | [`docs/core.md`](docs/core.md) | Cross-cutting mechanisms: request pipeline, guards, transactions, scheduling, mail, logging |
+| [`docs/deployment.md`](docs/deployment.md) | First production deployment: services, HTTPS, PostgreSQL, SMTP, secrets, backups, updates |
 | [`docs/infrastructure.md`](docs/infrastructure.md) | Local environment, Docker, configuration, migrations, deployment, operations, CI |
 | [`docs/modules/`](docs/modules) | One document per business module: rules, invariants, and design decisions |
 | Swagger (`/api/docs`) | Every route with its request and response shapes |

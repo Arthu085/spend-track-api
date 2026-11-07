@@ -6,6 +6,10 @@ How to run the API locally, configure it, build and deploy its production image,
 procedures they do not make obvious. Implementation of the mechanisms mentioned here is in
 [`core.md`](core.md).
 
+For a first production deployment on a single host, follow the provider-independent
+[deployment guide](deployment.md). It connects the production image to the frontend, HTTPS,
+persistent PostgreSQL, SMTP, and backups without the development Compose stack.
+
 ## Local development
 
 ### Compose services
@@ -336,7 +340,7 @@ Two containers cannot publish the same host port, so **requests fail until the n
 ```bash
 docker stop -t 30 api
 docker rename api api-previous
-docker run -d --name api --stop-timeout 30 --env-file /path/to/production.env -p 3000:3000 \
+docker run -d --name api --stop-timeout 30 --env-file /path/to/production.env -p 127.0.0.1:3000:3000 \
   "registry.example.com/api:$TAG"
 timeout 120 sh -c 'until curl -fs http://127.0.0.1:3000/api/health/ready >/dev/null; do sleep 2; done'
 
@@ -547,12 +551,13 @@ positive integer to change it, for example on a slow machine where tokens expire
 
 The smoke test uses disposable PostgreSQL and Mailpit containers and generated secrets. It checks
 that the image runs as non-root and ships compiled code, migrations, seeds, and translations without
-source or TypeScript tooling; that an insecure setting stops the container at boot; that migrations
-are idempotent and the admin seed is opt-in and runs once; that the probes, `HEALTHCHECK`, and
-missing Swagger behave as described; that CSRF bootstrap, login with `Secure` cookies,
-`GET /users/me`, and a password-reset email through the outbox work; that readiness turns `503` and
-recovers when PostgreSQL stops and restarts while liveness stays `200`; and that `SIGTERM` exits with
-code `0`. Run it locally (requires Docker, `curl`, and `openssl`):
+source or TypeScript tooling; that an insecure setting stops the container at boot; that every
+migration, including the financial modules' migrations, and the seeds run as a non-superuser database
+owner, migrations are idempotent, and the admin seed is opt-in and runs once; that the probes,
+`HEALTHCHECK`, and missing Swagger behave as described; that CSRF bootstrap, login with `Secure`
+cookies, `GET /users/me`, and a password-reset email through the outbox work; that an existing
+session survives an API restart; that readiness turns `503` and recovers when PostgreSQL stops and
+restarts while liveness stays `200`; and that `SIGTERM` exits with code `0`. Run it locally (requires Docker, `curl`, and `openssl`):
 
 ```bash
 docker build --target prod -t api:prod .
