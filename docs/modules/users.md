@@ -25,7 +25,7 @@ payloads are in Swagger; this document covers the rules behind them.
 independent: deactivating never soft-deletes and soft-deleting never changes `status`. There is no
 hard delete.
 
-`GetUserUseCase`, `UpdateUserUseCase`, and `UpdateOwnProfileUseCase` reject an inactive user with
+`GetUserUseCase`, `UpdateUserUseCase`, `UpdateOwnProfileUseCase`, and `ConfirmUserEmailUseCase` reject an inactive user with
 `InactiveUserError` (`409`). The status toggle is exempt because it is the only way back to
 `ACTIVE`, and delete is exempt so a record stays deletable whatever its status.
 
@@ -70,7 +70,7 @@ The route abilities decide who may call user-management endpoints; domain rules
 admin** when they hold the `ADMIN` role, whatever their or the role's status. An **active admin** is a
 live, `ACTIVE` user holding a live, `ACTIVE` `ADMIN` role.
 
-- **Only an active admin can act on an admin.** Updating, toggling status, or deleting a user who
+- **Only an active admin can act on an admin.** Updating, confirming email, toggling status, or deleting a user who
   holds `ADMIN` is `AdminTargetForbiddenError` (`403`) for anyone else, whatever their abilities.
 - **Only an active admin can grant `ADMIN`** (`AdminRoleGrantForbiddenError`, `403`).
 - **`ADMIN` is permanent through the API.** No update, change request, or approval can remove it,
@@ -83,10 +83,10 @@ live, `ACTIVE` user holding a live, `ACTIVE` `ADMIN` role.
 - **Nobody deactivates or deletes themselves** (`403`), and removing the final active admin is
   `LastActiveAdminError` (`409`). Together, these rules keep at least one active admin.
 
-Create, update, status, delete, and change-request creation serialize these checks with a PostgreSQL
-transaction advisory lock (`lockAdminRoster`) and re-read the actor after taking it, so two admins
-deactivating each other at the same time cannot both succeed. Update, status, delete, and change
-requests then lock the target row (`findByUuidForUpdate`) so they never write a stale copy over a
+Create, update, manual email confirmation, status, delete, and change-request creation serialize
+these checks with a PostgreSQL transaction advisory lock (`lockAdminRoster`) and re-read the actor after taking it, so two admins
+deactivating each other at the same time cannot both succeed. Update, manual email confirmation,
+status, delete, and change requests then lock the target row (`findByUuidForUpdate`) so they never write a stale copy over a
 concurrent confirmation or reset.
 
 ## Admin change requests
@@ -193,7 +193,7 @@ denial reason:
 - **`DISABLED` or `EXHAUSTED`** (quota denial): the user change commits without a job and
   `Email confirmation not scheduled` is logged. After `EXHAUSTED`, the user can resend once the daily
   quota resets. `DISABLED` (`MAIL_DAILY_LIMIT_EMAIL_CONFIRMATION=0`) also denies resends, so the user
-  can confirm only through a password reset or after an operator raises the limit.
+  can confirm through a password reset, manual verification by an authorized operator, or after an operator raises the limit.
 
 **Delivery.** The token is minted when the outbox delivers the job: the handler resolves the account
 by recipient, locks it, issues nothing if it is gone, inactive, already confirmed, or no longer has
@@ -205,6 +205,16 @@ that email, supersedes earlier tokens, stores the new digest, and sends an
 `UPDATE ... AND consumed_at IS NULL`, and confirms the locked row in one transaction. Every failure
 (malformed, unknown, expired, consumed, mismatched, owner gone) is one
 `InvalidEmailConfirmationTokenError` (`422`), and a concurrent replay gets the same error.
+
+**Manual verification.** `PUT /users/:uuid/email-confirmation` requires `READ` and `UPDATE` on
+`USER`, with the same active-admin safeguard when the target holds `ADMIN`. Its required `email`
+body identifies the address the operator reviewed; a normalized mismatch against the locked row is
+`EmailConfirmationStaleError` (`409`). Missing or deleted users return `404`, inactive users `409`.
+The transaction takes the admin-roster lock before the target row lock, consumes every outstanding
+confirmation token, sets `emailConfirmedAt`, and records the operator in `updatedBy`. Repeated
+requests preserve an existing timestamp and authorship. The route is audited as `User.confirm_email`, sends
+no email, and leaves existing sessions unchanged. `GET /users` includes the nullable
+`emailConfirmedAt` so the web app can offer verification only for unconfirmed users.
 
 **Resend only schedules**, without an account lookup, so every address gets the same response and
 work ([`email-quota.md`](email-quota.md#where-the-gate-runs)). Expired tokens are batch-deleted

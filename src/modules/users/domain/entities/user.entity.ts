@@ -140,8 +140,11 @@ export class UserEntity extends BaseAuditedEntity {
     });
   }
 
-  withEmailConfirmed(confirmedAt: Date): UserEntity {
-    return this.copyWith({ emailConfirmedAt: confirmedAt });
+  withEmailConfirmed(
+    confirmedAt: Date,
+    actorId: number | null = this.updatedBy,
+  ): UserEntity {
+    return this.copyWith({ emailConfirmedAt: confirmedAt, updatedBy: actorId });
   }
 
   withPassword(passwordHash: string, actorId: number | null): UserEntity {

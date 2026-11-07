@@ -16,6 +16,8 @@ import { UserOrmEntity } from '../../../infrastructure/persistence/entities/user
 import { TypeOrmEmailConfirmationTokenRepository } from '../../../infrastructure/persistence/repositories/typeorm-email-confirmation-token.repository';
 import { TypeOrmUserRepository } from '../../../infrastructure/persistence/repositories/typeorm-user.repository';
 import { ConfirmEmailUseCase } from '../confirm-email.use-case';
+import { ConfirmUserEmailUseCase } from '../confirm-user-email.use-case';
+import { EmailConfirmationStaleError } from '../../../domain/errors/email-confirmation-stale.error';
 
 // Runs against real Postgres so a lost race between concurrent confirmations
 // of the same token, or a failed rollback of the token consumption, shows up in
@@ -198,5 +200,136 @@ describe('ConfirmEmailUseCase (integration)', () => {
 
     await expect(findEmailConfirmedAt(user.id)).resolves.not.toBeNull();
     await expect(findTokenConsumedAt(token.uuid)).resolves.not.toBeNull();
+  });
+});
+
+describe('ConfirmUserEmailUseCase transactional confirmation (integration)', () => {
+  let moduleRef: TestingModule;
+  let dataSource: DataSource;
+  let useCase: ConfirmUserEmailUseCase;
+  let userRepository: TypeOrmUserRepository;
+
+  beforeAll(async () => {
+    moduleRef = await Test.createTestingModule({
+      imports: [
+        CoreConfigModule,
+        DatabaseModule,
+        TypeOrmModule.forFeature([
+          UserOrmEntity,
+          RoleOrmEntity,
+          AbilityOrmEntity,
+          EmailConfirmationTokenOrmEntity,
+        ]),
+      ],
+      providers: [
+        ConfirmUserEmailUseCase,
+        TypeOrmUserRepository,
+        TypeOrmEmailConfirmationTokenRepository,
+        { provide: USER_REPOSITORY, useExisting: TypeOrmUserRepository },
+        {
+          provide: EMAIL_CONFIRMATION_TOKEN_REPOSITORY,
+          useExisting: TypeOrmEmailConfirmationTokenRepository,
+        },
+      ],
+    }).compile();
+    dataSource = moduleRef.get<DataSource>(getDataSourceToken());
+    useCase = moduleRef.get(ConfirmUserEmailUseCase);
+    userRepository = moduleRef.get(TypeOrmUserRepository);
+  });
+
+  afterAll(async () => moduleRef.close());
+  afterEach(() => jest.restoreAllMocks());
+
+  async function fixture() {
+    const users = dataSource.getRepository(UserOrmEntity);
+
+    const actor = await users.save(
+      users.create({
+        name: 'Operator',
+        email: `${randomUUID()}@example.com`,
+        password: 'hashed:irrelevant',
+        emailConfirmedAt: new Date(),
+        roles: [],
+      }),
+    );
+
+    const user = await users.save(
+      users.create({
+        name: 'Unconfirmed user',
+        email: `${randomUUID()}@example.com`,
+        password: 'hashed:irrelevant',
+        emailConfirmedAt: null,
+        roles: [],
+      }),
+    );
+
+    const tokens = dataSource.getRepository(EmailConfirmationTokenOrmEntity);
+
+    const token = await tokens.save(
+      tokens.create({
+        userId: user.id,
+        tokenHash: 'hash',
+        expiresAt: new Date(Date.now() + 60000),
+        consumedAt: null,
+      }),
+    );
+
+    return {
+      users,
+      tokens,
+      user,
+      token,
+      input: { uuid: user.uuid, email: user.email, actorId: actor.id },
+    };
+  }
+
+  it('serializes concurrent manual confirmations and consumes existing links', async () => {
+    const { users, tokens, user, token, input } = await fixture();
+
+    const [first, second] = await Promise.all([
+      useCase.execute(input),
+      useCase.execute(input),
+    ]);
+
+    const saved = await users.findOneByOrFail({ id: user.id });
+
+    expect(first.emailConfirmedAt).toEqual(second.emailConfirmedAt);
+    expect(saved.emailConfirmedAt).not.toBeNull();
+    expect(saved.updatedBy).toBe(input.actorId);
+    expect(
+      (await tokens.findOneByOrFail({ id: token.id })).consumedAt,
+    ).not.toBeNull();
+  });
+
+  it('rolls back token consumption if saving confirmation fails', async () => {
+    const { users, tokens, user, token, input } = await fixture();
+    jest
+      .spyOn(userRepository, 'update')
+      .mockRejectedValueOnce(new Error('save failed'));
+
+    await expect(useCase.execute(input)).rejects.toThrow('save failed');
+    expect(
+      (await users.findOneByOrFail({ id: user.id })).emailConfirmedAt,
+    ).toBeNull();
+    expect(
+      (await tokens.findOneByOrFail({ id: token.id })).consumedAt,
+    ).toBeNull();
+  });
+
+  it('refuses to confirm an address changed since it was reviewed', async () => {
+    const { users, tokens, user, token, input } = await fixture();
+    await users.update(user.id, {
+      email: `changed-${randomUUID()}@example.com`,
+    });
+
+    await expect(useCase.execute(input)).rejects.toBeInstanceOf(
+      EmailConfirmationStaleError,
+    );
+    expect(
+      (await users.findOneByOrFail({ id: user.id })).emailConfirmedAt,
+    ).toBeNull();
+    expect(
+      (await tokens.findOneByOrFail({ id: token.id })).consumedAt,
+    ).toBeNull();
   });
 });

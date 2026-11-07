@@ -46,6 +46,11 @@ describe('UsersModule routes', () => {
       ['UsersManagementController', 'POST /users', false],
       ['UsersManagementController', 'PATCH /users/:uuid', false],
       ['UsersManagementController', 'PUT /users/:uuid/status', false],
+      [
+        'UsersManagementController',
+        'PUT /users/:uuid/email-confirmation',
+        false,
+      ],
       ['UsersManagementController', 'DELETE /users/:uuid', false],
     ]);
   });

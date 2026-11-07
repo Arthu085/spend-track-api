@@ -17,7 +17,8 @@
     "change_request_stale": "Your profile changed after this request was made; ask for a new request",
     "change_request_recipient_forbidden": "Only admins receive change requests",
     "current_password_required": "Enter your current password to change the email",
-    "invalid_current_password": "The current password is incorrect"
+    "invalid_current_password": "The current password is incorrect",
+    "email_confirmation_stale": "The email changed after it was reviewed; reload the user and try again"
   },
   "success": {
     "email_confirmed": "Email confirmed successfully",

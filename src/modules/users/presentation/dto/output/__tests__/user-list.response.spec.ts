@@ -74,7 +74,7 @@ describe('UserListResponseDto.fromDomain', () => {
     const dto = UserListResponseDto.fromDomain(buildUser(), translate);
 
     expect(dto).not.toHaveProperty('email');
-    expect(dto).not.toHaveProperty('emailConfirmedAt');
+    expect(dto.emailConfirmedAt).toEqual(expect.any(Date));
     expect(dto).not.toHaveProperty('creatorName');
     expect(dto).not.toHaveProperty('updaterName');
     expect(dto).not.toHaveProperty('createdAt');

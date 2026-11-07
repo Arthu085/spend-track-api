@@ -20,6 +20,8 @@ import {
 } from '@shared/presentation/decorators';
 import type { AuthenticatedUser } from '@shared/presentation/http';
 import { ParseUuidParamPipe } from '@shared/presentation/pipes';
+import { ConfirmUserEmailUseCase } from '../../application/use-cases/confirm-user-email.use-case';
+import { ConfirmUserEmailDto } from '../dto/input/confirm-user-email.dto';
 import { CreateUserUseCase } from '../../application/use-cases/create-user.use-case';
 import { DeleteUserUseCase } from '../../application/use-cases/delete-user.use-case';
 import { GetUserUseCase } from '../../application/use-cases/get-user.use-case';
@@ -42,6 +44,7 @@ export class UsersManagementController {
     private readonly updateUser: UpdateUserUseCase,
     private readonly updateUserStatus: UpdateUserStatusUseCase,
     private readonly deleteUser: DeleteUserUseCase,
+    private readonly confirmUserEmail: ConfirmUserEmailUseCase,
     private readonly config: AppConfigService,
   ) {}
 
@@ -205,6 +208,44 @@ export class UsersManagementController {
     const user = await this.updateUserStatus.execute({
       uuid,
       status: dto.status,
+      actorId: actor.id,
+    });
+
+    return UserDetailResponseDto.fromDomain(user, translate);
+  }
+
+  @(endpoint()
+    .put(':uuid/email-confirmation')
+    .ability({ action: Action.UPDATE, subject: Subject.USER })
+    .ability({ action: Action.READ, subject: Subject.USER })
+    .audit('User.confirm_email')
+    .successMessage('users.success.email_confirmed')
+    .tags('users')
+    .summary('Manually confirm a user email')
+    .description(
+      'Confirms the supplied current email and consumes outstanding confirmation tokens. Repeating the same confirmation preserves its timestamp. Only an active admin can confirm an admin email.',
+    )
+    .errorResponse(
+      HttpStatus.FORBIDDEN,
+      'Only an active admin can modify an admin.',
+    )
+    .errorResponse(HttpStatus.NOT_FOUND, 'User not found.')
+    .errorResponse(
+      HttpStatus.CONFLICT,
+      'User is inactive, or the email changed after it was reviewed.',
+    )
+    .body(ConfirmUserEmailDto)
+    .response(UserDetailResponseDto)
+    .build())
+  async confirmEmail(
+    @Param('uuid', ParseUuidParamPipe) uuid: string,
+    @Body() dto: ConfirmUserEmailDto,
+    @CurrentActor() actor: AuthenticatedUser,
+    @Translator() translate: Translate,
+  ): Promise<UserDetailResponseDto> {
+    const user = await this.confirmUserEmail.execute({
+      uuid,
+      email: dto.email,
       actorId: actor.id,
     });
 

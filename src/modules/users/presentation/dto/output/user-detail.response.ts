@@ -6,9 +6,6 @@ export class UserDetailResponseDto extends UserListResponseDto {
   @ApiProperty()
   email!: string;
 
-  @ApiProperty({ type: Date, nullable: true })
-  emailConfirmedAt!: Date | null;
-
   @ApiProperty({ type: String, nullable: true })
   creatorName!: string | null;
 
@@ -29,7 +26,6 @@ export class UserDetailResponseDto extends UserListResponseDto {
 
     this.assignBase(dto, user, translate);
     dto.email = user.email;
-    dto.emailConfirmedAt = user.emailConfirmedAt;
     dto.creatorName = user.creatorName;
     dto.updaterName = user.updaterName;
     dto.createdAt = user.createdAt;

@@ -16,6 +16,7 @@ import {
 import type { AbilityPair } from '@shared/domain/authorization/ability-pair.type';
 import { UserListResponseDto } from '../../dto/output/user-list.response';
 import { UserDetailResponseDto } from '../../dto/output/user-detail.response';
+import type { ConfirmUserEmailUseCase } from '../../../application/use-cases/confirm-user-email.use-case';
 import type { CreateUserUseCase } from '../../../application/use-cases/create-user.use-case';
 import type { DeleteUserUseCase } from '../../../application/use-cases/delete-user.use-case';
 import type { GetUserUseCase } from '../../../application/use-cases/get-user.use-case';
@@ -40,6 +41,7 @@ const findOneHandler = controllerHandlers.findOne;
 
 function buildController(
   overrides: Partial<{
+    confirmUserEmail: Partial<ConfirmUserEmailUseCase>;
     createUser: Partial<CreateUserUseCase>;
     listUsers: Partial<ListUsersUseCase>;
     getUser: Partial<GetUserUseCase>;
@@ -55,6 +57,7 @@ function buildController(
     (overrides.updateUser ?? {}) as UpdateUserUseCase,
     (overrides.updateUserStatus ?? {}) as UpdateUserStatusUseCase,
     (overrides.deleteUser ?? {}) as DeleteUserUseCase,
+    (overrides.confirmUserEmail ?? {}) as ConfirmUserEmailUseCase,
     {
       cookie: {
         secret: 'cookie-secret',
@@ -277,6 +280,38 @@ describe('UsersManagementController', () => {
     });
     expect(result.uuid).toBe('user-uuid');
     expect(result).toBeInstanceOf(UserDetailResponseDto);
+  });
+
+  it('confirmEmail forwards the expected email and actor and maps the detail response', async () => {
+    const execute = jest.fn().mockResolvedValue(buildUser());
+    const controller = buildController({ confirmUserEmail: { execute } });
+
+    const result = await controller.confirmEmail(
+      'user-uuid',
+      { email: 'jane@example.com' },
+      buildActor(),
+      translate,
+    );
+
+    expect(execute).toHaveBeenCalledWith({
+      uuid: 'user-uuid',
+      email: 'jane@example.com',
+      actorId: 101,
+    });
+    expect(result).toBeInstanceOf(UserDetailResponseDto);
+    expect(result).not.toHaveProperty('password');
+    expect(
+      Reflect.getMetadata(
+        ABILITY_METADATA_KEY,
+        controllerHandlers.confirmEmail,
+      ),
+    ).toEqual([
+      { action: Action.UPDATE, subject: Subject.USER },
+      { action: Action.READ, subject: Subject.USER },
+    ]);
+    expect(
+      Reflect.getMetadata(AUDIT_METADATA_KEY, controllerHandlers.confirmEmail),
+    ).toBe('User.confirm_email');
   });
 
   it('remove forwards the uuid and current actor id and returns nothing', async () => {

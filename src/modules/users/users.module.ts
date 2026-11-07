@@ -8,6 +8,7 @@ import { EmailOutboxModule } from '@modules/email-outbox/email-outbox.module';
 import { ApproveUserChangeRequestUseCase } from './application/use-cases/approve-user-change-request.use-case';
 import { ChangeOwnPasswordUseCase } from './application/use-cases/change-own-password.use-case';
 import { CleanupEmailConfirmationTokensUseCase } from './application/use-cases/cleanup-email-confirmation-tokens.use-case';
+import { ConfirmUserEmailUseCase } from './application/use-cases/confirm-user-email.use-case';
 import { ConfirmEmailUseCase } from './application/use-cases/confirm-email.use-case';
 import { CreateUserUseCase } from './application/use-cases/create-user.use-case';
 import { DeleteUserUseCase } from './application/use-cases/delete-user.use-case';
@@ -113,6 +114,7 @@ import { UsersProfileController } from './presentation/controllers/users-profile
     UpdateUserStatusUseCase,
     DeleteUserUseCase,
     ConfirmEmailUseCase,
+    ConfirmUserEmailUseCase,
     ResendEmailConfirmationUseCase,
     DeliverEmailConfirmationUseCase,
     CleanupEmailConfirmationTokensUseCase,
