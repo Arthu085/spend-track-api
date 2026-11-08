@@ -26,6 +26,18 @@ Always read [`docs/conventions.md`](docs/conventions.md). Then read what matches
 
 ## Gate
 
+Choose local validation based on the files and behavior affected:
+
+- Documentation-only changes (`README.md`, `docs/`, `AGENTS.md`) that do not affect runtime behavior,
+  builds, dependencies, or executable configuration do not require application lint, type checking,
+  tests, or builds. Review the changed text, relevant links and examples, run `git diff --check`,
+  and run existing documentation checks only when applicable, scoped to the changed files.
+- For code or configuration changes, run the relevant existing checks and focused tests. Run the
+  full gate below for broad or cross-cutting changes, uncertain impact, or an explicit requirement.
+- Report which checks ran and why others were skipped. CI continues to run its configured checks.
+
+Full gate:
+
 ```sh
 npm run lint:check && npm run typecheck && npm run test:cov && npm run test:integration && npm run test:e2e && npm run build
 ```
