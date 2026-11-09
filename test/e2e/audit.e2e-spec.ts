@@ -188,9 +188,8 @@ describe('Audit module (e2e)', () => {
     const body = response.body as { statusCode: number; message: unknown };
 
     // Validation errors are handled entirely by `I18nValidationExceptionFilter`,
-    // never by `AllExceptionsFilter` — the flattened shape below is the proof.
+    // never by `AllExceptionsFilter` — the `message` array below is the proof.
     expect(Array.isArray(body.message)).toBe(true);
-    expect(body).not.toHaveProperty('timestamp');
 
     await wait(50);
 

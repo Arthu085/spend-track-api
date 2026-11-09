@@ -42,10 +42,11 @@ Language resolution: `Accept-Language`, then the `x-lang` header, then `?lang=`,
 `AllExceptionsFilter` is not bound with `APP_FILTER`. `setupExceptionHandling()` registers it with
 `app.useGlobalFilters(...)` from `configureApp()`, **before** `setupValidation()` registers
 `I18nValidationExceptionFilter`. Nest checks global filters in reverse registration order, so the
-specific validation filter wins for validation errors and the catch-all handles everything else. Any
-new global filter must be registered with `app.useGlobalFilters(...)` after
-`setupExceptionHandling(app)`; an `APP_FILTER` provider resolves earlier and would be shadowed by the
-catch-all.
+specific validation filter wins for validation errors and the catch-all handles everything else. The
+validation filter keeps the standard error body (`buildValidationErrorBody`), with `message` as the
+array of translated validation messages. Any new global filter must be registered with
+`app.useGlobalFilters(...)` after `setupExceptionHandling(app)`; an `APP_FILTER` provider resolves
+earlier and would be shadowed by the catch-all.
 
 ### CORS
 

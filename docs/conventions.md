@@ -90,7 +90,8 @@ including a `docs/modules/<name>.md` and a row in [`PROJECT.md`](PROJECT.md#modu
   `{ total, page, limit }` in `meta`.
 - Errors come from the global filter with `statusCode`, `error`, `message`, `timestamp`, and `path`.
   Only a `MissingAbilityError` 403 adds `requiredAbilities`, and only an unexpected 500 on an audited
-  route adds `auditId`.
+  route adds `auditId`. DTO validation 400s use the same shape, but `message` is an array of
+  translated messages.
 - Every endpoint has accurate Swagger metadata. `build()` documents the shared error responses from
   route traits (401 and unconfirmed-email 403 unless `.public()`, CSRF 403 on unsafe methods, ability
   403, and 429 unless `.skipThrottle()`); declare route-specific domain errors with `.errorResponse(HttpStatus.X, '<description>')`,
