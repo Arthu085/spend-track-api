@@ -8,6 +8,7 @@ export { translateOrFallback } from './translate-or-fallback';
 export type {
   ErrorResponseBody,
   RequiredAbilityView,
+  ValidationErrorResponseBody,
 } from './error-response.type';
 export {
   describeAuditError,

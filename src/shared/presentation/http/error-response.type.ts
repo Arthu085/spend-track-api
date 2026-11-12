@@ -16,3 +16,10 @@ export interface ErrorResponseBody {
   requiredAbilities?: RequiredAbilityView[];
   auditId?: string;
 }
+
+export type ValidationErrorResponseBody = Omit<
+  ErrorResponseBody,
+  'message' | 'requiredAbilities' | 'auditId'
+> & {
+  message: string[];
+};

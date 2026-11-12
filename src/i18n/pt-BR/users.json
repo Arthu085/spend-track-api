@@ -17,7 +17,8 @@
     "change_request_stale": "Seu perfil mudou depois que esta solicitação foi feita; peça uma nova solicitação",
     "change_request_recipient_forbidden": "Apenas administradores recebem solicitações de alteração",
     "current_password_required": "Informe sua senha atual para alterar o e-mail",
-    "invalid_current_password": "A senha atual está incorreta"
+    "invalid_current_password": "A senha atual está incorreta",
+    "email_confirmation_stale": "O e-mail mudou após a revisão; recarregue o usuário e tente novamente"
   },
   "success": {
     "email_confirmed": "E-mail confirmado com sucesso",

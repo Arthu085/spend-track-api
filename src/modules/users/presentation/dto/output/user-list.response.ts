@@ -17,6 +17,9 @@ export class UserListResponseDto {
   @ApiProperty()
   statusLabel!: string;
 
+  @ApiProperty({ type: Date, nullable: true })
+  emailConfirmedAt!: Date | null;
+
   @ApiProperty({ type: [RoleListResponseDto] })
   roles!: RoleListResponseDto[];
 
@@ -38,6 +41,7 @@ export class UserListResponseDto {
   ): void {
     dto.uuid = user.uuid;
     dto.name = user.name;
+    dto.emailConfirmedAt = user.emailConfirmedAt;
     dto.status = user.status;
     dto.statusLabel = translateOrFallback(
       translate,

@@ -22,10 +22,12 @@ interface ErrorBody {
   path: string;
 }
 
-interface FlattenedValidationErrorBody {
+interface ValidationErrorBody {
   statusCode: number;
-  message: unknown;
-  error: unknown;
+  error: string;
+  message: string[];
+  timestamp: string;
+  path: string;
 }
 
 @Controller('probe')
@@ -149,21 +151,41 @@ describe('Shared HTTP building blocks (e2e)', () => {
     expect(body.message).toBe('Route not found');
   });
 
-  it('keeps the dedicated I18nValidationExceptionFilter shape for query DTO validation failures', async () => {
+  it('returns query DTO validation failures in the standard error shape with a pt-BR message array by default', async () => {
     const response = await request(app.getHttpServer())
       .get('/api/probe/validated')
       .query({ page: 0, limit: 500 })
       .expect(400);
 
-    const body = response.body as FlattenedValidationErrorBody;
+    const body = response.body as ValidationErrorBody;
 
-    // Validation errors must never fall through to the generic catch-all
-    // shape (`{statusCode,error,message,timestamp,path}` with a string
-    // `message`); they keep their flattened shape with a `message` array.
-    expect(body.statusCode).toBe(400);
-    expect(Array.isArray(body.message)).toBe(true);
-    expect(body).not.toHaveProperty('timestamp');
-    expect(body).not.toHaveProperty('path');
+    expect(body).toEqual({
+      statusCode: 400,
+      error: 'Bad Request',
+      message: [
+        'O campo page deve ser no mínimo 1',
+        'O campo limit deve ser no máximo 50',
+      ],
+      timestamp: expect.stringMatching(
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+      ) as string,
+      path: '/api/probe/validated?page=0&limit=500',
+    });
+  });
+
+  it('localizes query DTO validation messages to English via the x-lang header', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/api/probe/validated')
+      .query({ page: 0, limit: 500 })
+      .set('x-lang', 'en')
+      .expect(400);
+
+    const body = response.body as ValidationErrorBody;
+
+    expect(body.message).toEqual([
+      'The page field must not be less than 1',
+      'The limit field must not be greater than 50',
+    ]);
   });
 
   it('accepts a valid paginated query and returns the coerced values through the envelope', async () => {
