@@ -1,4 +1,5 @@
 import { mockOf } from '@test/support/mocks/mock-of';
+import { DashboardCard } from '../../../domain/enums/dashboard-card.enum';
 import { DefaultMonth } from '../../../domain/enums/default-month.enum';
 import { SpendingPerspective } from '../../../domain/enums/spending-perspective.enum';
 import type { UserPreferencesRepository } from '../../../domain/repositories/user-preferences.repository';
@@ -36,7 +37,7 @@ describe('UpdatePreferencesUseCase', () => {
     expect(save).toHaveBeenCalledWith(3, {
       spendingPerspective: SpendingPerspective.INVOICE_MONTH,
       defaultMonth: DefaultMonth.CURRENT,
-      dashboardCardsVisible: true,
+      collapsedDashboardCards: [],
     });
   });
 
@@ -44,7 +45,7 @@ describe('UpdatePreferencesUseCase', () => {
     const { useCase, save } = build({
       spendingPerspective: SpendingPerspective.INVOICE_MONTH,
       defaultMonth: DefaultMonth.CURRENT,
-      dashboardCardsVisible: false,
+      collapsedDashboardCards: [DashboardCard.BUDGET],
       updatedAt: new Date(),
     });
 
@@ -53,24 +54,50 @@ describe('UpdatePreferencesUseCase', () => {
     expect(save).toHaveBeenCalledWith(3, {
       spendingPerspective: SpendingPerspective.INVOICE_MONTH,
       defaultMonth: DefaultMonth.NEXT,
-      dashboardCardsVisible: false,
+      collapsedDashboardCards: [DashboardCard.BUDGET],
     });
   });
 
-  it('hides the dashboard cards when false is sent', async () => {
+  it('replaces the whole collapsed card list and stores it in enum order', async () => {
     const { useCase, save } = build({
       spendingPerspective: SpendingPerspective.INVOICE_MONTH,
       defaultMonth: DefaultMonth.NEXT,
-      dashboardCardsVisible: true,
+      collapsedDashboardCards: [DashboardCard.OVERVIEW, DashboardCard.BUDGET],
       updatedAt: new Date(),
     });
 
-    await useCase.execute({ userId: 3, dashboardCardsVisible: false });
+    await useCase.execute({
+      userId: 3,
+      collapsedDashboardCards: [
+        DashboardCard.ACCOUNT_BALANCES,
+        DashboardCard.INCOME,
+      ],
+    });
 
     expect(save).toHaveBeenCalledWith(3, {
       spendingPerspective: SpendingPerspective.INVOICE_MONTH,
       defaultMonth: DefaultMonth.NEXT,
-      dashboardCardsVisible: false,
+      collapsedDashboardCards: [
+        DashboardCard.INCOME,
+        DashboardCard.ACCOUNT_BALANCES,
+      ],
+    });
+  });
+
+  it('clears the collapsed card list when an empty list is sent', async () => {
+    const { useCase, save } = build({
+      spendingPerspective: SpendingPerspective.INVOICE_MONTH,
+      defaultMonth: DefaultMonth.NEXT,
+      collapsedDashboardCards: [DashboardCard.BUDGET],
+      updatedAt: new Date(),
+    });
+
+    await useCase.execute({ userId: 3, collapsedDashboardCards: [] });
+
+    expect(save).toHaveBeenCalledWith(3, {
+      spendingPerspective: SpendingPerspective.INVOICE_MONTH,
+      defaultMonth: DefaultMonth.NEXT,
+      collapsedDashboardCards: [],
     });
   });
 });

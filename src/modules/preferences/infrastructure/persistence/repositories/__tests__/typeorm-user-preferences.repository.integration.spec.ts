@@ -5,6 +5,7 @@ import { DataSource } from 'typeorm';
 import { CoreConfigModule } from '@core/config';
 import { DatabaseModule } from '@core/database';
 import { UserOrmEntity } from '@modules/users/infrastructure/persistence/entities/user.orm-entity';
+import { DashboardCard } from '../../../../domain/enums/dashboard-card.enum';
 import { DefaultMonth } from '../../../../domain/enums/default-month.enum';
 import { SpendingPerspective } from '../../../../domain/enums/spending-perspective.enum';
 import { UserPreferencesOrmEntity } from '../../entities/user-preferences.orm-entity';
@@ -65,19 +66,25 @@ describe('TypeOrmUserPreferencesRepository (integration)', () => {
     await repository.save(userId, {
       spendingPerspective: SpendingPerspective.INVOICE_MONTH,
       defaultMonth: DefaultMonth.CURRENT,
-      dashboardCardsVisible: true,
+      collapsedDashboardCards: [],
     });
 
     const saved = await repository.save(userId, {
       spendingPerspective: SpendingPerspective.INVOICE_MONTH,
       defaultMonth: DefaultMonth.NEXT,
-      dashboardCardsVisible: false,
+      collapsedDashboardCards: [
+        DashboardCard.OVERVIEW,
+        DashboardCard.CREDIT_CARD_INVOICES,
+      ],
     });
 
     expect(saved).toMatchObject({
       spendingPerspective: SpendingPerspective.INVOICE_MONTH,
       defaultMonth: DefaultMonth.NEXT,
-      dashboardCardsVisible: false,
+      collapsedDashboardCards: [
+        DashboardCard.OVERVIEW,
+        DashboardCard.CREDIT_CARD_INVOICES,
+      ],
     });
     await expect(
       dataSource.getRepository(UserPreferencesOrmEntity).count(),
@@ -91,9 +98,29 @@ describe('TypeOrmUserPreferencesRepository (integration)', () => {
     await repository.save(first, {
       spendingPerspective: SpendingPerspective.INVOICE_MONTH,
       defaultMonth: DefaultMonth.NEXT,
-      dashboardCardsVisible: false,
+      collapsedDashboardCards: [DashboardCard.BUDGET],
     });
 
     await expect(repository.findByUserId(second)).resolves.toBeNull();
+  });
+
+  it('clears the collapsed dashboard cards when an empty list is saved', async () => {
+    const userId = await insertUser();
+
+    await repository.save(userId, {
+      spendingPerspective: SpendingPerspective.PURCHASE_DATE,
+      defaultMonth: DefaultMonth.CURRENT,
+      collapsedDashboardCards: [DashboardCard.INCOME, DashboardCard.EXPENSES],
+    });
+
+    await repository.save(userId, {
+      spendingPerspective: SpendingPerspective.PURCHASE_DATE,
+      defaultMonth: DefaultMonth.CURRENT,
+      collapsedDashboardCards: [],
+    });
+
+    await expect(repository.findByUserId(userId)).resolves.toMatchObject({
+      collapsedDashboardCards: [],
+    });
   });
 });

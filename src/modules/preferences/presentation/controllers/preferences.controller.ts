@@ -24,7 +24,7 @@ export class PreferencesController {
     .tags('preferences')
     .summary("Get the authenticated user's financial preferences")
     .description(
-      'Available to every authenticated user, without any ability, and always scoped to the caller. Returns the defaults (purchase-date perspective, current month, dashboard cards visible) with a null updatedAt until the user saves preferences.',
+      'Available to every authenticated user, without any ability, and always scoped to the caller. Returns the defaults (purchase-date perspective, current month, no collapsed dashboard cards) with a null updatedAt until the user saves preferences.',
     )
     .response(PreferencesResponseDto)
     .build())
@@ -44,7 +44,7 @@ export class PreferencesController {
     .tags('preferences')
     .summary("Update the authenticated user's financial preferences")
     .description(
-      'Partial update: omitted fields keep their current values. Changing the spending perspective only changes how months are grouped; it never changes stored dates.',
+      'Partial update: omitted fields keep their current values; collapsedDashboardCards replaces the whole list. Changing the spending perspective only changes how months are grouped; it never changes stored dates.',
     )
     .body(UpdatePreferencesDto)
     .response(PreferencesResponseDto)
@@ -58,7 +58,7 @@ export class PreferencesController {
       userId: actor.id,
       spendingPerspective: dto.spendingPerspective,
       defaultMonth: dto.defaultMonth,
-      dashboardCardsVisible: dto.dashboardCardsVisible,
+      collapsedDashboardCards: dto.collapsedDashboardCards,
     });
 
     return PreferencesResponseDto.fromDomain(preferences, translate);

@@ -12,7 +12,7 @@ export interface UserPreferences extends UserPreferenceValues {
 export const DEFAULT_USER_PREFERENCES: UserPreferenceValues = {
   spendingPerspective: SpendingPerspective.PURCHASE_DATE,
   defaultMonth: DefaultMonth.CURRENT,
-  dashboardCardsVisible: true,
+  collapsedDashboardCards: [],
 };
 
 export function resolveUserPreferences(

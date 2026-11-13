@@ -13,7 +13,7 @@ function toStored(orm: UserPreferencesOrmEntity): StoredUserPreferences {
   return {
     spendingPerspective: orm.spendingPerspective,
     defaultMonth: orm.defaultMonth,
-    dashboardCardsVisible: orm.dashboardCardsVisible,
+    collapsedDashboardCards: orm.collapsedDashboardCards,
     updatedAt: orm.updatedAt,
   };
 }
@@ -45,7 +45,7 @@ export class TypeOrmUserPreferencesRepository
         userId,
         spendingPerspective: values.spendingPerspective,
         defaultMonth: values.defaultMonth,
-        dashboardCardsVisible: values.dashboardCardsVisible,
+        collapsedDashboardCards: values.collapsedDashboardCards,
         updatedAt: new Date(),
       },
       { conflictPaths: ['userId'], skipUpdateIfNoValuesChanged: false },

@@ -1,4 +1,5 @@
 import { mockOf } from '@test/support/mocks/mock-of';
+import { DashboardCard } from '../../../domain/enums/dashboard-card.enum';
 import { DefaultMonth } from '../../../domain/enums/default-month.enum';
 import { SpendingPerspective } from '../../../domain/enums/spending-perspective.enum';
 import type { UserPreferencesRepository } from '../../../domain/repositories/user-preferences.repository';
@@ -9,7 +10,7 @@ describe('GetPreferencesUseCase', () => {
     const stored = {
       spendingPerspective: SpendingPerspective.INVOICE_MONTH,
       defaultMonth: DefaultMonth.NEXT,
-      dashboardCardsVisible: false,
+      collapsedDashboardCards: [DashboardCard.EXPENSES_BY_CATEGORY],
       updatedAt: new Date(),
     };
 
@@ -33,7 +34,7 @@ describe('GetPreferencesUseCase', () => {
     await expect(useCase.execute(7)).resolves.toEqual({
       spendingPerspective: SpendingPerspective.PURCHASE_DATE,
       defaultMonth: DefaultMonth.CURRENT,
-      dashboardCardsVisible: true,
+      collapsedDashboardCards: [],
       updatedAt: null,
     });
   });
