@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { BaseTechnicalOrmEntity } from '@shared/infrastructure/persistence/base-technical.orm-entity';
 import { UserOrmEntity } from '@modules/users/infrastructure/persistence/entities/user.orm-entity';
+import { DashboardCard } from '@modules/preferences/domain/enums/dashboard-card.enum';
 import { DefaultMonth } from '@modules/preferences/domain/enums/default-month.enum';
 import { SpendingPerspective } from '@modules/preferences/domain/enums/spending-perspective.enum';
 
@@ -48,6 +49,17 @@ export class UserPreferencesOrmEntity extends BaseTechnicalOrmEntity {
     comment: 'Month the dashboard opens on: the current or the next one.',
   })
   defaultMonth!: DefaultMonth;
+
+  @Column({
+    name: 'collapsed_dashboard_cards',
+    type: 'enum',
+    enum: DashboardCard,
+    array: true,
+    nullable: false,
+    default: [],
+    comment: 'Dashboard cards that start collapsed, showing only their title.',
+  })
+  collapsedDashboardCards!: DashboardCard[];
 
   @UpdateDateColumn({
     name: 'updated_at',

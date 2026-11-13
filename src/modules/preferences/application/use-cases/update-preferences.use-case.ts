@@ -1,6 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { DashboardCard } from '../../domain/enums/dashboard-card.enum';
 import { DefaultMonth } from '../../domain/enums/default-month.enum';
 import { SpendingPerspective } from '../../domain/enums/spending-perspective.enum';
+import { orderDashboardCards } from '../../domain/policies/order-dashboard-cards.policy';
 import {
   resolveUserPreferences,
   type UserPreferences,
@@ -14,6 +16,7 @@ export interface UpdatePreferencesInput {
   userId: number;
   spendingPerspective?: SpendingPerspective;
   defaultMonth?: DefaultMonth;
+  collapsedDashboardCards?: DashboardCard[];
 }
 
 @Injectable()
@@ -32,6 +35,9 @@ export class UpdatePreferencesUseCase {
       spendingPerspective:
         input.spendingPerspective ?? current.spendingPerspective,
       defaultMonth: input.defaultMonth ?? current.defaultMonth,
+      collapsedDashboardCards: orderDashboardCards(
+        input.collapsedDashboardCards ?? current.collapsedDashboardCards,
+      ),
     });
   }
 }

@@ -12,8 +12,19 @@ import { TransactionState } from '@modules/transactions';
 import { readConnection } from '@test/support/postgres/connection-handoff';
 import { createSchemaDataSource } from '@test/support/postgres/lifecycle';
 
-const FIRST_FINANCIAL_MIGRATION = '1793896076380';
+const FIRST_FINANCIAL_MIGRATION = 1793896076380;
+const LAST_FINANCIAL_MIGRATION = 1793897757086;
 const MIGRATIONS_DIRECTORY = join(__dirname, '..', 'migrations');
+
+// Later migrations are excluded so `undoLastMigration` always reverts the
+// financial ones and the applied list stays stable as new migrations land.
+function migrationFiles(includes: (timestamp: number) => boolean): string[] {
+  return readdirSync(MIGRATIONS_DIRECTORY)
+    .filter(
+      (file) => file.endsWith('.ts') && includes(Number.parseInt(file, 10)),
+    )
+    .map((file) => join(MIGRATIONS_DIRECTORY, file));
+}
 
 describe('Financial feature migrations (integration)', () => {
   let administration: DataSource;
@@ -36,11 +47,9 @@ describe('Financial feature migrations (integration)', () => {
 
     const baseline = new DataSource({
       ...configured.options,
-      migrations: readdirSync(MIGRATIONS_DIRECTORY)
-        .filter(
-          (file) => file.endsWith('.ts') && file < FIRST_FINANCIAL_MIGRATION,
-        )
-        .map((file) => join(MIGRATIONS_DIRECTORY, file)),
+      migrations: migrationFiles(
+        (timestamp) => timestamp < FIRST_FINANCIAL_MIGRATION,
+      ),
     });
 
     await baseline.initialize();
@@ -48,7 +57,12 @@ describe('Financial feature migrations (integration)', () => {
     await seedExistingFinances(baseline);
     await baseline.destroy();
 
-    database = configured;
+    database = new DataSource({
+      ...configured.options,
+      migrations: migrationFiles(
+        (timestamp) => timestamp <= LAST_FINANCIAL_MIGRATION,
+      ),
+    });
     await database.initialize();
   });
 
@@ -163,6 +177,8 @@ describe('Financial feature migrations (integration)', () => {
         'SELECT * FROM recurrences WHERE id = 3',
       );
 
+      const schemaBefore = await database.driver.createSchemaBuilder().log();
+
       await expect(
         database.undoLastMigration({ transaction: 'all' }),
       ).rejects.toMatchObject({
@@ -181,9 +197,9 @@ describe('Financial feature migrations (integration)', () => {
           `SELECT indexname FROM pg_indexes WHERE indexname = 'uq_investment_movements_recurrence_occurrence'`,
         ),
       ).toHaveLength(1);
-      expect(await database.driver.createSchemaBuilder().log()).toMatchObject({
-        upQueries: [],
-      });
+      expect(await database.driver.createSchemaBuilder().log()).toEqual(
+        schemaBefore,
+      );
     },
   );
 

@@ -28,6 +28,12 @@ interface TransactionCategoryShape {
   kind: string;
 }
 
+interface PreferencesShape {
+  spendingPerspective: string;
+  defaultMonth: string;
+  collapsedDashboardCards: string[];
+}
+
 interface DashboardShape {
   period: { year: number; month: number; timing: string };
   perspective: string;
@@ -503,19 +509,89 @@ describe('Financial data ownership (e2e)', () => {
     it('saves preferences per user', async () => {
       await owner
         .patch('/api/preferences')
-        .send({ spendingPerspective: 'INVOICE_MONTH', defaultMonth: 'NEXT' })
+        .send({
+          spendingPerspective: 'INVOICE_MONTH',
+          defaultMonth: 'NEXT',
+          collapsedDashboardCards: ['ACCOUNT_BALANCES', 'OVERVIEW'],
+        })
         .expect(200);
 
       const ownerPreferences = await owner.get('/api/preferences').expect(200);
       const adminPreferences = await admin.get('/api/preferences').expect(200);
 
-      expect(
-        dataOf<{ spendingPerspective: string }>(ownerPreferences.body),
-      ).toMatchObject({ spendingPerspective: 'INVOICE_MONTH' });
-      expect(
-        dataOf<{ spendingPerspective: string }>(adminPreferences.body),
-      ).toMatchObject({ spendingPerspective: 'PURCHASE_DATE' });
+      expect(dataOf<PreferencesShape>(ownerPreferences.body)).toMatchObject({
+        spendingPerspective: 'INVOICE_MONTH',
+        collapsedDashboardCards: ['OVERVIEW', 'ACCOUNT_BALANCES'],
+      });
+      expect(dataOf<PreferencesShape>(adminPreferences.body)).toMatchObject({
+        spendingPerspective: 'PURCHASE_DATE',
+        collapsedDashboardCards: [],
+      });
     });
+
+    it('replaces the collapsed dashboard cards and keeps them when omitted', async () => {
+      const replaced = await owner
+        .patch('/api/preferences')
+        .send({ collapsedDashboardCards: ['BUDGET'] })
+        .expect(200);
+
+      expect(dataOf<PreferencesShape>(replaced.body)).toEqual(
+        expect.objectContaining({
+          spendingPerspective: 'INVOICE_MONTH',
+          defaultMonth: 'NEXT',
+          collapsedDashboardCards: ['BUDGET'],
+        }),
+      );
+
+      const kept = await owner
+        .patch('/api/preferences')
+        .send({ defaultMonth: 'NEXT' })
+        .expect(200);
+
+      expect(
+        dataOf<PreferencesShape>(kept.body).collapsedDashboardCards,
+      ).toEqual(['BUDGET']);
+
+      const cleared = await owner
+        .patch('/api/preferences')
+        .send({ collapsedDashboardCards: [] })
+        .expect(200);
+
+      expect(
+        dataOf<PreferencesShape>(cleared.body).collapsedDashboardCards,
+      ).toEqual([]);
+    });
+
+    it.each([
+      [
+        'is not an array',
+        'BUDGET',
+        'The collapsedDashboardCards field must be an array',
+      ],
+      [
+        'contains an unknown card',
+        ['BUDGET', 'NOT_A_CARD'],
+        'The collapsedDashboardCards field has an invalid value',
+      ],
+      [
+        'repeats a card',
+        ['BUDGET', 'BUDGET'],
+        'The collapsedDashboardCards field must not contain duplicate items',
+      ],
+    ])(
+      'rejects collapsed dashboard cards that %s',
+      async (_case, collapsedDashboardCards, message) => {
+        const response = await owner
+          .patch('/api/preferences')
+          .set('Accept-Language', 'en')
+          .send({ collapsedDashboardCards })
+          .expect(400);
+
+        expect((response.body as { message: string[] }).message).toContain(
+          message,
+        );
+      },
+    );
 
     it("totals only the caller's own active accounts", async () => {
       const response = await owner

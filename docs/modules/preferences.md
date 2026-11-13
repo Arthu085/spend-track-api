@@ -17,8 +17,9 @@ Swagger; this document covers the rules behind them.
 
 - **Always the caller's own.** `GET /preferences` and `PATCH /preferences` need authentication but
   no ability and read the owner from the session; there is no route to another user's preferences.
-- **Defaults without a row.** Until a user saves, reads return `PURCHASE_DATE` and `CURRENT` with a
-  null `updatedAt` (`resolveUserPreferences`); nothing is written on read.
+- **Defaults without a row.** Until a user saves, reads return `PURCHASE_DATE`, `CURRENT`, and an
+  empty `collapsedDashboardCards` with a null `updatedAt` (`resolveUserPreferences`); nothing is
+  written on read.
 - **Partial update, upsert.** Omitted fields keep their value; the first save inserts the row and
   later saves update it (`ON CONFLICT (user_id)`), so concurrent saves never create a second row.
 - **`spendingPerspective`** chooses whether a credit card purchase counts in the month of its purchase
@@ -26,6 +27,11 @@ Swagger; this document covers the rules behind them.
   dashboard can override it per request.
 - **`defaultMonth`** is the month the dashboard opens on without an explicit month: the current or
   the next one.
+- **`collapsedDashboardCards`** lists the dashboard cards (`DashboardCard`) that start collapsed,
+  showing only their title; every other card starts visible. A sent list replaces the stored one
+  (an empty list makes every card start visible), must not repeat a card, and is stored and returned
+  in `DashboardCard` order. It is only the client's initial state; the dashboard response is the
+  same either way.
 
 ## Configuration
 

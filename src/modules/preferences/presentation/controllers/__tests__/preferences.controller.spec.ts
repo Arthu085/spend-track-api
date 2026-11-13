@@ -3,6 +3,7 @@ import type { AuthenticatedUser } from '@shared/presentation/http';
 import { mockOf } from '@test/support/mocks/mock-of';
 import type { GetPreferencesUseCase } from '../../../application/use-cases/get-preferences.use-case';
 import type { UpdatePreferencesUseCase } from '../../../application/use-cases/update-preferences.use-case';
+import { DashboardCard } from '../../../domain/enums/dashboard-card.enum';
 import { DefaultMonth } from '../../../domain/enums/default-month.enum';
 import { SpendingPerspective } from '../../../domain/enums/spending-perspective.enum';
 import { PreferencesController } from '../preferences.controller';
@@ -20,6 +21,7 @@ const actor: AuthenticatedUser = {
 const preferences = {
   spendingPerspective: SpendingPerspective.INVOICE_MONTH,
   defaultMonth: DefaultMonth.NEXT,
+  collapsedDashboardCards: [DashboardCard.OVERVIEW, DashboardCard.INVESTMENTS],
   updatedAt: null,
 };
 
@@ -41,6 +43,10 @@ describe('PreferencesController', () => {
         't:preferences.spending_perspective.invoice_month',
       defaultMonth: DefaultMonth.NEXT,
       defaultMonthLabel: 't:preferences.default_month.next',
+      collapsedDashboardCards: [
+        DashboardCard.OVERVIEW,
+        DashboardCard.INVESTMENTS,
+      ],
       updatedAt: null,
     });
   });
@@ -54,7 +60,10 @@ describe('PreferencesController', () => {
     );
 
     await controller.updateMine(
-      { defaultMonth: DefaultMonth.NEXT },
+      {
+        defaultMonth: DefaultMonth.NEXT,
+        collapsedDashboardCards: [DashboardCard.BUDGET],
+      },
       actor,
       translate,
     );
@@ -63,6 +72,7 @@ describe('PreferencesController', () => {
       userId: 11,
       spendingPerspective: undefined,
       defaultMonth: DefaultMonth.NEXT,
+      collapsedDashboardCards: [DashboardCard.BUDGET],
     });
   });
 });

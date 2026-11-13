@@ -1,3 +1,4 @@
+import { DashboardCard } from '../enums/dashboard-card.enum';
 import { DefaultMonth } from '../enums/default-month.enum';
 import { SpendingPerspective } from '../enums/spending-perspective.enum';
 
@@ -8,6 +9,7 @@ export const USER_PREFERENCES_REPOSITORY = Symbol(
 export interface UserPreferenceValues {
   spendingPerspective: SpendingPerspective;
   defaultMonth: DefaultMonth;
+  collapsedDashboardCards: DashboardCard[];
 }
 
 export interface StoredUserPreferences extends UserPreferenceValues {

@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { translateOrFallback } from '@shared/presentation/http';
+import { DashboardCard } from '../../../domain/enums/dashboard-card.enum';
 import { DefaultMonth } from '../../../domain/enums/default-month.enum';
 import { SpendingPerspective } from '../../../domain/enums/spending-perspective.enum';
 import type { UserPreferences } from '../../../domain/policies/resolve-user-preferences.policy';
@@ -16,6 +17,14 @@ export class PreferencesResponseDto {
 
   @ApiProperty()
   defaultMonthLabel!: string;
+
+  @ApiProperty({
+    enum: DashboardCard,
+    isArray: true,
+    description:
+      'Dashboard cards that start collapsed, showing only their title, in enum order. Empty while every card starts visible.',
+  })
+  collapsedDashboardCards!: DashboardCard[];
 
   @ApiProperty({
     type: Date,
@@ -41,6 +50,7 @@ export class PreferencesResponseDto {
       `preferences.default_month.${preferences.defaultMonth.toLowerCase()}`,
       preferences.defaultMonth,
     );
+    dto.collapsedDashboardCards = preferences.collapsedDashboardCards;
     dto.updatedAt = preferences.updatedAt;
 
     return dto;
