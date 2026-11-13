@@ -9,6 +9,7 @@ describe('GetPreferencesUseCase', () => {
     const stored = {
       spendingPerspective: SpendingPerspective.INVOICE_MONTH,
       defaultMonth: DefaultMonth.NEXT,
+      dashboardCardsVisible: false,
       updatedAt: new Date(),
     };
 
@@ -32,6 +33,7 @@ describe('GetPreferencesUseCase', () => {
     await expect(useCase.execute(7)).resolves.toEqual({
       spendingPerspective: SpendingPerspective.PURCHASE_DATE,
       defaultMonth: DefaultMonth.CURRENT,
+      dashboardCardsVisible: true,
       updatedAt: null,
     });
   });

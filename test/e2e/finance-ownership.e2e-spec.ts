@@ -28,6 +28,11 @@ interface TransactionCategoryShape {
   kind: string;
 }
 
+interface PreferencesShape {
+  spendingPerspective: string;
+  dashboardCardsVisible: boolean;
+}
+
 interface DashboardShape {
   period: { year: number; month: number; timing: string };
   perspective: string;
@@ -503,18 +508,31 @@ describe('Financial data ownership (e2e)', () => {
     it('saves preferences per user', async () => {
       await owner
         .patch('/api/preferences')
-        .send({ spendingPerspective: 'INVOICE_MONTH', defaultMonth: 'NEXT' })
+        .send({
+          spendingPerspective: 'INVOICE_MONTH',
+          defaultMonth: 'NEXT',
+          dashboardCardsVisible: false,
+        })
         .expect(200);
 
       const ownerPreferences = await owner.get('/api/preferences').expect(200);
       const adminPreferences = await admin.get('/api/preferences').expect(200);
 
-      expect(
-        dataOf<{ spendingPerspective: string }>(ownerPreferences.body),
-      ).toMatchObject({ spendingPerspective: 'INVOICE_MONTH' });
-      expect(
-        dataOf<{ spendingPerspective: string }>(adminPreferences.body),
-      ).toMatchObject({ spendingPerspective: 'PURCHASE_DATE' });
+      expect(dataOf<PreferencesShape>(ownerPreferences.body)).toMatchObject({
+        spendingPerspective: 'INVOICE_MONTH',
+        dashboardCardsVisible: false,
+      });
+      expect(dataOf<PreferencesShape>(adminPreferences.body)).toMatchObject({
+        spendingPerspective: 'PURCHASE_DATE',
+        dashboardCardsVisible: true,
+      });
+    });
+
+    it('rejects a dashboard cards visibility that is not a boolean', async () => {
+      await owner
+        .patch('/api/preferences')
+        .send({ dashboardCardsVisible: 'yes' })
+        .expect(400);
     });
 
     it("totals only the caller's own active accounts", async () => {

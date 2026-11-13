@@ -24,7 +24,7 @@ export class PreferencesController {
     .tags('preferences')
     .summary("Get the authenticated user's financial preferences")
     .description(
-      'Available to every authenticated user, without any ability, and always scoped to the caller. Returns the defaults (purchase-date perspective, current month) with a null updatedAt until the user saves preferences.',
+      'Available to every authenticated user, without any ability, and always scoped to the caller. Returns the defaults (purchase-date perspective, current month, dashboard cards visible) with a null updatedAt until the user saves preferences.',
     )
     .response(PreferencesResponseDto)
     .build())
@@ -58,6 +58,7 @@ export class PreferencesController {
       userId: actor.id,
       spendingPerspective: dto.spendingPerspective,
       defaultMonth: dto.defaultMonth,
+      dashboardCardsVisible: dto.dashboardCardsVisible,
     });
 
     return PreferencesResponseDto.fromDomain(preferences, translate);

@@ -193,6 +193,7 @@ describe('GetDashboardUseCase', () => {
     const { useCase } = build({
       spendingPerspective: SpendingPerspective.INVOICE_MONTH,
       defaultMonth: DefaultMonth.NEXT,
+      dashboardCardsVisible: true,
       updatedAt: new Date(),
     });
 
@@ -210,6 +211,7 @@ describe('GetDashboardUseCase', () => {
     const { useCase } = build({
       spendingPerspective: SpendingPerspective.INVOICE_MONTH,
       defaultMonth: DefaultMonth.NEXT,
+      dashboardCardsVisible: true,
       updatedAt: new Date(),
     });
 

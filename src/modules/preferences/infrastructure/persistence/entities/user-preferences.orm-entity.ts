@@ -49,6 +49,15 @@ export class UserPreferencesOrmEntity extends BaseTechnicalOrmEntity {
   })
   defaultMonth!: DefaultMonth;
 
+  @Column({
+    name: 'dashboard_cards_visible',
+    type: 'boolean',
+    nullable: false,
+    default: true,
+    comment: 'Whether the dashboard opens with its card section shown.',
+  })
+  dashboardCardsVisible!: boolean;
+
   @UpdateDateColumn({
     name: 'updated_at',
     type: 'timestamptz',

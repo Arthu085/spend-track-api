@@ -36,6 +36,7 @@ describe('UpdatePreferencesUseCase', () => {
     expect(save).toHaveBeenCalledWith(3, {
       spendingPerspective: SpendingPerspective.INVOICE_MONTH,
       defaultMonth: DefaultMonth.CURRENT,
+      dashboardCardsVisible: true,
     });
   });
 
@@ -43,6 +44,7 @@ describe('UpdatePreferencesUseCase', () => {
     const { useCase, save } = build({
       spendingPerspective: SpendingPerspective.INVOICE_MONTH,
       defaultMonth: DefaultMonth.CURRENT,
+      dashboardCardsVisible: false,
       updatedAt: new Date(),
     });
 
@@ -51,6 +53,24 @@ describe('UpdatePreferencesUseCase', () => {
     expect(save).toHaveBeenCalledWith(3, {
       spendingPerspective: SpendingPerspective.INVOICE_MONTH,
       defaultMonth: DefaultMonth.NEXT,
+      dashboardCardsVisible: false,
+    });
+  });
+
+  it('hides the dashboard cards when false is sent', async () => {
+    const { useCase, save } = build({
+      spendingPerspective: SpendingPerspective.INVOICE_MONTH,
+      defaultMonth: DefaultMonth.NEXT,
+      dashboardCardsVisible: true,
+      updatedAt: new Date(),
+    });
+
+    await useCase.execute({ userId: 3, dashboardCardsVisible: false });
+
+    expect(save).toHaveBeenCalledWith(3, {
+      spendingPerspective: SpendingPerspective.INVOICE_MONTH,
+      defaultMonth: DefaultMonth.NEXT,
+      dashboardCardsVisible: false,
     });
   });
 });

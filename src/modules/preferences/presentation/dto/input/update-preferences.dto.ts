@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, ValidateIf } from 'class-validator';
+import { IsBoolean, IsEnum, ValidateIf } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
 import { DefaultMonth } from '../../../domain/enums/default-month.enum';
 import { SpendingPerspective } from '../../../domain/enums/spending-perspective.enum';
@@ -20,4 +20,11 @@ export class UpdatePreferencesDto {
     message: i18nValidationMessage('validation.IS_ENUM'),
   })
   defaultMonth?: DefaultMonth;
+
+  @ApiPropertyOptional({
+    description: 'Whether the dashboard opens with its card section shown.',
+  })
+  @ValidateIf(isProvided)
+  @IsBoolean({ message: i18nValidationMessage('validation.IS_BOOLEAN') })
+  dashboardCardsVisible?: boolean;
 }

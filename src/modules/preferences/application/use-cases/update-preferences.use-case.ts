@@ -14,6 +14,7 @@ export interface UpdatePreferencesInput {
   userId: number;
   spendingPerspective?: SpendingPerspective;
   defaultMonth?: DefaultMonth;
+  dashboardCardsVisible?: boolean;
 }
 
 @Injectable()
@@ -32,6 +33,8 @@ export class UpdatePreferencesUseCase {
       spendingPerspective:
         input.spendingPerspective ?? current.spendingPerspective,
       defaultMonth: input.defaultMonth ?? current.defaultMonth,
+      dashboardCardsVisible:
+        input.dashboardCardsVisible ?? current.dashboardCardsVisible,
     });
   }
 }

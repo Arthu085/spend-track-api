@@ -18,6 +18,11 @@ export class PreferencesResponseDto {
   defaultMonthLabel!: string;
 
   @ApiProperty({
+    description: 'Whether the dashboard opens with its card section shown.',
+  })
+  dashboardCardsVisible!: boolean;
+
+  @ApiProperty({
     type: Date,
     nullable: true,
     description: 'Null while the user still has the default preferences.',
@@ -41,6 +46,7 @@ export class PreferencesResponseDto {
       `preferences.default_month.${preferences.defaultMonth.toLowerCase()}`,
       preferences.defaultMonth,
     );
+    dto.dashboardCardsVisible = preferences.dashboardCardsVisible;
     dto.updatedAt = preferences.updatedAt;
 
     return dto;

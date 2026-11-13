@@ -65,16 +65,19 @@ describe('TypeOrmUserPreferencesRepository (integration)', () => {
     await repository.save(userId, {
       spendingPerspective: SpendingPerspective.INVOICE_MONTH,
       defaultMonth: DefaultMonth.CURRENT,
+      dashboardCardsVisible: true,
     });
 
     const saved = await repository.save(userId, {
       spendingPerspective: SpendingPerspective.INVOICE_MONTH,
       defaultMonth: DefaultMonth.NEXT,
+      dashboardCardsVisible: false,
     });
 
     expect(saved).toMatchObject({
       spendingPerspective: SpendingPerspective.INVOICE_MONTH,
       defaultMonth: DefaultMonth.NEXT,
+      dashboardCardsVisible: false,
     });
     await expect(
       dataSource.getRepository(UserPreferencesOrmEntity).count(),
@@ -88,6 +91,7 @@ describe('TypeOrmUserPreferencesRepository (integration)', () => {
     await repository.save(first, {
       spendingPerspective: SpendingPerspective.INVOICE_MONTH,
       defaultMonth: DefaultMonth.NEXT,
+      dashboardCardsVisible: false,
     });
 
     await expect(repository.findByUserId(second)).resolves.toBeNull();

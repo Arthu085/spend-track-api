@@ -8,6 +8,7 @@ export const USER_PREFERENCES_REPOSITORY = Symbol(
 export interface UserPreferenceValues {
   spendingPerspective: SpendingPerspective;
   defaultMonth: DefaultMonth;
+  dashboardCardsVisible: boolean;
 }
 
 export interface StoredUserPreferences extends UserPreferenceValues {

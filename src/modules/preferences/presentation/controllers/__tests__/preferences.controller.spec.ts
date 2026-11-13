@@ -20,6 +20,7 @@ const actor: AuthenticatedUser = {
 const preferences = {
   spendingPerspective: SpendingPerspective.INVOICE_MONTH,
   defaultMonth: DefaultMonth.NEXT,
+  dashboardCardsVisible: false,
   updatedAt: null,
 };
 
@@ -41,6 +42,7 @@ describe('PreferencesController', () => {
         't:preferences.spending_perspective.invoice_month',
       defaultMonth: DefaultMonth.NEXT,
       defaultMonthLabel: 't:preferences.default_month.next',
+      dashboardCardsVisible: false,
       updatedAt: null,
     });
   });
@@ -54,7 +56,7 @@ describe('PreferencesController', () => {
     );
 
     await controller.updateMine(
-      { defaultMonth: DefaultMonth.NEXT },
+      { defaultMonth: DefaultMonth.NEXT, dashboardCardsVisible: false },
       actor,
       translate,
     );
@@ -63,6 +65,7 @@ describe('PreferencesController', () => {
       userId: 11,
       spendingPerspective: undefined,
       defaultMonth: DefaultMonth.NEXT,
+      dashboardCardsVisible: false,
     });
   });
 });
