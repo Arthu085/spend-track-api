@@ -1,14 +1,14 @@
 name: Deploy
 
-# Manual by default. To also deploy every push to the default branch once CI passes, uncomment
-# workflow_run; the ci-status job ignores CI runs from pull requests, forks, and failed runs.
-# docs/deployment.md#automatic-deployment lists what to check first.
+# Deploys every push to the default branch once CI passes, and on manual dispatch. To return to
+# manual-only deployment, comment out workflow_run; the ci-status job ignores CI runs from pull
+# requests, forks, and failed runs. docs/deployment.md#automatic-deployment lists what to check first.
 on:
   workflow_dispatch:
-  # workflow_run:
-  #   workflows: [CI]
-  #   types: [completed]
-  #   branches: [main]
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
 
 # One deployment at a time; a queued deployment waits instead of cancelling the running one, and a
 # newer queued deployment replaces an older queued one.
