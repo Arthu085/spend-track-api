@@ -13,6 +13,7 @@ Always read [`docs/conventions.md`](docs/conventions.md). Then read what matches
 | `src/modules/<name>/` | `docs/modules/<name>.md`, the document named after the module folder (for example, `src/modules/auth/` → [`docs/modules/auth.md`](docs/modules/auth.md)) |
 | `src/core/`, `src/shared/`, `src/main.ts`, `src/app.module.ts` | [`docs/core.md`](docs/core.md) |
 | `Dockerfile`, `docker-compose.yml`, `.github/`, `scripts/`, `.env.example`, migrations, seeds | [`docs/infrastructure.md`](docs/infrastructure.md) |
+| `deploy/`, `.github/workflows/deploy.yml` | [`docs/deployment.md`](docs/deployment.md) |
 | Purpose, module responsibilities, seeded data | [`docs/PROJECT.md`](docs/PROJECT.md) |
 
 ## Hard rules

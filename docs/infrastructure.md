@@ -6,9 +6,9 @@ How to run the API locally, configure it, build and deploy its production image,
 procedures they do not make obvious. Implementation of the mechanisms mentioned here is in
 [`core.md`](core.md).
 
-For a first production deployment on a single host, follow the provider-independent
-[deployment guide](deployment.md). It connects the production image to the frontend, HTTPS,
-persistent PostgreSQL, SMTP, and backups without the development Compose stack.
+For production on a single server, follow the [deployment guide](deployment.md): the production
+Compose stack in [`deploy/`](../deploy) (API, PostgreSQL, Caddy, optional Mailpit), the backup and
+restore scripts, and the GitHub Actions deployment workflow.
 
 ## Local development
 
@@ -310,7 +310,9 @@ historical settlements as ordinary payments.
 
 A provider-independent sequence; each step maps to the platform's equivalent (a Kubernetes `Job` and
 `Deployment`, an ECS task and service, ...). `scripts/smoke-test-prod-image.sh` runs steps 2–9
-against disposable containers and is the executable reference.
+against disposable containers and is the executable reference. On a single server,
+`deploy/scripts/deploy.sh` automates steps 3–7 and the readiness rollback
+([deployment guide](deployment.md#deploy)).
 Follow the [financial feature cutover](#historical-settlements-and-recurring-contributions-cutover)
 instead when applying migrations `1793896076380` and `1793897757086`.
 
@@ -521,13 +523,18 @@ beforehand. Restarting or scaling the API does not help.
 
 ## CI
 
-`.github/workflows/ci.yml` runs on pull requests to `main` and pushes to `main`, in three parallel
+`.github/workflows/deploy.yml` deploys to the production server on demand and requires a successful
+CI run for the deployed commit; the [deployment guide](deployment.md#deploy) describes it.
+
+`.github/workflows/ci.yml` runs on pull requests to `main` and pushes to `main`, in four parallel
 jobs:
 
 - **Lint, typecheck, test and build** runs the repository gate. Branch protection can require this
   job by name, so renaming it blocks merges until the rule is updated.
 - **Production image smoke test** builds the `prod` target with Buildx (cached, nothing pushed) and
   runs `scripts/smoke-test-prod-image.sh`.
+- **Deployment configuration** runs ShellCheck on the `deploy/` scripts and validates
+  `deploy/compose.yml` and the Caddyfile with the example settings, without starting anything.
 - **Client API integration tests** checks out
   [spend-track-client](https://github.com/Arthu085/spend-track-client) and runs its
   [API integration suite](https://github.com/Arthu085/spend-track-client#api-integration-tests) against
@@ -566,8 +573,8 @@ scripts/smoke-test-prod-image.sh api:prod
 
 ## Known limitations
 
-- **No deployment target.** CI builds and tests the `prod` image but publishes it nowhere; pushing
-  and rolling out belong to the hosting platform.
+- **Single-server deployment only.** The deploy workflow targets one Docker host; the API restarts
+  in place, with a brief outage, and other platforms need their own rollout.
 - **No outbox metrics or replay.** Queue health comes from logs and SQL; `FAILED` jobs cannot be
   replayed.
 - **No healthcheck on the Compose `api`.** Only the `prod` image declares one; Compose defines one
