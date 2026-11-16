@@ -1,0 +1,261 @@
+name: Deploy
+
+# Manual by default. To also deploy every push to the default branch once CI passes, uncomment
+# workflow_run; the ci-status job ignores CI runs from pull requests, forks, and failed runs.
+# docs/deployment.md#automatic-deployment lists what to check first.
+on:
+  workflow_dispatch:
+  # workflow_run:
+  #   workflows: [CI]
+  #   types: [completed]
+  #   branches: [main]
+
+# One deployment at a time; a queued deployment waits instead of cancelling the running one, and a
+# newer queued deployment replaces an older queued one.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+jobs:
+  ci-status:
+    name: Require successful CI
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == github.event.repository.default_branch &&
+      github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    steps:
+      - name: Check CI for the commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REF_NAME: ${{ github.ref_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          if [ "$REF_NAME" != "$DEFAULT_BRANCH" ]; then
+            echo "::error::Deploy from $DEFAULT_BRANCH; this run uses $REF_NAME."
+            exit 1
+          fi
+          runs="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$DEPLOY_SHA&status=success&per_page=1" --jq '.total_count')"
+          if [ "$runs" -eq 0 ]; then
+            echo "::error::Commit $DEPLOY_SHA has no successful CI run. Wait for CI to pass on it, then deploy again."
+            exit 1
+          fi
+
+  image:
+    name: Build and publish image
+    needs: ci-status
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      ref: ${{ steps.image.outputs.ref }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+
+      - name: Resolve image reference
+        id: image
+        run: |
+          ref="ghcr.io/${GITHUB_REPOSITORY,,}:$DEPLOY_SHA"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      # Redeploying a commit, for example to roll back, reuses its published image.
+      - name: Check for a published image
+        id: published
+        run: |
+          if docker buildx imagetools inspect "${{ steps.image.outputs.ref }}" > /dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: docker/setup-buildx-action@v3
+        if: steps.published.outputs.exists != 'true'
+
+      - name: Build and push prod target
+        if: steps.published.outputs.exists != 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: prod
+          push: true
+          tags: ${{ steps.image.outputs.ref }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ env.DEPLOY_SHA }}
+          cache-from: type=gha,scope=prod
+          cache-to: type=gha,scope=prod,mode=max
+
+  deploy:
+    name: Deploy to the server
+    needs: image
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://${{ vars.APP_DOMAIN }}
+    permissions:
+      contents: read
+      packages: read
+    env:
+      API_IMAGE: ${{ needs.image.outputs.ref }}
+      APP_DOMAIN: ${{ vars.APP_DOMAIN }}
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+          persist-credentials: false
+
+      - name: Configure SSH
+        env:
+          SSH_HOST: ${{ vars.SSH_HOST }}
+          SSH_USER: ${{ vars.SSH_USER }}
+          SSH_PORT: ${{ vars.SSH_PORT || '22' }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          for name in SSH_HOST SSH_USER SSH_PRIVATE_KEY SSH_KNOWN_HOSTS APP_DOMAIN DEPLOY_PATH; do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name is not set in the production environment; see docs/deployment.md#github-configuration."
+              exit 1
+            fi
+          done
+          if ! [[ $DEPLOY_PATH =~ ^/[A-Za-z0-9._/-]+$ ]]; then
+            echo "::error::DEPLOY_PATH must be an absolute path of letters, digits, '.', '_', '-', and '/'."
+            exit 1
+          fi
+
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<EOF
+          Host deploy-target
+            HostName $SSH_HOST
+            User $SSH_USER
+            Port $SSH_PORT
+            IdentityFile ~/.ssh/deploy_key
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+            UserKnownHostsFile ~/.ssh/known_hosts
+            ServerAliveInterval 30
+          EOF
+
+      - name: Render configuration
+        env:
+          ACME_EMAIL: ${{ vars.ACME_EMAIL }}
+          DB_NAME: ${{ vars.DB_NAME || 'spend_track' }}
+          DB_USER: ${{ vars.DB_USER || 'spend_track' }}
+          BACKUP_RETENTION_DAYS: ${{ vars.BACKUP_RETENTION_DAYS || '7' }}
+          BACKUP_REMOTE: ${{ vars.BACKUP_REMOTE }}
+          BACKUP_REMOTE_RETENTION_DAYS: ${{ vars.BACKUP_REMOTE_RETENTION_DAYS || '30' }}
+          MAIL_HOST: ${{ vars.MAIL_HOST }}
+          MAIL_PORT: ${{ vars.MAIL_PORT || '465' }}
+          MAIL_SECURE: ${{ vars.MAIL_SECURE || 'true' }}
+          MAIL_USER: ${{ vars.MAIL_USER }}
+          MAIL_FROM: ${{ vars.MAIL_FROM }}
+          API_ENV_EXTRA: ${{ vars.API_ENV_EXTRA }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          JWT_ACCESS_SECRET: ${{ secrets.JWT_ACCESS_SECRET }}
+          JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+          COOKIE_SECRET: ${{ secrets.COOKIE_SECRET }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+        run: |
+          required=(ACME_EMAIL MAIL_HOST MAIL_FROM POSTGRES_PASSWORD DB_PASSWORD JWT_ACCESS_SECRET JWT_REFRESH_SECRET COOKIE_SECRET)
+          single_line=("${required[@]}" DB_NAME DB_USER BACKUP_RETENTION_DAYS BACKUP_REMOTE BACKUP_REMOTE_RETENTION_DAYS MAIL_PORT MAIL_SECURE MAIL_USER MAIL_PASSWORD)
+          for name in "${required[@]}"; do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name is not set in the production environment; see docs/deployment.md#github-configuration."
+              exit 1
+            fi
+          done
+          for name in "${single_line[@]}"; do
+            if [[ ${!name} == *$'\n'* ]]; then
+              echo "::error::$name must be a single line."
+              exit 1
+            fi
+          done
+
+          profiles=
+          if [ "$MAIL_HOST" = mailpit ]; then
+            profiles=mail
+          fi
+
+          umask 077
+          mkdir rendered
+          cat > rendered/.env.next <<EOF
+          APP_DOMAIN=$APP_DOMAIN
+          ACME_EMAIL=$ACME_EMAIL
+          POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+          DB_NAME=$DB_NAME
+          DB_USER=$DB_USER
+          DB_PASSWORD=$DB_PASSWORD
+          COMPOSE_PROFILES=$profiles
+          BACKUP_RETENTION_DAYS=$BACKUP_RETENTION_DAYS
+          BACKUP_REMOTE=$BACKUP_REMOTE
+          BACKUP_REMOTE_RETENTION_DAYS=$BACKUP_REMOTE_RETENTION_DAYS
+          EOF
+          cat > rendered/api.env.next <<EOF
+          JWT_ACCESS_SECRET=$JWT_ACCESS_SECRET
+          JWT_REFRESH_SECRET=$JWT_REFRESH_SECRET
+          COOKIE_SECRET=$COOKIE_SECRET
+          MAIL_TRANSPORT=smtp
+          MAIL_HOST=$MAIL_HOST
+          MAIL_PORT=$MAIL_PORT
+          MAIL_SECURE=$MAIL_SECURE
+          MAIL_USER=$MAIL_USER
+          MAIL_PASSWORD=$MAIL_PASSWORD
+          MAIL_FROM=$MAIL_FROM
+          LOG_PRETTY=false
+          EOF
+          if [ -n "$API_ENV_EXTRA" ]; then
+            printf '%s\n' "$API_ENV_EXTRA" >> rendered/api.env.next
+          fi
+
+      - name: Upload deployment files
+        env:
+          RCLONE_CONFIG: ${{ secrets.RCLONE_CONFIG }}
+        run: |
+          tar -C deploy --exclude='*.example' -czf - . |
+            ssh deploy-target "mkdir -p '$DEPLOY_PATH' && tar -xzf - -C '$DEPLOY_PATH'"
+          tar -C rendered -czf - .env.next api.env.next |
+            ssh deploy-target "umask 077 && tar -xzf - -C '$DEPLOY_PATH'"
+          if [ -n "$RCLONE_CONFIG" ]; then
+            printf '%s\n' "$RCLONE_CONFIG" |
+              ssh deploy-target "umask 077 && mkdir -p '$DEPLOY_PATH/rclone' && cat > '$DEPLOY_PATH/rclone/rclone.conf'"
+          fi
+
+      # The job token can read this repository's package; it lives in a temporary Docker config
+      # that is removed after the pull, and expires when the job ends.
+      - name: Pull image on the server
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+        run: |
+          printf '%s\n' "$GHCR_TOKEN" | ssh deploy-target \
+            "export DOCKER_CONFIG=\$(mktemp -d) && trap 'rm -rf \"\$DOCKER_CONFIG\"' EXIT && docker login ghcr.io -u '$GITHUB_ACTOR' --password-stdin > /dev/null && docker pull --quiet '$API_IMAGE'"
+
+      - name: Migrate and replace the API
+        run: ssh deploy-target "'$DEPLOY_PATH/scripts/deploy.sh' '$API_IMAGE'"
+
+      - name: Check the public endpoint
+        run: |
+          curl --fail --silent --show-error --output /dev/null \
+            --retry 10 --retry-delay 3 --retry-all-errors --max-time 10 \
+            "https://$APP_DOMAIN/api/auth/csrf"

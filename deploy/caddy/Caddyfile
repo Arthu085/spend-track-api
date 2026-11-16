@@ -1,0 +1,22 @@
+{
+	email {$ACME_EMAIL}
+}
+
+{$APP_DOMAIN} {
+	encode zstd gzip
+
+	@health path /api/health /api/health/*
+	handle @health {
+		respond 404
+	}
+
+	@api path /api /api/*
+	handle @api {
+		reverse_proxy api:3000
+	}
+
+	handle {
+		import /srv/frontend/current/*.caddy
+		respond "Frontend not deployed" 503
+	}
+}

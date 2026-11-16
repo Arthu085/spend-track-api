@@ -54,3 +54,12 @@ pids
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Production deployment: server-side files, if deploy/ is used as a local stack directory
+/deploy/*.env
+/deploy/*.env.next
+/deploy/.deploy/
+/deploy/backups/
+/deploy/frontend/
+/deploy/rclone/
+*.dump

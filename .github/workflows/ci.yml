@@ -74,6 +74,26 @@ jobs:
       - name: Smoke test
         run: scripts/smoke-test-prod-image.sh api:ci-${{ github.sha }}
 
+  deployment-config:
+    name: Deployment configuration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check scripts
+        run: shellcheck -x deploy/scripts/*.sh deploy/postgres/init/*.sh
+
+      # Validates deploy/ with the example server settings plus placeholders; nothing starts.
+      - name: Check Compose and Caddy configuration
+        working-directory: deploy
+        run: |
+          cp .env.example .env
+          touch api.env
+          printf '%s\n' API_IMAGE=api:ci POSTGRES_PASSWORD=ci DB_PASSWORD=ci >> .env
+          docker compose config --quiet
+          docker compose --profile mail config --quiet
+          docker compose run --rm --no-deps caddy caddy validate --config /etc/caddy/Caddyfile
+
   client-integration:
     name: Client API integration tests
     runs-on: ubuntu-latest

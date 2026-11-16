@@ -17,6 +17,7 @@ coverage
 
 Dockerfile
 docker-compose*.yml
+deploy
 .dockerignore
 
 npm-debug.log*
