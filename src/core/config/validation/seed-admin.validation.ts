@@ -4,11 +4,14 @@ import {
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
   STRONG_PASSWORD_PATTERN,
+  USER_NAME_MAX_LENGTH,
+  USER_NAME_MIN_LENGTH,
 } from '@shared/domain/constraints';
 import { isProduction, NodeEnv, nodeEnvSchema } from './node-env.validation';
 
 export const SEED_ADMIN_MIN_PASSWORD_LENGTH = PASSWORD_MIN_LENGTH;
 export const SEED_ADMIN_PRODUCTION_MIN_PASSWORD_LENGTH = 12;
+export const SEED_ADMIN_DEFAULT_NAME = 'Admin';
 
 const KNOWN_DEFAULT_EMAILS = ['admin@email.com', 'admin@example.com'];
 
@@ -30,6 +33,7 @@ const KNOWN_WEAK_PASSWORDS = [
 export interface SeedAdminEnv {
   NODE_ENV: NodeEnv;
   SEED_ADMIN_ENABLED: boolean;
+  SEED_ADMIN_NAME: string;
   SEED_ADMIN_EMAIL?: string;
   SEED_ADMIN_PASSWORD?: string;
 }
@@ -44,6 +48,12 @@ export const seedAdminValidationSchema = Joi.object<SeedAdminEnv>({
       then: Joi.boolean().default(false),
       otherwise: Joi.boolean().default(true),
     }),
+
+  SEED_ADMIN_NAME: Joi.string()
+    .trim()
+    .min(USER_NAME_MIN_LENGTH)
+    .max(USER_NAME_MAX_LENGTH)
+    .default(SEED_ADMIN_DEFAULT_NAME),
 
   SEED_ADMIN_EMAIL: Joi.string()
     .trim()

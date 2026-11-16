@@ -36,7 +36,7 @@ function resolveSeedUsers(env: NodeJS.ProcessEnv): UserDefinition[] {
 
   return [
     {
-      name: 'Admin',
+      name: value.SEED_ADMIN_NAME,
       email: normalizeEmail(value.SEED_ADMIN_EMAIL!),
       password: value.SEED_ADMIN_PASSWORD!,
       roleKey: RoleEnum.ADMIN,

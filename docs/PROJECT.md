@@ -52,8 +52,8 @@ There is no self-registration: users are created by an administrator or by the s
 
 - the roles `ADMIN` and `USER`;
 - the full ability catalog, with `ADMIN` granted every ability and `USER` only `(READ, USER)`;
-- one confirmed administrator from `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`, skipped in production
-  unless `SEED_ADMIN_ENABLED=true`;
+- one confirmed administrator from `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`, named
+  `SEED_ADMIN_NAME` (default `Admin`), skipped in production unless `SEED_ADMIN_ENABLED=true`;
 - the global transaction category catalog (11 expense and 5 income categories), see
   [`modules/transaction-categories.md`](modules/transaction-categories.md#global-catalog).
 

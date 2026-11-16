@@ -204,7 +204,7 @@ The API stops briefly while its container is replaced; Caddy answers `502` meanw
    ```sh
    cd /srv/spend-track
    export SEED_ADMIN_PASSWORD="$(openssl rand -hex 16)-Aa1"
-   docker compose run --rm --no-deps -e SEED_ADMIN_ENABLED=true \
+   docker compose run --rm --no-deps -e SEED_ADMIN_ENABLED=true -e SEED_ADMIN_NAME='Jane Doe' \
      -e SEED_ADMIN_EMAIL=admin@your-domain.com -e SEED_ADMIN_PASSWORD api npm run seed:prod
    echo "$SEED_ADMIN_PASSWORD"; unset SEED_ADMIN_PASSWORD
    ```

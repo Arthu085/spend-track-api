@@ -1,4 +1,7 @@
-import { PASSWORD_MAX_LENGTH } from '@shared/domain/constraints';
+import {
+  PASSWORD_MAX_LENGTH,
+  USER_NAME_MAX_LENGTH,
+} from '@shared/domain/constraints';
 import {
   SeedAdminEnv,
   seedAdminValidationSchema,
@@ -83,6 +86,73 @@ describe('seedAdminValidationSchema', () => {
       expect(error?.message).toBe(
         '"SEED_ADMIN_PASSWORD" must contain an uppercase letter, a lowercase letter, a digit, and a symbol',
       );
+    });
+  });
+
+  describe('SEED_ADMIN_NAME', () => {
+    const DEVELOPMENT_ENV = {
+      NODE_ENV: 'development',
+      SEED_ADMIN_EMAIL: 'admin@email.com',
+      SEED_ADMIN_PASSWORD: 'Admin@123',
+    };
+
+    it('defaults to Admin when unset', () => {
+      const result = validate(DEVELOPMENT_ENV);
+
+      expect(result.error).toBeUndefined();
+      expect((result.value as SeedAdminEnv).SEED_ADMIN_NAME).toBe('Admin');
+    });
+
+    it('accepts a custom name and trims it', () => {
+      const result = validate({
+        ...DEVELOPMENT_ENV,
+        SEED_ADMIN_NAME: '  Jane Operator  ',
+      });
+
+      expect(result.error).toBeUndefined();
+      expect((result.value as SeedAdminEnv).SEED_ADMIN_NAME).toBe(
+        'Jane Operator',
+      );
+    });
+
+    it('accepts a name at the user name maximum length', () => {
+      const result = validate({
+        ...DEVELOPMENT_ENV,
+        SEED_ADMIN_NAME: 'a'.repeat(USER_NAME_MAX_LENGTH),
+      });
+
+      expect(result.error).toBeUndefined();
+    });
+
+    it.each(['', '   '])('rejects the blank name %p', (name) => {
+      const { error } = validate({
+        ...DEVELOPMENT_ENV,
+        SEED_ADMIN_NAME: name,
+      });
+
+      expect(error?.message).toBe(
+        '"SEED_ADMIN_NAME" is not allowed to be empty',
+      );
+    });
+
+    it('rejects a name longer than the user name maximum', () => {
+      const { error } = validate({
+        ...DEVELOPMENT_ENV,
+        SEED_ADMIN_NAME: 'a'.repeat(USER_NAME_MAX_LENGTH + 1),
+      });
+
+      expect(error?.message).toBe(
+        `"SEED_ADMIN_NAME" length must be less than or equal to ${USER_NAME_MAX_LENGTH} characters long`,
+      );
+    });
+
+    it('accepts the default name in production', () => {
+      const { error } = validate({
+        ...STRONG_PRODUCTION_ENV,
+        SEED_ADMIN_NAME: 'Admin',
+      });
+
+      expect(error).toBeUndefined();
     });
   });
 

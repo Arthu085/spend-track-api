@@ -131,4 +131,29 @@ describe('UsersSeeder (integration)', () => {
 
     expect(afterRepair[0].email_confirmed_at).not.toBeNull();
   });
+
+  it('seeds the admin with SEED_ADMIN_NAME and never overwrites an existing admin on re-run', async () => {
+    await seedRoles();
+    await new UsersSeeder({
+      ...process.env,
+      SEED_ADMIN_NAME: 'Jane Operator',
+    }).run(dataSource.manager);
+
+    const firstRunRows: Array<UserRow & { name: string }> =
+      await dataSource.query('SELECT name, email, password FROM "users"');
+
+    expect(firstRunRows).toHaveLength(1);
+    expect(firstRunRows[0].name).toBe('Jane Operator');
+
+    await new UsersSeeder({
+      ...process.env,
+      SEED_ADMIN_NAME: 'Renamed Admin',
+      SEED_ADMIN_PASSWORD: 'Other-password1',
+    }).run(dataSource.manager);
+
+    const secondRunRows: Array<UserRow & { name: string }> =
+      await dataSource.query('SELECT name, email, password FROM "users"');
+
+    expect(secondRunRows).toEqual(firstRunRows);
+  });
 });

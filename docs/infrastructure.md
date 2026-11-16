@@ -206,6 +206,7 @@ values only to that container:
 export SEED_ADMIN_PASSWORD="$(openssl rand -hex 16)-Aa1"
 docker run --rm --env-file /path/to/production.env \
   -e SEED_ADMIN_ENABLED=true \
+  -e SEED_ADMIN_NAME='Jane Doe' \
   -e SEED_ADMIN_EMAIL=admin@your-domain.com \
   -e SEED_ADMIN_PASSWORD \
   api:prod npm run seed:prod
@@ -213,9 +214,10 @@ unset SEED_ADMIN_PASSWORD
 ```
 
 The fixed `-Aa1` suffix guarantees every required character class. `-e SEED_ADMIN_PASSWORD` without a
-value forwards it from the shell, keeping it off the command line.
+value forwards it from the shell, keeping it off the command line. `SEED_ADMIN_NAME` is optional
+(default `Admin`, trimmed, 1–150 characters like any user name).
 Hand the password over through a secure channel, or discard it and let the administrator use password
-reset once SMTP works. Re-running the seed never changes an existing user's password or roles (it only confirms one that
+reset once SMTP works. Re-running the seed never changes an existing user's name, password, or roles (it only confirms one that
 is still unconfirmed). Do not keep `SEED_ADMIN_*`
 in the API's configuration.
 

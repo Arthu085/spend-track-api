@@ -308,17 +308,18 @@ sorting parameters receive a localized validation error (`400`).
 ## Seed user
 
 `UsersSeeder` creates one user with the `ADMIN` role from `SEED_ADMIN_EMAIL` and
-`SEED_ADMIN_PASSWORD`, normalized and hashed like any other write and **already confirmed**, so the
-credentials work immediately. It is idempotent: an existing user with that email is never changed,
-except that a seed user still unconfirmed is confirmed. It fails, rolling back the whole seed run,
-when the `ADMIN` role is missing.
+`SEED_ADMIN_PASSWORD`, named `SEED_ADMIN_NAME` (default `Admin`), normalized and hashed like any
+other write and **already confirmed**, so the credentials work immediately. It is idempotent: an
+existing user with that email is never changed, except that a seed user still unconfirmed is
+confirmed. It fails, rolling back the whole seed run, when the `ADMIN` role is missing.
 
 `SEED_ADMIN_ENABLED` defaults to `true` outside production and `false` in production. The rules in
 `src/core/config/validation/seed-admin.validation.ts` are part of the boot schema and are re-checked
 by the seeder: when enabled, both values are required, with a valid email and an 8–128 character
-password that passes the [strength rule](#input-rules) in every environment; in production, known
-default emails, weak passwords, and passwords under 12 characters are rejected even while the seed
-is disabled. The `.env.example` credentials are for local use only.
+password that passes the [strength rule](#input-rules) in every environment; `SEED_ADMIN_NAME` is
+trimmed and must be 1–150 characters, like any user name; in production, known default emails, weak
+passwords, and passwords under 12 characters are rejected even while the seed is disabled. The
+`.env.example` credentials are for local use only.
 
 ## Configuration
 

@@ -1,6 +1,7 @@
 import type { EntityManager } from 'typeorm';
 import { RoleEnum } from '@modules/authorization/domain/enums/role.enum';
 import { RoleOrmEntity } from '@modules/authorization/infrastructure/persistence/entities/role.orm-entity';
+import { USER_NAME_MAX_LENGTH } from '@shared/domain/constraints';
 import type { PasswordHasher } from '../../../application/ports/password-hasher.port';
 import { UserOrmEntity } from '../../persistence/entities/user.orm-entity';
 import { UsersSeeder } from '../users.seeder';
@@ -93,6 +94,37 @@ describe('UsersSeeder', () => {
     expect(userRows[0].password).toBe('hashed:Dev-password1');
   });
 
+  it('names the admin seed user Admin when SEED_ADMIN_NAME is unset', async () => {
+    const { manager, userRows } = buildManager([], [{ name: RoleEnum.ADMIN }]);
+
+    await buildSeeder(SEED_ENV).run(manager);
+
+    expect(userRows[0].name).toBe('Admin');
+  });
+
+  it('names the admin seed user from SEED_ADMIN_NAME, trimmed', async () => {
+    const { manager, userRows } = buildManager([], [{ name: RoleEnum.ADMIN }]);
+
+    await buildSeeder({
+      ...SEED_ENV,
+      SEED_ADMIN_NAME: '  Jane Operator  ',
+    }).run(manager);
+
+    expect(userRows[0].name).toBe('Jane Operator');
+  });
+
+  it.each([
+    ['blank', '   '],
+    ['too long', 'a'.repeat(USER_NAME_MAX_LENGTH + 1)],
+  ])('fails when SEED_ADMIN_NAME is %s', async (_reason, name) => {
+    const { userSave, manager } = buildManager([], [{ name: RoleEnum.ADMIN }]);
+
+    await expect(
+      buildSeeder({ ...SEED_ENV, SEED_ADMIN_NAME: name }).run(manager),
+    ).rejects.toThrow(/Invalid seed admin configuration: .*SEED_ADMIN_NAME/);
+    expect(userSave).not.toHaveBeenCalled();
+  });
+
   it('stores and looks up the admin seed email normalized', async () => {
     const { manager, userRows } = buildManager([], [{ name: RoleEnum.ADMIN }]);
 
@@ -141,6 +173,33 @@ describe('UsersSeeder', () => {
 
     expect(userSave).toHaveBeenCalledTimes(1);
     expect(userRows[0].emailConfirmedAt).not.toBeNull();
+  });
+
+  it('never renames, rehashes, or re-roles an existing admin seed user', async () => {
+    const existing: FakeUserRow = {
+      email: 'seed-admin@example.com',
+      name: 'Original Name',
+      password: 'already-hashed',
+      roles: [],
+      emailConfirmedAt: null,
+    };
+
+    const { userSave, manager } = buildManager(
+      [existing],
+      [{ name: RoleEnum.ADMIN }],
+    );
+
+    await buildSeeder({
+      ...SEED_ENV,
+      SEED_ADMIN_NAME: 'Renamed Admin',
+      SEED_ADMIN_PASSWORD: 'Other-password1',
+    }).run(manager);
+
+    expect(userSave).toHaveBeenCalledTimes(1);
+    expect(existing.name).toBe('Original Name');
+    expect(existing.password).toBe('already-hashed');
+    expect(existing.roles).toEqual([]);
+    expect(existing.emailConfirmedAt).toBeInstanceOf(Date);
   });
 
   it('fails when the admin seed target role does not exist yet', async () => {
