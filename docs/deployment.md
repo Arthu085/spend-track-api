@@ -6,6 +6,15 @@ target and the compiled migration and seed commands described in [`infrastructur
 The repository's `docker-compose.yml` is for development: it mounts the source, runs the watcher, and
 publishes the database. Do not run it in production.
 
+**First deployment at a glance:**
+
+1. [Prepare the server](#prepare-the-server): DNS, Docker, a deploy user, and a firewall.
+2. [Configure GitHub](#github-configuration): a `production` environment with variables and secrets,
+   in this repository and in the frontend repository.
+3. [Deploy the API](#deploy), then the frontend from its repository.
+4. [Create the first administrator](#first-deployment) and check the site in a browser.
+5. [Schedule backups](#backups) and rehearse a [restore](#restore-and-recovery).
+
 ## Architecture
 
 The browser reaches the frontend and the API through one HTTPS origin, for example
@@ -19,12 +28,27 @@ Host-only `Secure` cookies with `SameSite=Lax` stay first-party.
 | `postgres` | None (`5432` on the Compose network) | `postgres:16-alpine` with data in the `postgres_data` volume |
 | `mailpit` (profile `mail`) | Web UI on the server's `127.0.0.1:8025` only | Optional temporary SMTP sink that keeps messages in memory |
 
-Only Caddy publishes public ports. Compose sets the values the topology fixes: `NODE_ENV=production`,
-`TRUST_PROXY=1` (Caddy is the only proxy and replaces client-sent `X-Forwarded-*` headers),
-`APP_WEB_URL` and `CORS_ORIGINS` as `https://$APP_DOMAIN`, `COOKIE_SECURE=true`, host-only cookies,
-and the `DB_*` connection to the `postgres` service. Docker logs rotate at 10 MB × 5 files per
-container. One API instance needs no Redis; add [shared Redis](infrastructure.md#shared-rate-limiting-with-redis)
-before running more than one.
+Only Caddy publishes public ports. Docker logs rotate at 10 MB × 5 files per container. One API
+instance needs no Redis; add [shared Redis](infrastructure.md#shared-rate-limiting-with-redis) before
+running more than one.
+
+### Configuration files
+
+The server holds two files, both rendered by the deploy workflow from the GitHub environment:
+
+- **`.env`** holds the server settings: domain, ACME email, PostgreSQL bootstrap, backups, Compose
+  profiles, and `API_IMAGE`, which `scripts/deploy.sh` writes. Compose reads it for interpolation
+  only; no container receives it as a whole. [`deploy/.env.example`](../deploy/.env.example) documents
+  it.
+- **`api.env`** holds the API variables from the root [`.env.example`](../.env.example), whose
+  meaning and production values are in [Configuration](infrastructure.md#configuration). Compose sets
+  the ones the topology fixes, which therefore never appear in `api.env`: `NODE_ENV=production`,
+  `PORT=3000`, `TRUST_PROXY=1` (Caddy is the only proxy and replaces client-sent `X-Forwarded-*`
+  headers), `APP_WEB_URL` and `CORS_ORIGINS` as `https://$APP_DOMAIN`, `COOKIE_SECURE=true`, an
+  empty `COOKIE_DOMAIN`, and the `DB_*` connection to the `postgres` service. Variables not set
+  either way use the API's defaults.
+
+Both files are read literally: values are never quoted.
 
 ### Server layout
 
@@ -34,8 +58,7 @@ containers, and its volumes after the directory, so keep the path stable once de
 | Path | Written by | Contents |
 | --- | --- | --- |
 | `compose.yml`, `caddy/`, `postgres/init/`, `scripts/` | API workflow, from `deploy/` | Stack definition, Caddy site, database bootstrap, operational scripts |
-| `.env` | API workflow (`scripts/deploy.sh` adds `API_IMAGE`) | Compose settings; never passed to a container as a whole ([`deploy/.env.example`](../deploy/.env.example)) |
-| `api.env` | API workflow | API runtime settings ([`deploy/api.env.example`](../deploy/api.env.example)) |
+| `.env`, `api.env` | API workflow | [Configuration files](#configuration-files), mode `600` |
 | `rclone/rclone.conf` | API workflow (optional) | Off-server backup destination |
 | `frontend/` | Frontend workflow | `releases/<id>/`, the `current` and `previous` links, and `release.sh` |
 | `backups/` | `scripts/backup.sh` | Verified database dumps |
@@ -56,33 +79,39 @@ non-API paths until the first frontend release.
    Actions its own SSH key:
 
    ```sh
+   # on the server
    sudo adduser --disabled-password --gecos '' deploy
    sudo usermod -aG docker deploy
    sudo install -d -o deploy -g deploy -m 750 /srv/spend-track
-   ssh-keygen -t ed25519 -N '' -C github-actions -f deploy_key   # on your machine
    sudo install -d -o deploy -g deploy -m 700 /home/deploy/.ssh
-   sudo tee -a /home/deploy/.ssh/authorized_keys < deploy_key.pub
-   ssh-keyscan -t ed25519 <server-host>                           # value of SSH_KNOWN_HOSTS
+
+   # on your machine: create the key and print the host key line for SSH_KNOWN_HOSTS
+   ssh-keygen -t ed25519 -N '' -C github-actions -f deploy_key
+   ssh-keyscan -t ed25519 <server-host>
+
+   # on the server: authorize the public key (deploy_key.pub)
+   sudo -u deploy tee -a /home/deploy/.ssh/authorized_keys <<< '<contents of deploy_key.pub>'
    ```
 
-   Membership in the `docker` group is root-equivalent: protect the key, use it only for
-   deployments, and verify the `ssh-keyscan` fingerprint against the server's console
-   (`ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`).
+   Membership in the `docker` group is root-equivalent: protect the key and use it only for
+   deployments. Compare the `ssh-keyscan` fingerprint (`ssh-keygen -lf -` on its output) with the one
+   the server prints for `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`.
 4. **Firewall and SSH.** Allow only SSH, `80/tcp`, `443/tcp`, and `443/udp`, and disable SSH
    password authentication. Docker-published ports bypass `ufw` rules, which is why no service
    except Caddy publishes a public port.
 5. **SMTP.** Verify the sender and publish the provider's DNS records (SPF, DKIM, and DMARC where
    supported). Prefer port 465 with `MAIL_SECURE=true`. Port 587 uses `MAIL_SECURE=false` and
    upgrades with STARTTLS only when the server advertises it; the API's transport does not require
-   that upgrade, so confirm the provider always offers it before choosing 587.
+   that upgrade, so confirm the provider always offers it before choosing 587. Without a provider yet,
+   use [Mailpit](#email).
 
 ## GitHub configuration
 
 Both repositories deploy through a GitHub
 [environment](https://docs.github.com/actions/deployment/targeting-different-environments/using-environments-for-deployment)
-named `production`. Create it in each repository (Settings → Environments), restrict its deployment
-branches to `main`, and optionally add required reviewers. Store the values below in the environment.
-The SSH values and `DEPLOY_PATH` and `APP_DOMAIN` must match in both repositories.
+named `production`. Create it in each repository (Settings → Environments), set **Deployment
+branches** to the default branch only, and optionally add required reviewers. Store the values below
+in the environment. The SSH values, `DEPLOY_PATH`, and `APP_DOMAIN` must match in both repositories.
 
 ### Variables
 
@@ -100,7 +129,7 @@ The SSH values and `DEPLOY_PATH` and `APP_DOMAIN` must match in both repositorie
 | `MAIL_FROM` | Yes | Accepted sender, unquoted: `Spend Track <no-reply@example.com>` |
 | `BACKUP_REMOTE` | No | rclone remote and path for off-server copies ([Backups](#backups)) |
 | `BACKUP_RETENTION_DAYS`, `BACKUP_REMOTE_RETENTION_DAYS` | No | Default `7` and `30`; `0` keeps every dump |
-| `API_ENV_EXTRA` | No | Extra non-secret `KEY=value` lines for `api.env`, such as `LOG_LEVEL=warn` or `THROTTLE_LIMIT=200`; later lines win |
+| `API_ENV_EXTRA` | No | Other non-secret API variables from the root `.env.example`, one `KEY=value` per line, such as `DB_STATEMENT_TIMEOUT_MS=30000` or `LOG_LEVEL=warn`; later lines win |
 
 ### Secrets
 
@@ -117,16 +146,20 @@ The SSH values and `DEPLOY_PATH` and `APP_DOMAIN` must match in both repositorie
 Generate every secret independently, for example with `openssl rand -base64 48`, and keep them
 stable: changing a JWT or cookie secret signs every user out, and `POSTGRES_PASSWORD` and
 `DB_PASSWORD` apply only when the database volume is first created
-([Rotate credentials](#rotate-credentials)). Values must be single lines and are written to the
-server literally, so do not quote them. The boot schema rejects weak or placeholder values
-([Configuration](infrastructure.md#configuration)).
+([Rotate credentials](#rotate-credentials)). Values must be single lines. The API's boot schema
+rejects weak or placeholder values ([Configuration](infrastructure.md#configuration)).
+
+A new API variable needs no workflow change when it is not secret: add it to `API_ENV_EXTRA`. A new
+secret needs a GitHub secret and one line in the workflow's **Render configuration** step.
 
 ## Deploy
 
-Run **Deploy** from the Actions tab (`workflow_dispatch`) on `main`. The workflow
+Run **Deploy** from the Actions tab (`workflow_dispatch`) on the default branch. Use the same command
+for the first deployment and every update. The workflow
 ([`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml)):
 
-1. **Requires successful CI.** It stops unless the CI workflow succeeded for the exact commit.
+1. **Requires successful CI.** It stops unless it runs on the default branch and the CI workflow
+   succeeded for the exact commit.
 2. **Publishes the image.** It builds the `prod` target and pushes
    `ghcr.io/<owner>/spend-track-api:<commit sha>`, or reuses that tag when it already exists.
 3. **Uploads configuration.** Over SSH with a pinned host key, it copies `deploy/` to `DEPLOY_PATH`
@@ -147,11 +180,12 @@ Run **Deploy** from the Actions tab (`workflow_dispatch`) on `main`. The workflo
 5. starts or updates the other services, reloads Caddy, records the current and previous image, and
    removes older API images.
 
-Migrations and seeds never run on API startup. A failure before step 4 leaves the running release
-and configuration untouched; a migration failure rolls back its own transaction. If the new API never
-becomes ready, the script restores the previous configuration and image and exits with an error. That
-automatic rollback does not revert migrations, so every migration must keep the previous release
-working ([Migrations and rolling deployments](infrastructure.md#migrations-and-rolling-deployments)).
+Migrations and seeds never run on API startup. A failure before step 4 restores the previous
+configuration and leaves the running API untouched; a failed migration rolls back its own
+transaction. If the new API never becomes ready, the script restores the previous configuration and
+image and exits with an error. That automatic rollback does not revert migrations, so every migration
+must keep the previous release working
+([Migrations and rolling deployments](infrastructure.md#migrations-and-rolling-deployments)).
 
 A release that applies migrations `1793896076380` and `1793897757086` to a database that already
 holds financial records follows the
@@ -185,16 +219,38 @@ The API stops briefly while its container is replaced; Caddy answers `502` meanw
    - in the network panel: `Secure`, `HttpOnly` auth cookies with `SameSite=Lax`, and successful
      CSRF-protected mutations.
 
+### Updates
+
+Merge to the default branch, wait for CI, and run **Deploy** again. Deploy the API before a frontend
+release that needs its new endpoints, and keep API changes compatible with the frontend still
+running. Changed variables or secrets take effect on the next deployment; redeploying the same commit
+reuses its image and only applies the new configuration.
+
 ### Automatic deployment
 
-To deploy every commit on `main` once CI passes, uncomment the `workflow_run` trigger in
-`.github/workflows/deploy.yml`. The workflow then deploys the commit CI tested, and skips runs whose
-CI failed. Keep the environment's required reviewers if deployments should still wait for approval.
+Manual deployment is the default. To also deploy every push to the default branch once CI passes,
+uncomment the `workflow_run` trigger in `.github/workflows/deploy.yml` (adjust `branches` if the
+default branch is not `main`). Manual runs keep working. Before enabling it:
+
+- **Branch restrictions.** Keep the `production` environment limited to the default branch. The
+  workflow also deploys only CI runs that succeeded for a `push` to the default branch of this
+  repository, never pull requests or forks.
+- **Approval.** Required reviewers on the environment turn each automatic run into a pending
+  deployment that someone approves; remove them only when every merge may go live.
+- **Concurrency.** Deployments run one at a time per repository. A deployment that is waiting
+  replaces an older waiting one, so a burst of merges deploys the newest commit once the running
+  deployment ends; the running one is never cancelled.
+- **Rollback.** A release that never becomes ready rolls back on its own, but migrations stay
+  applied, so only merge backward-compatible migrations. After a manual rollback, the next merge
+  deploys again: revert the faulty commit first.
+- **Two repositories.** Each repository deploys on its own merges, so an API change that the
+  frontend needs must reach production before the frontend change.
 
 ### Deploy without GitHub Actions
 
-On the server, with an image the server can pull or has loaded, and `.env` and `api.env` written by
-hand from the examples:
+On the server, write `.env` from [`deploy/.env.example`](../deploy/.env.example) and `api.env` as
+described in [Configuration files](#configuration-files), then deploy an image the server can pull or
+has loaded:
 
 ```sh
 cd /srv/spend-track
@@ -217,47 +273,57 @@ Switching back to a provider and redeploying leaves the Mailpit container runnin
 
 ## Backups
 
-`scripts/backup.sh` writes a custom-format `pg_dump` to `backups/`, verifies that `pg_restore` can
-read it, prunes local dumps older than `BACKUP_RETENTION_DAYS`, and, when `BACKUP_REMOTE` is set,
-copies it off the server with [rclone](https://rclone.org/) (run from the `rclone/rclone` image),
-confirms the copy, and prunes remote dumps older than `BACKUP_REMOTE_RETENTION_DAYS`. A dump that
-stays on the server does not survive the loss of the server.
+**Database backups are not server snapshots.** A provider's VPS snapshot copies the whole disk at a
+point in time: useful to rebuild a broken server quickly, but taken while PostgreSQL writes (so it
+may need crash recovery), stored with the same provider, and usually restorable only as a whole
+server. The database backups below are consistent `pg_dump` files that restore into any PostgreSQL
+16 on any host, one database at a time. Use snapshots as an extra layer if the provider offers them,
+never as the only backup.
 
-**Off-server storage.** rclone supports S3-compatible storage, Backblaze B2, SFTP, Google Drive, and
-more. Create the configuration with `rclone config` on any machine, wrap the destination in a
-[`crypt`](https://rclone.org/crypt/) remote so the provider stores only encrypted dumps, and save the
-file as the `RCLONE_CONFIG` secret. For example, with `BACKUP_REMOTE=offsite:`:
+`scripts/backup.sh` writes a dump to `backups/`, checks that `pg_restore` can read it, deletes local
+dumps older than `BACKUP_RETENTION_DAYS`, and, when `BACKUP_REMOTE` is set, copies it off the server
+with [rclone](https://rclone.org/) (run from the `rclone/rclone` image), confirms the copy, and deletes
+remote dumps older than `BACKUP_REMOTE_RETENTION_DAYS`. Every deployment and every live restore takes
+one first. A dump that stays on the server does not survive the loss of the server.
 
-```ini
-[storage]
-type = s3
-provider = Other
-endpoint = https://s3.example.com
-access_key_id = ...
-secret_access_key = ...
+### Set up
 
-[offsite]
-type = crypt
-remote = storage:spend-track-backups
-password = ...
-password2 = ...
-```
+1. **Off-server storage (recommended).** rclone supports S3-compatible storage, Backblaze B2, SFTP,
+   Google Drive, and more. On your machine, run `rclone config` to add the storage, then add a
+   [`crypt`](https://rclone.org/crypt/) remote on top of it so the provider stores only encrypted
+   files. For example, with `BACKUP_REMOTE=offsite:`, the resulting file looks like:
 
-`rclone config` stores the crypt passwords obscured; enter them through it rather than in plain text.
+   ```ini
+   [storage]
+   type = s3
+   provider = Other
+   endpoint = https://s3.example.com
+   access_key_id = ...
+   secret_access_key = ...
 
-Keep a copy of the `rclone.conf` (and the crypt passwords) outside the server: without them the
-dumps cannot be decrypted. Give the storage credentials write access to that bucket only.
+   [offsite]
+   type = crypt
+   remote = storage:spend-track-backups
+   password = ...
+   password2 = ...
+   ```
 
-**Schedule.** Every deployment takes a pre-deploy backup. Add a daily one to the deploy user's
-crontab (`crontab -e`), adjusting the path:
+   Save the file's contents as the `RCLONE_CONFIG` secret, set `BACKUP_REMOTE`, and redeploy. Keep a
+   copy of the file, which includes the crypt passwords, outside the server: without it the dumps
+   cannot be decrypted. Give the storage credentials access to that bucket only.
+2. **Schedule.** As the deploy user, run `crontab -e` and add a daily backup, adjusting the path:
 
-```cron
-15 3 * * * /srv/spend-track/scripts/backup.sh >> /srv/spend-track/backups/backup.log 2>&1
-```
+   ```cron
+   15 3 * * * /srv/spend-track/scripts/backup.sh >> /srv/spend-track/backups/backup.log 2>&1
+   ```
 
-Check `backups/backup.log`, and alert on missing or failing backups with your monitoring. Back up the
-GitHub environment values (or the server's `.env`, `api.env`, and `rclone/rclone.conf`) separately in
-a secure store.
+   Two backups never run at once. A backup during a deployment is safe: `pg_dump` reads a
+   consistent snapshot.
+3. **Check.** Run `scripts/backup.sh` once by hand, rehearse a [restore](#restore-and-recovery), and
+   watch `backups/backup.log` (or alert on it) for failures and missing days.
+
+Back up the GitHub environment values (or the server's `.env`, `api.env`, and `rclone/rclone.conf`)
+separately in a password manager or another secure store.
 
 ## Restore and recovery
 
@@ -265,6 +331,7 @@ a secure store.
 and drop it; the live database is not touched:
 
 ```sh
+cd /srv/spend-track
 scripts/restore.sh --check backups/<name>.dump
 ```
 
@@ -289,7 +356,7 @@ docker run --rm --user "$(id -u):$(id -g)" -e RCLONE_CONFIG=/config/rclone.conf 
 deploy the API (with the same secrets) and the frontend, download the latest dump into `backups/`,
 and run the live restore. Re-add the backup cron entry.
 
-## Updates and rollback
+## Rollback
 
 - **Automatic:** a release that never becomes ready is replaced by the previous image and
   configuration ([Deploy](#deploy)).

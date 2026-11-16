@@ -1,9 +1,5 @@
 #!/usr/bin/env bash
-# Restores a dump created by backup.sh.
-#
-# Usage: scripts/restore.sh --check <dump>   restore into a scratch database, report it, and drop it
-#        scripts/restore.sh <dump> --yes     replace the live database with the dump
-#
+# Restores a dump created by backup.sh into a scratch database (--check) or the live database.
 # A live restore takes a pre-restore backup, stops the API, recreates the database, restores the dump,
 # applies the running image's pending migrations, and starts the API again. Everything written since
 # the dump was taken is lost.
@@ -14,18 +10,20 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 usage() {
-  sed -n '4,5p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2
+  cat >&2 <<'EOF'
+Usage: scripts/restore.sh --check <dump>   restore into a scratch database, report it, and drop it
+       scripts/restore.sh <dump> --yes     replace the live database with the dump
+EOF
   exit 2
 }
 
-mode=
-dump=
-case "${1:-} ${2:-}" in
-  '--check '?*) mode=check dump=$2 ;;
-  *' --yes') mode=live dump=$1 ;;
-  *) usage ;;
-esac
-[[ $# -eq 2 && $dump != -* ]] || usage
+if [[ $# -eq 2 && $1 == --check ]]; then
+  mode=check dump=$2
+elif [[ $# -eq 2 && $2 == --yes && $1 != -* ]]; then
+  mode=live dump=$1
+else
+  usage
+fi
 [[ -s $dump ]] || fail "$dump does not exist or is empty"
 
 db_name="$(env_value DB_NAME)"
@@ -77,11 +75,13 @@ safety="$(find "$DEPLOY_DIR/backups" -maxdepth 1 -name '*-pre-restore.dump' -typ
 log 'Stopping the API'
 compose stop api
 
-failed() {
-  printf 'ERROR: the restore failed; the API is stopped.\n' >&2
-  printf 'Restore the pre-restore backup with: scripts/restore.sh %s --yes\n' "$safety" >&2
+restored=false
+report_failed_restore() {
+  [[ $restored == true ]] && return
+  printf 'ERROR: the restore failed and the API is stopped. To return to the state before the restore, run:\n' >&2
+  printf '  scripts/restore.sh %s --yes\n' "$safety" >&2
 }
-trap failed ERR
+trap report_failed_restore EXIT
 
 log "Recreating $db_name from $dump"
 create_database "$db_name"
@@ -89,9 +89,9 @@ restore_into "$db_name"
 
 log 'Applying pending migrations of the running image'
 compose run --rm --no-deps -T api npm run migration:run:prod
+restored=true
 
 log 'Starting the API'
 compose up -d --no-deps api
-wait_for_api || fail 'the API did not become ready; inspect its logs'
-trap - ERR
+wait_for_api || fail 'the database was restored, but the API did not become ready; inspect its logs'
 log 'Restore complete'

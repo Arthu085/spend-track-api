@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 # Creates a verified custom-format PostgreSQL dump in backups/, copies it off the server when
 # BACKUP_REMOTE is set, and prunes old local and remote dumps.
-#
-# Usage: scripts/backup.sh [--label <name>]
-#
 # Settings (in .env): BACKUP_RETENTION_DAYS (local, default 7), BACKUP_REMOTE (rclone remote and path,
 # configured in rclone/rclone.conf; empty keeps backups on this server only),
 # BACKUP_REMOTE_RETENTION_DAYS (default 30). A retention of 0 keeps every dump.
@@ -16,17 +13,13 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 RCLONE_IMAGE="${RCLONE_IMAGE:-rclone/rclone:1.71}"
 
 label=
-case "${1:-}" in
-  '') ;;
-  --label)
-    [[ ${2:-} =~ ^[a-z0-9-]+$ ]] || fail 'the label must contain only lowercase letters, digits, and dashes'
-    label=$2
-    ;;
-  *)
-    sed -n '5p' "${BASH_SOURCE[0]}" | sed 's/^# //' >&2
-    exit 2
-    ;;
-esac
+if [[ $# -eq 2 && $1 == --label ]]; then
+  [[ $2 =~ ^[a-z0-9-]+$ ]] || fail 'the label must contain only lowercase letters, digits, and dashes'
+  label=$2
+elif [[ $# -ne 0 ]]; then
+  echo 'Usage: scripts/backup.sh [--label <name>]' >&2
+  exit 2
+fi
 
 db_name="$(env_value DB_NAME)"
 db_user="$(env_value DB_USER)"
@@ -72,7 +65,8 @@ rclone() {
 
 log "Copying to $remote"
 rclone copy "/backups/$name" "$remote"
-rclone lsf "$remote/$name" | grep -qx "$name" || fail "the copy is missing from $remote"
+rclone lsf "$remote/$name" | grep -qx "$name" ||
+  fail "rclone finished, but $name is not listed in $remote; the local dump is kept"
 
 if ((remote_retention > 0)); then
   rclone delete "$remote" --min-age "${remote_retention}d" --include '*.dump'

@@ -1,9 +1,5 @@
 #!/usr/bin/env bash
 # Deploys an API image to the production stack in this directory, or rolls back to the previous one.
-#
-# Usage: scripts/deploy.sh <image>      deploy an image, for example ghcr.io/owner/repo:<commit sha>
-#        scripts/deploy.sh --rollback   redeploy the image that ran before the last successful deploy
-#
 # Staged configuration (.env.next, api.env.next) replaces .env and api.env first. The sequence is:
 # validate, pull, pre-deploy backup, migrations, seeds, API replacement, readiness. A failure before
 # the API is replaced leaves the running release untouched; a failed readiness check restores the
@@ -19,7 +15,10 @@ CONFIG_FILES=(.env api.env)
 cd "$DEPLOY_DIR"
 
 usage() {
-  sed -n '4,5p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2
+  cat >&2 <<'EOF'
+Usage: scripts/deploy.sh <image>      deploy an image, such as ghcr.io/owner/repo:<commit sha>
+       scripts/deploy.sh --rollback   redeploy the image that ran before the last successful deploy
+EOF
   exit 2
 }
 
@@ -88,7 +87,7 @@ set_env_value API_IMAGE "$target_image" .env
 
 abort() {
   printf 'ERROR: %s\n' "$*" >&2
-  log 'Restoring the previous configuration; the running release is unchanged'
+  log 'Restored the previous configuration; the running API was not replaced'
   restore_config
   exit 1
 }
@@ -106,13 +105,13 @@ log 'Starting PostgreSQL'
 compose up -d --wait postgres || abort 'PostgreSQL did not become healthy'
 
 log 'Backing up the database'
-"$DEPLOY_DIR/scripts/backup.sh" --label pre-deploy || abort 'pre-deploy backup failed'
+"$DEPLOY_DIR/scripts/backup.sh" --label pre-deploy || abort 'the pre-deploy backup failed'
 
 log 'Running migrations'
-compose run --rm --no-deps -T api npm run migration:run:prod || abort 'migrations failed and were rolled back'
+compose run --rm --no-deps -T api npm run migration:run:prod || abort 'migrations failed; their transaction was rolled back'
 
 log 'Running seeds'
-compose run --rm --no-deps -T api npm run seed:prod || abort 'seeds failed and were rolled back'
+compose run --rm --no-deps -T api npm run seed:prod || abort 'seeds failed; their transaction was rolled back, applied migrations remain'
 
 log 'Replacing the API'
 compose up -d --no-deps api

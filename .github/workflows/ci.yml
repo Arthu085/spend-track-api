@@ -83,12 +83,12 @@ jobs:
       - name: Check scripts
         run: shellcheck -x deploy/scripts/*.sh deploy/postgres/init/*.sh
 
-      # Validates deploy/ with the example settings plus placeholder values; nothing starts.
+      # Validates deploy/ with the example server settings plus placeholders; nothing starts.
       - name: Check Compose and Caddy configuration
         working-directory: deploy
         run: |
           cp .env.example .env
-          cp api.env.example api.env
+          touch api.env
           printf '%s\n' API_IMAGE=api:ci POSTGRES_PASSWORD=ci DB_PASSWORD=ci >> .env
           docker compose config --quiet
           docker compose --profile mail config --quiet

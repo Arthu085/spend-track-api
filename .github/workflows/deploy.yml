@@ -1,7 +1,8 @@
 name: Deploy
 
-# Manual by default. To deploy every commit on main after CI passes, uncomment workflow_run below;
-# docs/deployment.md#automatic-deployment describes the change.
+# Manual by default. To also deploy every push to the default branch once CI passes, uncomment
+# workflow_run; the ci-status job ignores CI runs from pull requests, forks, and failed runs.
+# docs/deployment.md#automatic-deployment lists what to check first.
 on:
   workflow_dispatch:
   # workflow_run:
@@ -9,7 +10,8 @@ on:
   #   types: [completed]
   #   branches: [main]
 
-# One deployment at a time; a queued deployment waits instead of cancelling the running one.
+# One deployment at a time; a queued deployment waits instead of cancelling the running one, and a
+# newer queued deployment replaces an older queued one.
 concurrency:
   group: deploy-production
   cancel-in-progress: false
@@ -23,7 +25,12 @@ env:
 jobs:
   ci-status:
     name: Require successful CI
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == github.event.repository.default_branch &&
+      github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -31,7 +38,13 @@ jobs:
       - name: Check CI for the commit
         env:
           GH_TOKEN: ${{ github.token }}
+          REF_NAME: ${{ github.ref_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
+          if [ "$REF_NAME" != "$DEFAULT_BRANCH" ]; then
+            echo "::error::Deploy from $DEFAULT_BRANCH; this run uses $REF_NAME."
+            exit 1
+          fi
           runs="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$DEPLOY_SHA&status=success&per_page=1" --jq '.total_count')"
           if [ "$runs" -eq 0 ]; then
             echo "::error::Commit $DEPLOY_SHA has no successful CI run. Wait for CI to pass on it, then deploy again."
